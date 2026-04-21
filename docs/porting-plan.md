@@ -151,7 +151,7 @@ remain compatible for Lambda deployments that already use Powertools conventions
 
 - Keep the workspace compiling with `cargo check --workspace --all-targets --all-features`.
 - Keep clippy clean with `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
-- Add CI for fmt, clippy, test, check, and locked builds.
+- Maintain CI for fmt, clippy, test, check, and locked builds.
 - Add issue/PR templates and release automation once the first APIs settle.
 - Use Rust `1.85.0` as the initial MSRV because it is the Rust 2024 edition floor. Raise MSRV only when a required
   dependency or language feature justifies it. Current AWS SDK provider crates may force a higher MSRV when provider
