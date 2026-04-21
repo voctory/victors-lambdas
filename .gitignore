@@ -1,0 +1,23 @@
+# Rust
+/target/
+
+# Local editor and OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local environment and scratch files
+.env
+.env.*
+!.env.example
+/.tmp/
+/.scratch/
+/tmp-*/
+
+# Generated docs/build output
+/book/
+/site/
+/coverage/
+/tarpaulin-report.html

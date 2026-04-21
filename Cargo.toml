@@ -1,0 +1,31 @@
+[workspace]
+members = []
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94.1"
+license = "MIT-0"
+repository = "https://github.com/voctory/powertools-lambda-rust"
+homepage = "https://github.com/voctory/powertools-lambda-rust"
+readme = "README.md"
+keywords = ["aws", "lambda", "powertools", "serverless", "observability"]
+categories = ["development-tools", "web-programming"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+
+[profile.release-lambda]
+inherits = "release"
+codegen-units = 1
+lto = "thin"
+strip = "debuginfo"
+
