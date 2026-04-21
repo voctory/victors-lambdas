@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 This repository is an unofficial Rust toolkit for AWS Lambda functions. Keep language precise: do not imply this is an
-official AWS or Amazon project unless that becomes explicitly true. Copyright belongs to Victor Vannara unless a future
+official AWS-owned project unless that becomes explicitly true. Copyright belongs to Victor Vannara unless a future
 legal decision changes the licensing headers.
 
 ## Collaboration and Git Safety
