@@ -11,8 +11,6 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-aws-lambda-powertools-core.workspace = true
 
 [lints]
 workspace = true
-
