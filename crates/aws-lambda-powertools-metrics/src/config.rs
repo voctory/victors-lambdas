@@ -73,3 +73,31 @@ impl Default for MetricsConfig {
         Self::from_env()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_trims_namespace_and_service_name() {
+        let config = MetricsConfig::new("  checkout  ", "  Orders  ");
+
+        assert_eq!(config.service().service_name(), "checkout");
+        assert_eq!(config.namespace(), "Orders");
+        assert!(!config.disabled());
+    }
+
+    #[test]
+    fn new_uses_default_namespace_when_empty() {
+        let config = MetricsConfig::new("checkout", "   ");
+
+        assert_eq!(config.namespace(), DEFAULT_NAMESPACE);
+    }
+
+    #[test]
+    fn with_disabled_updates_emission_flag() {
+        let config = MetricsConfig::new("checkout", "Orders").with_disabled(true);
+
+        assert!(config.disabled());
+    }
+}
