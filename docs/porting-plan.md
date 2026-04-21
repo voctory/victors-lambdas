@@ -16,6 +16,7 @@ unofficial Rust toolkit for AWS Lambda functions and should avoid wording that i
 ## Non-Goals for the Initial Phase
 
 - Do not claim official AWS-owned project status.
+- Remain clearly unofficial for now. Revisit project status only if there is an explicit future governance decision.
 - Do not add Lambda layers initially. Rust users normally ship compiled binaries; extension or layer packaging can be
   revisited later if a concrete use case appears.
 - Do not port every Python-only utility before core Rust API foundations are stable.
@@ -75,12 +76,15 @@ subtrees should grow as real utility implementations land.
 | `aws-lambda-powertools-event-handler` | Routing | routers, route params, middleware, response types |
 | `aws-lambda-powertools-testing` | Test helpers | context stubs, fixture loaders, fake providers |
 
-The umbrella crate should depend on feature crates through optional dependencies. Feature crates may be published later if
-there is a strong reason, but the initial user path should be:
+The umbrella crate should depend on feature crates through optional dependencies. The intended user path is:
 
 ```toml
 aws-lambda-powertools = { version = "0.1", features = ["logger", "metrics"] }
 ```
+
+When the workspace is ready for crates.io, publish the support crates as implementation crates before publishing the
+umbrella crate. `aws-lambda-powertools-core` should be published only as a support crate for the workspace graph; normal
+users should depend on `aws-lambda-powertools`.
 
 ## Feature Flags
 
@@ -107,8 +111,10 @@ Likely provider and integration features:
 - `idempotency-redis`
 - `validation-jsonschema`
 - `parser-serde`
+- `events-aws-lambda-events`
 - `parser-schemars`
-- `tracer-xray`
+- `tracer-otel`
+- `tracer-xray-propagation`
 - `event-handler-http`
 - `event-handler-appsync`
 - `event-handler-bedrock-agent`
@@ -147,7 +153,9 @@ remain compatible for Lambda deployments that already use Powertools conventions
 - Keep clippy clean with `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
 - Add CI for fmt, clippy, test, check, and locked builds.
 - Add issue/PR templates and release automation once the first APIs settle.
-- Decide the supported MSRV and document it in `README.md`.
+- Use Rust `1.85.0` as the initial MSRV because it is the Rust 2024 edition floor. Raise MSRV only when a required
+  dependency or language feature justifies it. Current AWS SDK provider crates may force a higher MSRV when provider
+  features land.
 
 ### Phase 1: Core
 
@@ -176,8 +184,8 @@ remain compatible for Lambda deployments that already use Powertools conventions
 
 ### Phase 4: Tracer
 
-- Decide the default integration point: AWS X-Ray SDK equivalent, OpenTelemetry bridge, or a thin facade that can support
-  both.
+- Build the public tracer API as a thin Powertools facade over Rust `tracing` spans. Add OpenTelemetry integration behind
+  `tracer-otel`, with X-Ray compatible propagation/export behavior behind `tracer-xray-propagation`.
 - Support capture response, capture error, service annotations, and subsegments.
 - Avoid naming conflicts with the `tracing` crate by keeping the public module name `tracer`.
 - Add tests for disabled tracing and error capture behavior.
@@ -192,7 +200,8 @@ remain compatible for Lambda deployments that already use Powertools conventions
 
 ### Phase 6: Parser and Event Types
 
-- Decide whether this crate owns AWS event structs or wraps types from `aws_lambda_events`.
+- Use `aws_lambda_events` as the default source for AWS event structs. Own only Powertools-specific envelopes, adapters,
+  extension traits, fixtures, and any missing event models that cannot reasonably be represented upstream.
 - Add event envelopes for API Gateway REST/HTTP/WebSocket, ALB, EventBridge, SQS, SNS, DynamoDB Streams, Kinesis,
   Kinesis Firehose, S3, CloudWatch Logs, AppSync, Kafka, and Bedrock Agent events.
 - Use serde-based parsing with clear error messages and optional schema support.
@@ -266,11 +275,17 @@ cargo check --workspace --all-targets --all-features
 
 CI should use `--locked` once dependency versions are introduced beyond path-only workspace crates.
 
-## Open Decisions
+## Resolved Initial Decisions
 
-- Choose the long-term MSRV. The initial scaffold pins current stable for development speed.
-- Decide whether `aws-lambda-powertools-core` should ever be published or remain an implementation detail.
-- Decide whether event types should be owned here or delegated to `aws_lambda_events`.
-- Decide the tracing backend and how it should interoperate with `tracing` subscribers.
-- Decide whether to use `just`, `make`, or plain documented Cargo commands for contributor workflows.
-- Decide if the crate should eventually seek an official upstream home or remain clearly unofficial.
+- Project status: remain unofficial for now.
+- MSRV: start at Rust `1.85.0`, the Rust 2024 floor. Raise it only for required dependencies or language features, and
+  document MSRV bumps as release-visible changes.
+- Publishing: keep one synchronized workspace version. Publish `aws-lambda-powertools-core` as a support crate if the
+  current multi-crate graph is published; otherwise the umbrella crate cannot depend on it from crates.io. Do not present
+  core as the normal user entry point.
+- Event types: use `aws_lambda_events` by default and own only Powertools-specific adapters, envelopes, fixtures, and
+  missing models.
+- Tracing: build on Rust `tracing` spans first, then add optional OpenTelemetry and X-Ray propagation/export integration.
+- Contributor commands: keep plain Cargo commands as the canonical workflow. Add `just` or `make` only later as optional
+  convenience wrappers.
+- Lockfile: keep `Cargo.lock` committed for reproducible workspace and example validation.
