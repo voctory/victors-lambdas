@@ -49,16 +49,52 @@ pub mod parser {
 
 /// Common imports for Lambda handlers.
 pub mod prelude {
-    pub use aws_lambda_powertools_core::ServiceConfig;
+    pub use aws_lambda_powertools_core::{ServiceConfig, ServiceConfigBuilder};
+
+    #[cfg(feature = "batch")]
+    pub use aws_lambda_powertools_batch::{
+        BatchItemFailure, BatchProcessingReport, BatchProcessor, BatchRecord, BatchRecordResult,
+        BatchResponse,
+    };
+
+    #[cfg(feature = "event-handler")]
+    pub use aws_lambda_powertools_event_handler::{
+        Handler, Method, ParseMethodError, PathParams, Request, Response, Route, RouteMatch, Router,
+    };
+
+    #[cfg(feature = "idempotency")]
+    pub use aws_lambda_powertools_idempotency::{
+        IdempotencyConfig, IdempotencyKey, IdempotencyRecord, IdempotencyStatus, IdempotencyStore,
+        IdempotencyStoreError, IdempotencyStoreResult, InMemoryIdempotencyStore,
+    };
 
     #[cfg(feature = "logger")]
-    pub use aws_lambda_powertools_logger::{LogLevel, Logger, LoggerConfig};
+    pub use aws_lambda_powertools_logger::{
+        LogEntry, LogFields, LogLevel, LogValue, Logger, LoggerConfig,
+    };
 
     #[cfg(feature = "metrics")]
-    pub use aws_lambda_powertools_metrics::{MetricUnit, Metrics, MetricsConfig};
+    pub use aws_lambda_powertools_metrics::{
+        MetadataValue, Metric, MetricUnit, Metrics, MetricsConfig, MetricsError,
+    };
+
+    #[cfg(feature = "parameters")]
+    pub use aws_lambda_powertools_parameters::{
+        CachePolicy, InMemoryParameterProvider, Parameter, ParameterProvider, Parameters,
+    };
+
+    #[cfg(feature = "parser")]
+    pub use aws_lambda_powertools_parser::{EventParser, ParseError, ParseErrorKind, ParsedEvent};
 
     #[cfg(feature = "tracer")]
-    pub use aws_lambda_powertools_tracer::{TraceContext, Tracer, TracerConfig};
+    pub use aws_lambda_powertools_tracer::{
+        TraceContext, TraceFields, TraceSegment, TraceValue, Tracer, TracerConfig,
+    };
+
+    #[cfg(feature = "validation")]
+    pub use aws_lambda_powertools_validation::{
+        Validate, ValidationError, ValidationErrorKind, ValidationResult, Validator,
+    };
 }
 
 /// Tracing utility.
