@@ -1,5 +1,8 @@
 [workspace]
-members = []
+members = [
+    "crates/*",
+    "examples/*",
+]
 resolver = "3"
 
 [workspace.package]
@@ -13,13 +16,26 @@ readme = "README.md"
 keywords = ["aws", "lambda", "powertools", "serverless", "observability"]
 categories = ["development-tools", "web-programming"]
 
+[workspace.dependencies]
+aws-lambda-powertools-core = { path = "crates/aws-lambda-powertools-core", version = "0.1.0" }
+aws-lambda-powertools-logger = { path = "crates/aws-lambda-powertools-logger", version = "0.1.0" }
+aws-lambda-powertools-metrics = { path = "crates/aws-lambda-powertools-metrics", version = "0.1.0" }
+aws-lambda-powertools-tracer = { path = "crates/aws-lambda-powertools-tracer", version = "0.1.0" }
+aws-lambda-powertools-parameters = { path = "crates/aws-lambda-powertools-parameters", version = "0.1.0" }
+aws-lambda-powertools-parser = { path = "crates/aws-lambda-powertools-parser", version = "0.1.0" }
+aws-lambda-powertools-batch = { path = "crates/aws-lambda-powertools-batch", version = "0.1.0" }
+aws-lambda-powertools-idempotency = { path = "crates/aws-lambda-powertools-idempotency", version = "0.1.0" }
+aws-lambda-powertools-validation = { path = "crates/aws-lambda-powertools-validation", version = "0.1.0" }
+aws-lambda-powertools-event-handler = { path = "crates/aws-lambda-powertools-event-handler", version = "0.1.0" }
+aws-lambda-powertools-testing = { path = "crates/aws-lambda-powertools-testing", version = "0.1.0" }
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 missing_docs = "warn"
 
 [workspace.lints.clippy]
-all = "warn"
-pedantic = "warn"
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
 module_name_repetitions = "allow"
 must_use_candidate = "allow"
 
@@ -28,4 +44,3 @@ inherits = "release"
 codegen-units = 1
 lto = "thin"
 strip = "debuginfo"
-

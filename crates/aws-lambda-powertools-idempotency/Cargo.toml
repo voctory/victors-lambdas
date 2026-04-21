@@ -1,0 +1,18 @@
+[package]
+name = "aws-lambda-powertools-idempotency"
+description = "Idempotency utility for Powertools Lambda Rust."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+aws-lambda-powertools-core.workspace = true
+
+[lints]
+workspace = true
+

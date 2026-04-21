@@ -1,0 +1,51 @@
+[package]
+name = "aws-lambda-powertools"
+description = "Unofficial Rust toolkit for AWS Lambda utilities."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+all = [
+    "batch",
+    "event-handler",
+    "idempotency",
+    "logger",
+    "metrics",
+    "parameters",
+    "parser",
+    "tracer",
+    "validation",
+]
+batch = ["dep:aws-lambda-powertools-batch"]
+event-handler = ["dep:aws-lambda-powertools-event-handler"]
+idempotency = ["dep:aws-lambda-powertools-idempotency"]
+logger = ["dep:aws-lambda-powertools-logger"]
+metrics = ["dep:aws-lambda-powertools-metrics"]
+parameters = ["dep:aws-lambda-powertools-parameters"]
+parser = ["dep:aws-lambda-powertools-parser"]
+tracer = ["dep:aws-lambda-powertools-tracer"]
+validation = ["dep:aws-lambda-powertools-validation"]
+
+[dependencies]
+aws-lambda-powertools-core.workspace = true
+aws-lambda-powertools-batch = { workspace = true, optional = true }
+aws-lambda-powertools-event-handler = { workspace = true, optional = true }
+aws-lambda-powertools-idempotency = { workspace = true, optional = true }
+aws-lambda-powertools-logger = { workspace = true, optional = true }
+aws-lambda-powertools-metrics = { workspace = true, optional = true }
+aws-lambda-powertools-parameters = { workspace = true, optional = true }
+aws-lambda-powertools-parser = { workspace = true, optional = true }
+aws-lambda-powertools-tracer = { workspace = true, optional = true }
+aws-lambda-powertools-validation = { workspace = true, optional = true }
+
+[lints]
+workspace = true
+

@@ -1,0 +1,15 @@
+[package]
+name = "basic-lambda"
+description = "Basic Powertools Lambda Rust example."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+aws-lambda-powertools = { path = "../../crates/aws-lambda-powertools", features = ["logger", "metrics", "tracer"] }
+
+[lints]
+workspace = true
+
