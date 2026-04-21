@@ -1,8 +1,11 @@
 //! Batch item failures.
 
+use serde::{Deserialize, Serialize};
+
 /// Identifies a failed batch item for partial batch responses.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct BatchItemFailure {
+    #[serde(rename = "itemIdentifier")]
     item_identifier: String,
 }
 
