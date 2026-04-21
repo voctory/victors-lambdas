@@ -5,4 +5,4 @@ pub mod config;
 pub mod env;
 pub mod metadata;
 
-pub use config::ServiceConfig;
+pub use config::{ServiceConfig, ServiceConfigBuilder};
