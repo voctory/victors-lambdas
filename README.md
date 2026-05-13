@@ -35,8 +35,8 @@ first implementation tranche has landed:
 - feature flag schema parsing, sync/async store traits, in-memory and optional AppConfig stores, boolean and JSON-valued
   evaluation, enabled-feature listing, configuration cache policies, common context comparators, modulo range matching,
   and time-window rules
-- tracer configuration, X-Ray header context parsing, trace segment records, JSON-compatible trace values, and optional
-  `tracing` span integration
+- tracer configuration, X-Ray header context parsing/rendering, trace segment records, JSON-compatible trace values, and
+  optional `tracing` span integration
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
   request/response middleware, CORS handling, optional validation hooks, optional gzip/deflate compression middleware,
   and optional API Gateway REST/HTTP/WebSocket API, ALB, Lambda Function URL, VPC Lattice, AppSync direct resolver, and

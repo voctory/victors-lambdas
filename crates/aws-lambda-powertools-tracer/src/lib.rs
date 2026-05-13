@@ -9,7 +9,7 @@ mod tracing_span;
 mod value;
 
 pub use config::TracerConfig;
-pub use context::TraceContext;
+pub use context::{TraceContext, XRAY_TRACE_HEADER_NAME};
 pub use segment::TraceSegment;
 pub use tracer::Tracer;
 pub use value::{TraceFields, TraceValue};

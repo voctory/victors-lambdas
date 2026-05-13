@@ -179,6 +179,7 @@ pub mod prelude {
     #[cfg(feature = "tracer")]
     pub use aws_lambda_powertools_tracer::{
         TraceContext, TraceFields, TraceSegment, TraceValue, Tracer, TracerConfig,
+        XRAY_TRACE_HEADER_NAME,
     };
 
     #[cfg(feature = "validation")]

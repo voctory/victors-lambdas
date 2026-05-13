@@ -1,5 +1,8 @@
 //! Trace context values.
 
+/// HTTP header name for AWS X-Ray trace context propagation.
+pub const XRAY_TRACE_HEADER_NAME: &str = "X-Amzn-Trace-Id";
+
 /// Identifies the active trace segment or subsegment.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraceContext {
@@ -56,6 +59,31 @@ impl TraceContext {
         }
 
         context
+    }
+
+    /// Renders this context as an AWS X-Ray trace header.
+    ///
+    /// The rendered value contains known `Root`, `Parent`, and `Sampled`
+    /// fields in X-Ray header order. Service-specific fields such as `Lineage`
+    /// are not preserved because they are not part of this context model.
+    ///
+    /// Returns `None` when no X-Ray context fields are known.
+    #[must_use]
+    pub fn to_xray_header(&self) -> Option<String> {
+        let mut parts = Vec::new();
+
+        if let Some(trace_id) = self.trace_id() {
+            parts.push(format!("Root={trace_id}"));
+        }
+        if let Some(parent_id) = self.parent_id() {
+            parts.push(format!("Parent={parent_id}"));
+        }
+        if let Some(sampled) = self.sampled() {
+            let sampled = if sampled { "1" } else { "0" };
+            parts.push(format!("Sampled={sampled}"));
+        }
+
+        (!parts.is_empty()).then(|| parts.join(";"))
     }
 
     /// Returns a copy of this context with an explicit trace identifier.
@@ -163,6 +191,33 @@ mod tests {
         );
         assert_eq!(context.parent_id(), Some("53995c3f42cd8ad8"));
         assert_eq!(context.sampled(), Some(true));
+    }
+
+    #[test]
+    fn renders_xray_header_with_known_fields() {
+        let context = TraceContext::new("handler")
+            .with_trace_id("1-67891233-abcdef012345678912345678")
+            .with_parent_id("53995c3f42cd8ad8")
+            .with_sampled(false);
+
+        assert_eq!(
+            context.to_xray_header().as_deref(),
+            Some("Root=1-67891233-abcdef012345678912345678;Parent=53995c3f42cd8ad8;Sampled=0")
+        );
+    }
+
+    #[test]
+    fn renders_partial_xray_header() {
+        let context = TraceContext::new("handler").with_sampled(true);
+
+        assert_eq!(context.to_xray_header().as_deref(), Some("Sampled=1"));
+    }
+
+    #[test]
+    fn empty_context_does_not_render_xray_header() {
+        let context = TraceContext::new("handler");
+
+        assert_eq!(context.to_xray_header(), None);
     }
 
     #[test]
