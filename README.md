@@ -22,12 +22,14 @@ tranche has landed:
 - idempotency keys, payload hashing, JSON Pointer key extraction, handler workflow, replay behavior, store traits, and
   an in-memory store
 - tracer configuration, X-Ray header context parsing, trace segment records, and JSON-compatible trace values
-- dependency-free event-handler request/response types, route matching, dynamic path parameters, and router dispatch
+- event-handler request/response types, route matching, dynamic path parameters, router dispatch, and optional API
+  Gateway REST/HTTP API adapters
 - minimal testing helper surfaces
 
 Not yet implemented: AWS SDK-backed parameter providers, DynamoDB-backed idempotency persistence, broader
-`aws_lambda_events` envelopes and fixtures, OpenTelemetry or X-Ray tracing integration, API Gateway adapters,
-crates.io publishing, and full feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the current backlog.
+`aws_lambda_events` envelopes and fixtures, OpenTelemetry or X-Ray tracing integration, event-handler middleware and
+CORS, crates.io publishing, and full feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the current
+backlog.
 
 ## Workspace
 

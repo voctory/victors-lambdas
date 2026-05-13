@@ -10,7 +10,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 - Crates: one umbrella crate, `aws-lambda-powertools`, plus utility crates under `crates/`.
 - Feature flags: the umbrella crate exposes `logger`, `metrics`, `tracer`, `parameters`, `parser`,
   `parser-aws-lambda-events`, `batch`, `batch-aws-lambda-events`, `idempotency`, `validation`,
-  `validation-jsonschema`, `event-handler`, and `all`.
+  `validation-jsonschema`, `event-handler`, `event-handler-aws-lambda-events`, and `all`.
 - Example: `examples/basic-lambda` builds against the umbrella crate with all current utility features enabled.
 - Publishing: no crates.io release is documented yet. Local examples use path dependencies.
 
@@ -48,7 +48,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior | Concurrent processing and richer stream checkpoint ergonomics |
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, optional local JSON Schema backend | Schema cache, inbound/outbound validation wrappers |
 | Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `Idempotency`, `IdempotencyOutcome`, typed workflow errors, SHA-256 JSON payload hashing, JSON Pointer key extraction, handler wrapper, payload hash validation, result replay, store trait/error/result, in-memory store | DynamoDB store and provider-level concurrency semantics |
-| Event handler | `Method`, method parsing/matching, `Request`, `Response`, `PathParams`, `Route`, `Router`, static/dynamic path precedence, `ANY` routes, and 404 dispatch | API Gateway/event adapters, async handlers, middleware, CORS, compression, AppSync, Bedrock Agent |
+| Event handler | `Method`, method parsing/matching, `Request`, `Response`, `PathParams`, `Route`, `Router`, static/dynamic path precedence, `ANY` routes, 404 dispatch, and optional API Gateway REST API v1 / HTTP API v2 adapters | Async handlers, middleware, CORS, compression, AppSync, Bedrock Agent |
 | Testing | `LambdaContextStub` and parameter provider stub re-export | Fixture loaders, fake AWS providers, handler harnesses |
 
 ## Next Durable Work
@@ -64,7 +64,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 4. Expand parser envelopes and fixtures using `aws_lambda_events` as the default event model source.
 5. Expand idempotency where AWS retry semantics overlap: DynamoDB persistence, conditional writes, and concurrency
    behavior.
-6. Add event adapters for HTTP routing after parser/event model choices are stable.
+6. Add event-handler middleware, CORS, and additional event adapters such as AppSync and Bedrock Agent.
 
 ## Crate Strategy
 
@@ -80,7 +80,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential processing plus SQS, Kinesis, and DynamoDB stream adapters exist; concurrent processing and richer stream checkpoint ergonomics are next |
 | `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, handler workflow, replay, records, and stores exist; DynamoDB persistence is next |
 | `aws-lambda-powertools-validation` | Payload validation | Basic validators exist; JSON Schema remains optional future work |
-| `aws-lambda-powertools-event-handler` | Routing | Dependency-free routing exists; next work is event adapters and middleware |
+| `aws-lambda-powertools-event-handler` | Routing | Dependency-free routing and optional API Gateway adapters exist; next work is middleware, CORS, and additional event adapters |
 | `aws-lambda-powertools-testing` | Test helpers | Minimal stubs exist; expand only as real utilities need them |
 
 Provider features should live on the owning utility crate first and be re-exposed by the umbrella crate only when that is
@@ -102,6 +102,7 @@ Implemented umbrella features:
 - `validation`
 - `validation-jsonschema`
 - `event-handler`
+- `event-handler-aws-lambda-events`
 - `all`
 
 Likely future provider and integration features:
@@ -116,7 +117,6 @@ Likely future provider and integration features:
 - `parser-schemars`
 - `tracer-otel`
 - `tracer-xray-propagation`
-- `event-handler-http`
 - `event-handler-appsync`
 - `event-handler-bedrock-agent`
 
@@ -175,7 +175,8 @@ Powertools conventions.
 - [x] Add JSON Schema validation behind an optional feature.
 - [x] Add idempotency handler workflow, key hashing, payload validation, and replay behavior.
 - [ ] Add DynamoDB idempotency persistence and provider-level concurrency semantics.
-- [ ] Add API Gateway/event adapters, middleware, CORS, and related HTTP routing integrations.
+- [x] Add API Gateway REST API and HTTP API adapters for event-handler routing.
+- [ ] Add event-handler middleware, CORS, and related HTTP routing integrations.
 - [ ] Add release notes, crates.io publishing checks, docs.rs coverage, and provenance/SBOM work after API boundaries
   settle.
 

@@ -113,6 +113,13 @@ impl Request {
         self
     }
 
+    /// Adds a path parameter.
+    #[must_use]
+    pub fn with_path_param(mut self, name: impl AsRef<str>, value: impl AsRef<str>) -> Self {
+        self.path_params.push(name.as_ref(), value.as_ref());
+        self
+    }
+
     pub(crate) fn set_path_params(&mut self, path_params: PathParams) {
         self.path_params = path_params;
     }

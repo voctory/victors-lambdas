@@ -10,9 +10,20 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = []
+aws-lambda-events = [
+    "dep:aws_lambda_events",
+    "dep:base64",
+    "dep:http",
+    "aws_lambda_events/apigw",
+]
+
 [dependencies]
 aws-lambda-powertools-core.workspace = true
+aws_lambda_events = { version = "1.2.0", default-features = false, optional = true }
+base64 = { version = "0.22", optional = true }
+http = { version = "1.0", optional = true }
 
 [lints]
 workspace = true
-

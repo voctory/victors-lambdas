@@ -62,6 +62,12 @@ pub mod prelude {
         Handler, Method, ParseMethodError, PathParams, Request, Response, Route, RouteMatch, Router,
     };
 
+    #[cfg(feature = "event-handler-aws-lambda-events")]
+    pub use aws_lambda_powertools_event_handler::{
+        ApiGatewayAdapterError, ApiGatewayAdapterResult, request_from_apigw_v1,
+        request_from_apigw_v2, response_to_apigw_v1, response_to_apigw_v2,
+    };
+
     #[cfg(feature = "idempotency")]
     pub use aws_lambda_powertools_idempotency::{
         Idempotency, IdempotencyConfig, IdempotencyError, IdempotencyExecutionError,
