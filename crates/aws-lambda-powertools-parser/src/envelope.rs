@@ -8,6 +8,7 @@ use aws_lambda_events::{
         alb::AlbTargetGroupRequest,
         apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
         appsync::AppSyncDirectResolverEvent,
+        bedrock_agent_runtime::AgentEvent,
         cloudwatch_logs::LogsEvent,
         dynamodb::Event as DynamoDbEvent,
         eventbridge::EventBridgeEvent,
@@ -114,6 +115,22 @@ impl EventParser {
             ParseError::new(ParseErrorKind::Data, "AppSync event is missing source")
         })?;
         self.parse_json_value(source)
+    }
+
+    /// Parses the JSON `inputText` payload from a Bedrock Agent event.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when `inputText` cannot be decoded into `T`.
+    pub fn parse_bedrock_agent_input<T>(
+        &self,
+        event: AgentEvent,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let input_text = event.input_text;
+        self.parse_json_str(&input_text)
     }
 
     /// Parses an Application Load Balancer target group JSON body.
@@ -524,6 +541,7 @@ mod tests {
                 ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest,
             },
             appsync::AppSyncDirectResolverEvent,
+            bedrock_agent_runtime::AgentEvent,
             cloudwatch_logs::{LogEntry, LogsEvent},
             dynamodb::Event as DynamoDbEvent,
             eventbridge::EventBridgeEvent,
@@ -613,6 +631,18 @@ mod tests {
             .expect("valid source should parse");
 
         assert_eq!(parsed.payload().order_id, "order-1");
+    }
+
+    #[test]
+    fn parses_bedrock_agent_input() {
+        let mut event = AgentEvent::default();
+        event.input_text = r#"{"order_id":"order-1","quantity":2}"#.to_owned();
+
+        let parsed = EventParser::new()
+            .parse_bedrock_agent_input::<OrderEvent>(event)
+            .expect("valid input text should parse");
+
+        assert_eq!(parsed.payload().quantity, 2);
     }
 
     #[test]
