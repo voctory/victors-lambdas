@@ -1,0 +1,14 @@
+[package]
+name = "logger-snippet"
+description = "Buildable logger snippet for Powertools Lambda Rust docs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["logger"] }
+
+[lints]
+workspace = true

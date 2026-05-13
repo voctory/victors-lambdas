@@ -4,8 +4,8 @@ Powertools Lambda Rust is an unofficial Rust toolkit for AWS Lambda functions. I
 pre-release.
 
 The workspace currently contains the umbrella crate `aws-lambda-powertools`, feature-gated utility crates, a
-`basic-lambda` workspace example, and CI for formatting, linting, tests, and workspace checks. The first implementation
-tranche has landed:
+`basic-lambda` workspace example, buildable snippets, and CI for formatting, linting, tests, and workspace checks. The
+first implementation tranche has landed:
 
 - shared service config, environment parsing helpers, cold-start tracking, and runtime metadata
 - structured JSON logging with levels, persistent and per-entry fields, optional event rendering, debug sampling,
@@ -31,8 +31,8 @@ tranche has landed:
 
 Not yet implemented: AWS SDK-backed parameter providers, DynamoDB-backed idempotency persistence, broader
 `aws_lambda_events` envelopes and fixtures, OpenTelemetry or X-Ray tracing integration, additional event-handler
-adapters, crates.io publishing, and full feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the current
-backlog.
+adapters, crates.io publishing, and remaining feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the
+current backlog.
 
 ## Workspace
 
@@ -46,6 +46,11 @@ aws-lambda-powertools = { version = "0.1", features = ["logger", "metrics"] }
 ```
 
 Local examples use path dependencies until crates are published.
+
+Initial feature docs:
+
+- [Logger](docs/features/logger.md)
+- [Metrics](docs/features/metrics.md)
 
 ## Validation
 

@@ -12,7 +12,8 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
   `parser-aws-lambda-events`, `batch`, `batch-aws-lambda-events`, `idempotency`, `validation`,
   `validation-jsonschema`, `event-handler`, `event-handler-compression`, `event-handler-aws-lambda-events`, and
   `all`.
-- Example: `examples/basic-lambda` builds against the umbrella crate with all current utility features enabled.
+- Examples: `examples/basic-lambda` builds against the umbrella crate with all current utility features enabled, and
+  `examples/snippets/logger` plus `examples/snippets/metrics` provide buildable docs snippets.
 - Publishing: no crates.io release is documented yet. Local examples use path dependencies.
 
 ## Goals
@@ -41,8 +42,8 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Workspace | Workspace layout, shared package metadata, lints, lockfile, Rust toolchain, CI, `release-lambda` profile | Release automation, changelog, publishing workflow |
 | Umbrella crate | Feature-gated re-exports and a prelude across current utility crates | Published crate metadata review and docs.rs examples |
 | Core | `ServiceConfig`, env constants and parsers, cold-start tracking, user-agent metadata | Cross-crate error conventions beyond concrete utility errors |
-| Logger | `LoggerConfig`, `LogLevel`, `Logger`, `LogEntry`, `LogValue`, `LogFormatter`, `LogRedactor`, `JsonLogFormatter`, `LambdaContextFields`, `LoggerLayer`, JSON rendering, persistent fields, temporary fields, event rendering toggle, level filtering, debug sampling, correlation ID helpers, Lambda context fields, key redaction, custom formatter/redaction hook APIs, optional `tracing` subscriber integration, stdout emission | User-facing docs/snippets |
-| Metrics | `MetricsConfig`, `Metric`, `MetricUnit`, `MetricResolution`, `MetadataValue`, EMF JSON renderer, request dimensions, default dimensions, metadata, name/value validation, service dimension, cold-start metric, high-resolution metric definitions, stdout flush API, explicit timestamp rendering/writing, opt-in overflow flush helpers, async capture helpers, CloudWatch limits | User-facing docs/snippets |
+| Logger | `LoggerConfig`, `LogLevel`, `Logger`, `LogEntry`, `LogValue`, `LogFormatter`, `LogRedactor`, `JsonLogFormatter`, `LambdaContextFields`, `LoggerLayer`, JSON rendering, persistent fields, temporary fields, event rendering toggle, level filtering, debug sampling, correlation ID helpers, Lambda context fields, key redaction, custom formatter/redaction hook APIs, optional `tracing` subscriber integration, stdout emission, and initial docs/snippet | Broader handler examples |
+| Metrics | `MetricsConfig`, `Metric`, `MetricUnit`, `MetricResolution`, `MetadataValue`, EMF JSON renderer, request dimensions, default dimensions, metadata, name/value validation, service dimension, cold-start metric, high-resolution metric definitions, stdout flush API, explicit timestamp rendering/writing, opt-in overflow flush helpers, async capture helpers, CloudWatch limits, and initial docs/snippet | Broader handler examples |
 | Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing, `TraceSegment`, `TraceValue` | Real `tracing` spans, OpenTelemetry, X-Ray propagation/export |
 | Parameters | `ParameterProvider`, `Parameters`, `Parameter`, `CachePolicy`, in-memory provider, force-fetch support, JSON transforms, and base64 binary transforms | SSM, Secrets Manager, AppConfig, DynamoDB providers, decrypt options |
 | Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, optional `aws_lambda_events` API Gateway REST/HTTP API body, EventBridge detail, SQS body, SNS message, CloudWatch Logs message, Kinesis record data, and Firehose record data envelopes | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
@@ -56,16 +57,14 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 
 The next durable work should turn the landed primitives into Lambda-facing utilities:
 
-1. Harden logger and metrics: buildable user-facing docs/snippets for the implemented structured logging and EMF
-   surfaces.
-2. Replace tracer records with real `tracing` span integration, then add optional OpenTelemetry and X-Ray-compatible
+1. Replace tracer records with real `tracing` span integration, then add optional OpenTelemetry and X-Ray-compatible
    propagation/export features.
-3. Add parameter provider integrations behind feature flags. Confirm the AWS SDK MSRV impact before enabling those
+2. Add parameter provider integrations behind feature flags. Confirm the AWS SDK MSRV impact before enabling those
    dependencies.
-4. Expand parser envelopes and fixtures using `aws_lambda_events` as the default event model source.
-5. Expand idempotency where AWS retry semantics overlap: DynamoDB persistence, conditional writes, and concurrency
+3. Expand parser envelopes and fixtures using `aws_lambda_events` as the default event model source.
+4. Expand idempotency where AWS retry semantics overlap: DynamoDB persistence, conditional writes, and concurrency
    behavior.
-6. Add event-handler adapters for additional resolver families and document the current HTTP, AppSync, and Bedrock
+5. Add event-handler adapters for additional resolver families and document the current HTTP, AppSync, and Bedrock
    surfaces.
 
 ## Crate Strategy
@@ -74,8 +73,8 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | --- | --- | --- |
 | `aws-lambda-powertools` | Primary user-facing crate | Depends on support crates through optional dependencies and re-exports enabled utilities |
 | `aws-lambda-powertools-core` | Shared foundations | Keep small: config, env, cold start, metadata, and other genuine cross-crate foundations |
-| `aws-lambda-powertools-logger` | Structured logs | JSON renderer, sampling, correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, and optional `tracing` subscriber layer exist; next work is user-facing docs and snippets |
-| `aws-lambda-powertools-metrics` | CloudWatch EMF metrics | Renderer, flush API, high-resolution metrics, default dimensions, explicit timestamps, overflow flush helpers, and async capture helpers exist; next work is user-facing docs and snippets |
+| `aws-lambda-powertools-logger` | Structured logs | JSON renderer, sampling, correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, optional `tracing` subscriber layer, and initial docs/snippet exist; next work is broader handler examples |
+| `aws-lambda-powertools-metrics` | CloudWatch EMF metrics | Renderer, flush API, high-resolution metrics, default dimensions, explicit timestamps, overflow flush helpers, async capture helpers, and initial docs/snippet exist; next work is broader handler examples |
 | `aws-lambda-powertools-tracer` | Tracing facade | Segment records exist; next work is integration with Rust tracing/export pipelines |
 | `aws-lambda-powertools-parameters` | Parameter retrieval | Trait, cache facade, in-memory provider, force-fetch support, and JSON/base64 transforms exist; AWS providers are next |
 | `aws-lambda-powertools-parser` | Event parsing | serde JSON facade plus API Gateway, SQS, SNS, EventBridge, CloudWatch Logs, Kinesis, and Firehose `aws_lambda_events` envelopes exist; broader envelope coverage and fixtures are next |
@@ -164,7 +163,7 @@ Powertools conventions.
 - [x] Add first-pass CloudWatch EMF metrics renderer.
 - [x] Add first-pass parser, batch, validation, parameters, idempotency, tracer, event-handler, and testing surfaces.
 - [x] Complete tracer records, HTTP method/request/response work, prelude exports, and the expanded workspace example.
-- [ ] Add user-facing docs and snippets for implemented logger and metrics behavior.
+- [x] Add user-facing docs and snippets for implemented logger and metrics behavior.
 - [x] Add logger sampling, key redaction, correlation IDs, and Lambda context helpers.
 - [x] Add logger custom formatter/redaction hook APIs.
 - [x] Add logger `tracing` subscriber integration.
