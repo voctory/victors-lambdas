@@ -1,6 +1,6 @@
 //! Batch processing facade.
 
-use std::fmt::Display;
+use std::{fmt::Display, thread};
 
 use crate::{BatchItemFailure, BatchRecord, BatchResponse};
 
@@ -182,6 +182,52 @@ impl BatchProcessor {
 
         BatchProcessingReport::from_results(results)
     }
+
+    /// Processes batch records concurrently with a handler and records each result.
+    ///
+    /// The returned report preserves input order and can build an AWS Lambda
+    /// partial batch response containing only failed item identifiers. Handler
+    /// panics are captured as record failures so one panic does not discard
+    /// successful records from the same batch.
+    pub fn process_concurrent<T, E, H>(
+        &self,
+        records: &[BatchRecord<T>],
+        handler: H,
+    ) -> BatchProcessingReport
+    where
+        T: Sync,
+        E: Display,
+        H: Fn(&BatchRecord<T>) -> Result<(), E> + Sync,
+    {
+        let results = thread::scope(|scope| {
+            let spawned_workers = records
+                .iter()
+                .map(|record| {
+                    let item_identifier = record.item_identifier().to_owned();
+                    let invoke = &handler;
+                    let worker = scope.spawn(move || match invoke(record) {
+                        Ok(()) => BatchRecordResult::success(record.item_identifier()),
+                        Err(error) => {
+                            BatchRecordResult::failure(record.item_identifier(), error.to_string())
+                        }
+                    });
+
+                    (item_identifier, worker)
+                })
+                .collect::<Vec<_>>();
+
+            spawned_workers
+                .into_iter()
+                .map(|(item_identifier, worker)| {
+                    worker.join().unwrap_or_else(|_| {
+                        BatchRecordResult::failure(item_identifier, "handler panicked")
+                    })
+                })
+                .collect::<Vec<_>>()
+        });
+
+        BatchProcessingReport::from_results(results)
+    }
 }
 
 #[cfg(test)]
@@ -218,6 +264,53 @@ mod tests {
             ]
         );
         assert_eq!(report.results()[1].error(), Some("handler failed"));
+    }
+
+    #[test]
+    fn concurrent_processing_preserves_input_order_and_failures() {
+        let records = [
+            BatchRecord::new("message-1", 1),
+            BatchRecord::new("message-2", 2),
+            BatchRecord::new("message-3", 3),
+        ];
+
+        let report = BatchProcessor::new().process_concurrent(&records, |record| {
+            if *record.payload() == 2 {
+                Err("handler failed")
+            } else {
+                Ok(())
+            }
+        });
+
+        assert_eq!(
+            report.results(),
+            &[
+                BatchRecordResult::success("message-1"),
+                BatchRecordResult::failure("message-2", "handler failed"),
+                BatchRecordResult::success("message-3"),
+            ]
+        );
+    }
+
+    #[test]
+    fn concurrent_processing_records_panics_as_failures() {
+        let records = [
+            BatchRecord::new("message-1", 1),
+            BatchRecord::new("message-2", 2),
+        ];
+
+        let report = BatchProcessor::new().process_concurrent(&records, |record| {
+            assert_ne!(*record.payload(), 2, "unexpected payload");
+            Ok::<(), &str>(())
+        });
+
+        assert_eq!(
+            report.results(),
+            &[
+                BatchRecordResult::success("message-1"),
+                BatchRecordResult::failure("message-2", "handler panicked"),
+            ]
+        );
     }
 
     #[test]
