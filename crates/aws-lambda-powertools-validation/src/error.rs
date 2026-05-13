@@ -13,6 +13,8 @@ pub enum ValidationErrorKind {
     OutOfRange,
     /// A value was present but invalid for the field.
     Invalid,
+    /// A JSON value did not satisfy a JSON Schema document.
+    Schema,
     /// A caller-provided validation error.
     Custom,
 }
@@ -88,6 +90,16 @@ impl ValidationError {
     #[must_use]
     pub fn invalid(field: impl Into<String>, message: impl Into<String>) -> Self {
         Self::with_field(ValidationErrorKind::Invalid, field.into(), message.into())
+    }
+
+    /// Creates an error for a JSON Schema validation failure.
+    #[must_use]
+    pub fn json_schema(message: impl Into<String>) -> Self {
+        Self {
+            kind: ValidationErrorKind::Schema,
+            field: None,
+            message: message.into(),
+        }
     }
 
     fn with_field(kind: ValidationErrorKind, field: String, message: String) -> Self {

@@ -9,8 +9,8 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
   a `release-lambda` profile, and CI for fmt, clippy, test, and check.
 - Crates: one umbrella crate, `aws-lambda-powertools`, plus utility crates under `crates/`.
 - Feature flags: the umbrella crate exposes `logger`, `metrics`, `tracer`, `parameters`, `parser`,
-  `parser-aws-lambda-events`, `batch`, `batch-aws-lambda-events`, `idempotency`, `validation`, `event-handler`, and
-  `all`.
+  `parser-aws-lambda-events`, `batch`, `batch-aws-lambda-events`, `idempotency`, `validation`,
+  `validation-jsonschema`, `event-handler`, and `all`.
 - Example: `examples/basic-lambda` builds against the umbrella crate with all current utility features enabled.
 - Publishing: no crates.io release is documented yet. Local examples use path dependencies.
 
@@ -46,7 +46,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Parameters | `ParameterProvider`, `Parameters`, `Parameter`, `CachePolicy`, in-memory provider | SSM, Secrets Manager, AppConfig, DynamoDB providers, decrypt options, forced fetch, transforms |
 | Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, optional `aws_lambda_events` EventBridge detail, SQS body, and SNS message envelopes | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, optional `aws_lambda_events` SQS adapter, SQS FIFO early-stop behavior | Kinesis/DynamoDB source adapters, concurrent processing |
-| Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, and custom predicate helpers | JSON Schema backend, schema cache, inbound/outbound validation wrappers |
+| Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, optional local JSON Schema backend | Schema cache, inbound/outbound validation wrappers |
 | Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `IdempotencyStatus`, `IdempotencyRecord`, store trait/error/result, in-memory store | Handler wrapper, key extraction, payload hashing, result replay, DynamoDB store, concurrency semantics |
 | Event handler | `Method`, method parsing/matching, `Request`, `Response`, `PathParams`, `Route`, `Router`, static/dynamic path precedence, `ANY` routes, and 404 dispatch | API Gateway/event adapters, async handlers, middleware, CORS, compression, AppSync, Bedrock Agent |
 | Testing | `LambdaContextStub` and parameter provider stub re-export | Fixture loaders, fake AWS providers, handler harnesses |
@@ -100,6 +100,7 @@ Implemented umbrella features:
 - `batch-aws-lambda-events`
 - `idempotency`
 - `validation`
+- `validation-jsonschema`
 - `event-handler`
 - `all`
 
@@ -111,7 +112,6 @@ Likely future provider and integration features:
 - `parameters-dynamodb`
 - `idempotency-dynamodb`
 - `idempotency-redis`
-- `validation-jsonschema`
 - `parser-serde`
 - `parser-schemars`
 - `tracer-otel`
@@ -172,7 +172,7 @@ Powertools conventions.
 - [ ] Expand parser envelopes and fixtures based on `aws_lambda_events`.
 - [x] Add SQS source-specific batch processing and FIFO retry semantics.
 - [ ] Add Kinesis and DynamoDB stream batch processors and retry semantics.
-- [ ] Add JSON Schema validation behind an optional feature.
+- [x] Add JSON Schema validation behind an optional feature.
 - [ ] Add idempotency handler workflow and DynamoDB persistence.
 - [ ] Add API Gateway/event adapters, middleware, CORS, and related HTTP routing integrations.
 - [ ] Add release notes, crates.io publishing checks, docs.rs coverage, and provenance/SBOM work after API boundaries

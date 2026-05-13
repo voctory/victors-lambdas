@@ -150,6 +150,30 @@ impl Validator {
             Err(ValidationError::invalid(field, message))
         }
     }
+
+    /// Validates a JSON value against a JSON Schema document.
+    ///
+    /// This method is available with the `jsonschema` feature and validates
+    /// only in-memory schemas; remote reference resolution is intentionally not
+    /// enabled by default.
+    ///
+    /// # Errors
+    ///
+    /// Returns a validation error when the schema is invalid or when `instance`
+    /// does not satisfy the schema.
+    #[cfg(feature = "jsonschema")]
+    pub fn json_schema(
+        &self,
+        schema: &serde_json::Value,
+        instance: &serde_json::Value,
+    ) -> ValidationResult {
+        let validator = jsonschema::validator_for(schema)
+            .map_err(|error| ValidationError::invalid("schema", error.to_string()))?;
+
+        validator
+            .validate(instance)
+            .map_err(|error| ValidationError::json_schema(error.to_string()))
+    }
 }
 
 #[cfg(test)]
@@ -237,5 +261,38 @@ mod tests {
         assert_eq!(error.kind(), ValidationErrorKind::Invalid);
         assert_eq!(error.field(), Some("order_id"));
         assert_eq!(error.message(), "order_id must be unique");
+    }
+
+    #[cfg(feature = "jsonschema")]
+    #[test]
+    fn json_schema_validates_payloads() {
+        use serde_json::json;
+
+        let schema = json!({
+            "type": "object",
+            "required": ["order_id", "quantity"],
+            "properties": {
+                "order_id": { "type": "string" },
+                "quantity": { "type": "integer", "minimum": 1 }
+            }
+        });
+        let valid = json!({
+            "order_id": "order-1",
+            "quantity": 2
+        });
+        let invalid = json!({
+            "order_id": "order-1",
+            "quantity": 0
+        });
+        let validator = Validator::new();
+
+        assert!(validator.json_schema(&schema, &valid).is_ok());
+
+        let error = validator
+            .json_schema(&schema, &invalid)
+            .expect_err("payload violates schema");
+
+        assert_eq!(error.kind(), ValidationErrorKind::Schema);
+        assert!(error.message().contains("minimum"));
     }
 }

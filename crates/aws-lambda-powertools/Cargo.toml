@@ -35,6 +35,7 @@ parser = ["dep:aws-lambda-powertools-parser"]
 parser-aws-lambda-events = ["parser", "aws-lambda-powertools-parser/aws-lambda-events"]
 tracer = ["dep:aws-lambda-powertools-tracer"]
 validation = ["dep:aws-lambda-powertools-validation"]
+validation-jsonschema = ["validation", "aws-lambda-powertools-validation/jsonschema"]
 
 [dependencies]
 aws-lambda-powertools-core.workspace = true
