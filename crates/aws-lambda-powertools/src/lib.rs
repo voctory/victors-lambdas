@@ -90,10 +90,10 @@ pub mod prelude {
 
     #[cfg(feature = "feature-flags")]
     pub use aws_lambda_powertools_feature_flags::{
-        AsyncFeatureFlagStore, AsyncFeatureFlags, FeatureCondition, FeatureFlag, FeatureFlagConfig,
-        FeatureFlagContext, FeatureFlagError, FeatureFlagErrorKind, FeatureFlagFuture,
-        FeatureFlagResult, FeatureFlagStore, FeatureFlags, FeatureRule, InMemoryFeatureFlagStore,
-        RuleAction,
+        AsyncFeatureFlagStore, AsyncFeatureFlags, FeatureCondition, FeatureFlag,
+        FeatureFlagCachePolicy, FeatureFlagConfig, FeatureFlagContext, FeatureFlagError,
+        FeatureFlagErrorKind, FeatureFlagFuture, FeatureFlagResult, FeatureFlagStore, FeatureFlags,
+        FeatureRule, InMemoryFeatureFlagStore, RuleAction,
     };
 
     #[cfg(feature = "feature-flags-appconfig")]

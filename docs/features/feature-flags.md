@@ -12,6 +12,7 @@ This first Rust implementation includes:
   stores
 - single-feature evaluation with caller-provided defaults
 - enabled-feature listing for boolean flags
+- opt-in configuration cache policies for sync and async evaluators
 - common context comparators, including equality, ordering, string prefix/suffix, collection membership, and modulo
   ranges
 - time-window rules for time-of-day, date-time ranges, and day-of-week matching
@@ -32,10 +33,11 @@ The workspace keeps a buildable snippet in `examples/snippets/feature-flags`:
 
 ```rust
 use aws_lambda_powertools::feature_flags::{
-    FeatureCondition, FeatureFlag, FeatureFlagConfig, FeatureFlagContext, FeatureFlags,
-    FeatureRule, InMemoryFeatureFlagStore, RuleAction,
+    FeatureCondition, FeatureFlag, FeatureFlagCachePolicy, FeatureFlagConfig,
+    FeatureFlagContext, FeatureFlags, FeatureRule, InMemoryFeatureFlagStore, RuleAction,
 };
 use serde_json::json;
+use std::time::Duration;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = FeatureFlagConfig::new().with_feature(
@@ -52,7 +54,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         ),
     );
-    let feature_flags = FeatureFlags::new(InMemoryFeatureFlagStore::from_config(config));
+    let feature_flags = FeatureFlags::with_cache_policy(
+        InMemoryFeatureFlagStore::from_config(config),
+        FeatureFlagCachePolicy::ttl(Duration::from_secs(60)),
+    );
 
     let mut context = FeatureFlagContext::new();
     context.insert("tier".to_owned(), json!("premium"));

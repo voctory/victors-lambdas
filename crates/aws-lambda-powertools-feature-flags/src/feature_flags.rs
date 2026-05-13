@@ -1,6 +1,10 @@
 //! Feature flag evaluator.
 
-use std::cmp::Ordering;
+use std::{
+    cmp::Ordering,
+    sync::{Mutex, PoisonError},
+    time::SystemTime,
+};
 
 use chrono::{Datelike, NaiveDateTime, NaiveTime, Timelike, Utc, Weekday};
 use chrono_tz::Tz;
@@ -8,30 +12,67 @@ use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Map, Value};
 
 use crate::{
-    FeatureFlag, FeatureFlagConfig, FeatureFlagError, FeatureFlagResult, FeatureFlagStore,
-    FeatureRule, RuleAction,
+    FeatureFlag, FeatureFlagCachePolicy, FeatureFlagConfig, FeatureFlagError, FeatureFlagResult,
+    FeatureFlagStore, FeatureRule, RuleAction, cache::CachedFeatureFlagConfig,
 };
 
 /// Context values used while evaluating dynamic feature flag rules.
 pub type FeatureFlagContext = Map<String, Value>;
 
 /// Evaluates feature flags against a configured store.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 pub struct FeatureFlags<S> {
     store: S,
+    cache_policy: FeatureFlagCachePolicy,
+    cache: Mutex<Option<CachedFeatureFlagConfig>>,
 }
 
 impl<S> FeatureFlags<S> {
     /// Creates a feature flag evaluator with a store provider.
     #[must_use]
-    pub const fn new(store: S) -> Self {
-        Self { store }
+    pub fn new(store: S) -> Self {
+        Self::with_cache_policy(store, FeatureFlagCachePolicy::default())
+    }
+
+    /// Creates a feature flag evaluator with a store provider and cache policy.
+    #[must_use]
+    pub const fn with_cache_policy(store: S, cache_policy: FeatureFlagCachePolicy) -> Self {
+        Self {
+            store,
+            cache_policy,
+            cache: Mutex::new(None),
+        }
     }
 
     /// Returns the configured store provider.
     #[must_use]
     pub const fn store(&self) -> &S {
         &self.store
+    }
+
+    /// Returns the feature flag configuration cache policy.
+    #[must_use]
+    pub const fn cache_policy(&self) -> FeatureFlagCachePolicy {
+        self.cache_policy
+    }
+
+    /// Clears cached feature flag configuration.
+    pub fn clear_cache(&self) {
+        self.cache
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+    }
+
+    /// Returns the number of cached feature flag configurations.
+    #[must_use]
+    pub fn cache_len(&self) -> usize {
+        usize::from(
+            self.cache
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .is_some(),
+        )
     }
 }
 
@@ -46,7 +87,20 @@ where
     /// Returns a store or configuration error when the store cannot provide a
     /// feature flag configuration.
     pub fn get_configuration(&self) -> FeatureFlagResult<FeatureFlagConfig> {
-        self.store.get_configuration()
+        self.get_configuration_at(SystemTime::now())
+    }
+
+    /// Gets feature flag configuration from the store, bypassing any cached value.
+    ///
+    /// When the store returns configuration, the cache is updated with that
+    /// value if caching is enabled.
+    ///
+    /// # Errors
+    ///
+    /// Returns a store or configuration error when the store cannot provide a
+    /// feature flag configuration.
+    pub fn get_configuration_force(&self) -> FeatureFlagResult<FeatureFlagConfig> {
+        self.fetch_configuration_at(SystemTime::now())
     }
 
     /// Evaluates a feature and returns its JSON value.
@@ -60,7 +114,7 @@ where
         context: &FeatureFlagContext,
         default: Value,
     ) -> Value {
-        let Ok(config) = self.store.get_configuration() else {
+        let Ok(config) = self.get_configuration() else {
             return default;
         };
 
@@ -126,7 +180,7 @@ where
     /// Store failures return an empty list.
     #[must_use]
     pub fn get_enabled_features(&self, context: &FeatureFlagContext) -> Vec<String> {
-        let Ok(config) = self.store.get_configuration() else {
+        let Ok(config) = self.get_configuration() else {
             return Vec::new();
         };
 
@@ -140,7 +194,74 @@ where
             })
             .collect()
     }
+
+    fn get_configuration_at(&self, now: SystemTime) -> FeatureFlagResult<FeatureFlagConfig> {
+        if let Some(config) = self.cached_configuration(now) {
+            return Ok(config);
+        }
+
+        self.fetch_configuration_at(now)
+    }
+
+    fn fetch_configuration_at(&self, now: SystemTime) -> FeatureFlagResult<FeatureFlagConfig> {
+        let config = self.store.get_configuration()?;
+        self.store_cached_configuration(config.clone(), now);
+        Ok(config)
+    }
+
+    fn cached_configuration(&self, now: SystemTime) -> Option<FeatureFlagConfig> {
+        if !self.cache_policy.enabled() {
+            return None;
+        }
+
+        self.cache
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .as_ref()
+            .filter(|cached| self.cache_policy.is_fresh(cached.cached_at, now))
+            .map(|cached| cached.config.clone())
+    }
+
+    fn store_cached_configuration(&self, config: FeatureFlagConfig, now: SystemTime) {
+        if !self.cache_policy.enabled() {
+            return;
+        }
+
+        self.cache
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .replace(CachedFeatureFlagConfig::new(config, now));
+    }
 }
+
+impl<S> Clone for FeatureFlags<S>
+where
+    S: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            store: self.store.clone(),
+            cache_policy: self.cache_policy,
+            cache: Mutex::new(
+                self.cache
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .clone(),
+            ),
+        }
+    }
+}
+
+impl<S> PartialEq for FeatureFlags<S>
+where
+    S: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.store == other.store && self.cache_policy == other.cache_policy
+    }
+}
+
+impl<S> Eq for FeatureFlags<S> where S: Eq {}
 
 pub(crate) fn evaluate_feature(feature: &FeatureFlag, context: &FeatureFlagContext) -> Value {
     if !feature.has_rules() {
@@ -379,13 +500,19 @@ fn weekday_name(weekday: Weekday) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        sync::{Arc, Mutex},
+        time::Duration,
+    };
+
     use serde::{Deserialize, Serialize};
     use serde_json::{Value, json};
 
     use super::{FeatureFlagContext, FeatureFlags};
     use crate::{
-        FeatureCondition, FeatureFlag, FeatureFlagConfig, FeatureFlagError, FeatureFlagErrorKind,
-        FeatureFlagResult, FeatureFlagStore, FeatureRule, InMemoryFeatureFlagStore, RuleAction,
+        FeatureCondition, FeatureFlag, FeatureFlagCachePolicy, FeatureFlagConfig, FeatureFlagError,
+        FeatureFlagErrorKind, FeatureFlagResult, FeatureFlagStore, FeatureRule,
+        InMemoryFeatureFlagStore, RuleAction,
     };
 
     fn context(pairs: impl IntoIterator<Item = (&'static str, Value)>) -> FeatureFlagContext {
@@ -393,6 +520,32 @@ mod tests {
             .into_iter()
             .map(|(key, value)| (key.to_owned(), value))
             .collect()
+    }
+
+    #[derive(Clone, Debug)]
+    struct CountingStore {
+        config: FeatureFlagConfig,
+        calls: Arc<Mutex<usize>>,
+    }
+
+    impl CountingStore {
+        fn new(config: FeatureFlagConfig) -> Self {
+            Self {
+                config,
+                calls: Arc::new(Mutex::new(0)),
+            }
+        }
+
+        fn calls(&self) -> usize {
+            *self.calls.lock().unwrap()
+        }
+    }
+
+    impl FeatureFlagStore for CountingStore {
+        fn get_configuration(&self) -> FeatureFlagResult<FeatureFlagConfig> {
+            *self.calls.lock().unwrap() += 1;
+            Ok(self.config.clone())
+        }
     }
 
     #[test]
@@ -691,6 +844,62 @@ mod tests {
                 .evaluate_bool("scheduled_feature", &FeatureFlagContext::new(), true)
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn disabled_cache_fetches_configuration_each_time() {
+        let store = CountingStore::new(
+            FeatureFlagConfig::new().with_feature("always_on", FeatureFlag::boolean(true)),
+        );
+        let flags = FeatureFlags::new(store.clone());
+
+        assert!(
+            flags
+                .evaluate_bool("always_on", &FeatureFlagContext::new(), false)
+                .unwrap()
+        );
+        assert!(
+            flags
+                .evaluate_bool("always_on", &FeatureFlagContext::new(), false)
+                .unwrap()
+        );
+
+        assert_eq!(store.calls(), 2);
+        assert_eq!(flags.cache_policy(), FeatureFlagCachePolicy::disabled());
+        assert_eq!(flags.cache_len(), 0);
+    }
+
+    #[test]
+    fn enabled_cache_reuses_configuration_until_cleared_or_forced() {
+        let store = CountingStore::new(
+            FeatureFlagConfig::new().with_feature("always_on", FeatureFlag::boolean(true)),
+        );
+        let flags = FeatureFlags::with_cache_policy(
+            store.clone(),
+            FeatureFlagCachePolicy::ttl(Duration::from_secs(60)),
+        );
+
+        assert!(
+            flags
+                .evaluate_bool("always_on", &FeatureFlagContext::new(), false)
+                .unwrap()
+        );
+        assert!(
+            flags
+                .evaluate_bool("always_on", &FeatureFlagContext::new(), false)
+                .unwrap()
+        );
+        assert_eq!(store.calls(), 1);
+        assert_eq!(flags.cache_len(), 1);
+
+        flags.get_configuration_force().unwrap();
+        assert_eq!(store.calls(), 2);
+        assert_eq!(flags.cache_len(), 1);
+
+        flags.clear_cache();
+        assert_eq!(flags.cache_len(), 0);
+        flags.get_configuration().unwrap();
+        assert_eq!(store.calls(), 3);
     }
 
     #[test]
