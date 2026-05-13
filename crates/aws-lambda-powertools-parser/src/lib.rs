@@ -1,5 +1,6 @@
 //! Event parsing utility.
 
+mod cognito;
 mod dynamodb;
 #[cfg(feature = "aws-lambda-events")]
 mod envelope;
@@ -8,6 +9,12 @@ mod iot_registry;
 mod parser;
 mod transfer_family;
 
+pub use cognito::{
+    CognitoCustomEmailSenderTriggerEvent, CognitoCustomEmailSenderTriggerModel,
+    CognitoCustomEmailSenderTriggerSource, CognitoCustomSMSSenderTriggerModel,
+    CognitoCustomSenderRequest, CognitoCustomSenderRequestType, CognitoCustomSmsSenderTriggerEvent,
+    CognitoCustomSmsSenderTriggerSource, CognitoUserPoolCallerContext,
+};
 pub use dynamodb::{
     DynamoDbStreamBatchInfo, DynamoDbStreamOnFailureDestination, DynamoDbStreamRequestContext,
     DynamoDbStreamResponseContext,
