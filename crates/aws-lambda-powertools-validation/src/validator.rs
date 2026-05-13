@@ -38,6 +38,38 @@ impl Validator {
         value.validate(self)
     }
 
+    /// Validates an inbound value and returns it unchanged when it passes.
+    ///
+    /// This is useful in handler pipelines that want to validate decoded input
+    /// before handing ownership to business logic.
+    ///
+    /// # Errors
+    ///
+    /// Returns a validation error when the value violates one of its rules.
+    pub fn validate_inbound<T>(&self, value: T) -> Result<T, ValidationError>
+    where
+        T: Validate,
+    {
+        self.validate(&value)?;
+        Ok(value)
+    }
+
+    /// Validates an outbound value and returns it unchanged when it passes.
+    ///
+    /// This is useful in handler pipelines that want to validate responses
+    /// before serializing them.
+    ///
+    /// # Errors
+    ///
+    /// Returns a validation error when the value violates one of its rules.
+    pub fn validate_outbound<T>(&self, value: T) -> Result<T, ValidationError>
+    where
+        T: Validate,
+    {
+        self.validate(&value)?;
+        Ok(value)
+    }
+
     /// Validates that a string value is not empty.
     ///
     /// # Errors
@@ -181,6 +213,7 @@ mod tests {
     use super::{Validate, Validator};
     use crate::ValidationErrorKind;
 
+    #[derive(Debug)]
     struct CreateOrder {
         order_id: String,
         quantity: i64,
@@ -247,6 +280,36 @@ mod tests {
         let error = validator
             .validate(&invalid)
             .expect_err("invalid order should fail");
+
+        assert_eq!(error.kind(), ValidationErrorKind::OutOfRange);
+        assert_eq!(error.field(), Some("quantity"));
+    }
+
+    #[test]
+    fn validate_inbound_returns_valid_value() {
+        let order = CreateOrder {
+            order_id: String::from("ord-1"),
+            quantity: 3,
+        };
+
+        let order = Validator::new()
+            .validate_inbound(order)
+            .expect("valid inbound value should pass");
+
+        assert_eq!(order.order_id, "ord-1");
+        assert_eq!(order.quantity, 3);
+    }
+
+    #[test]
+    fn validate_outbound_returns_validation_errors() {
+        let order = CreateOrder {
+            order_id: String::from("ord-1"),
+            quantity: 0,
+        };
+
+        let error = Validator::new()
+            .validate_outbound(order)
+            .expect_err("invalid outbound value should fail");
 
         assert_eq!(error.kind(), ValidationErrorKind::OutOfRange);
         assert_eq!(error.field(), Some("quantity"));

@@ -46,7 +46,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Parameters | `ParameterProvider`, `Parameters`, `Parameter`, `CachePolicy`, in-memory provider | SSM, Secrets Manager, AppConfig, DynamoDB providers, decrypt options, forced fetch, transforms |
 | Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, optional `aws_lambda_events` API Gateway REST/HTTP API body, EventBridge detail, SQS body, and SNS message envelopes | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior | Concurrent processing and richer stream checkpoint ergonomics |
-| Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, optional local JSON Schema backend | Schema cache, inbound/outbound validation wrappers |
+| Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, inbound/outbound validation wrappers, optional local JSON Schema backend, and compiled schema cache | Handler middleware/docs integration |
 | Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `Idempotency`, `IdempotencyOutcome`, typed workflow errors, SHA-256 JSON payload hashing, JSON Pointer key extraction, handler wrapper, payload hash validation, result replay, store trait/error/result, in-memory store | DynamoDB store and provider-level concurrency semantics |
 | Event handler | `Method`, method parsing/matching, `Request`, `Response`, `PathParams`, `Route`, `Router`, static/dynamic path precedence, `ANY` routes, 404 dispatch, request/response middleware, `CorsConfig`, preflight responses, routed/404 CORS headers, and optional API Gateway REST API v1 / HTTP API v2 adapters | Async handlers, compression, AppSync, Bedrock Agent |
 | Testing | `LambdaContextStub` and parameter provider stub re-export | Fixture loaders, fake AWS providers, handler harnesses |
@@ -79,7 +79,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-parser` | Event parsing | serde JSON facade plus API Gateway, SQS, SNS, and EventBridge `aws_lambda_events` envelopes exist; broader envelope coverage and fixtures are next |
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential processing plus SQS, Kinesis, and DynamoDB stream adapters exist; concurrent processing and richer stream checkpoint ergonomics are next |
 | `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, handler workflow, replay, records, and stores exist; DynamoDB persistence is next |
-| `aws-lambda-powertools-validation` | Payload validation | Basic validators exist; JSON Schema remains optional future work |
+| `aws-lambda-powertools-validation` | Payload validation | Basic validators, inbound/outbound wrappers, optional JSON Schema validation, and schema caching exist; next work is handler middleware and examples |
 | `aws-lambda-powertools-event-handler` | Routing | Dependency-free routing, middleware, CORS, and optional API Gateway adapters exist; next work is async handlers and additional event adapters |
 | `aws-lambda-powertools-testing` | Test helpers | Minimal stubs exist; expand only as real utilities need them |
 
@@ -176,6 +176,7 @@ Powertools conventions.
 - [x] Add SQS source-specific batch processing and FIFO retry semantics.
 - [x] Add Kinesis and DynamoDB stream batch processors and retry semantics.
 - [x] Add JSON Schema validation behind an optional feature.
+- [x] Add validation schema cache and inbound/outbound wrappers.
 - [x] Add idempotency handler workflow, key hashing, payload validation, and replay behavior.
 - [ ] Add DynamoDB idempotency persistence and provider-level concurrency semantics.
 - [x] Add API Gateway REST API and HTTP API adapters for event-handler routing.

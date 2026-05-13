@@ -17,8 +17,8 @@ tranche has landed:
   and EventBridge envelopes
 - batch record processing, partial batch response builders, and optional `aws_lambda_events` SQS, Kinesis, and DynamoDB
   stream adapters with FIFO SQS early-stop behavior
-- validation helpers for required text, text length, numeric ranges, custom predicates, and optional local JSON Schema
-  validation
+- validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,
+  and optional local JSON Schema validation with a compiled schema cache
 - idempotency keys, payload hashing, JSON Pointer key extraction, handler workflow, replay behavior, store traits, and
   an in-memory store
 - tracer configuration, X-Ray header context parsing, trace segment records, and JSON-compatible trace values

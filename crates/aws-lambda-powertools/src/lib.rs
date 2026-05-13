@@ -105,6 +105,9 @@ pub mod prelude {
     pub use aws_lambda_powertools_validation::{
         Validate, ValidationError, ValidationErrorKind, ValidationResult, Validator,
     };
+
+    #[cfg(feature = "validation-jsonschema")]
+    pub use aws_lambda_powertools_validation::JsonSchemaCache;
 }
 
 /// Tracing utility.
