@@ -8,6 +8,7 @@ use aws_lambda_events::{
         alb::AlbTargetGroupRequest,
         apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
         cloudwatch_logs::LogsEvent,
+        dynamodb::Event as DynamoDbEvent,
         eventbridge::EventBridgeEvent,
         firehose::KinesisFirehoseEvent,
         kafka::{KafkaEvent, KafkaRecord},
@@ -214,6 +215,54 @@ impl EventParser {
             .collect()
     }
 
+    /// Parses `DynamoDB` stream `NewImage` records.
+    ///
+    /// Each non-empty `NewImage` item is decoded into `T` with `serde_dynamo`
+    /// and returned in record order.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any record is missing a `NewImage` or an
+    /// image cannot be decoded into `T`.
+    pub fn parse_dynamodb_new_images<T>(
+        &self,
+        event: DynamoDbEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| dynamodb_image("NewImage", index, record.change.new_image))
+            .collect()
+    }
+
+    /// Parses `DynamoDB` stream `OldImage` records.
+    ///
+    /// Each non-empty `OldImage` item is decoded into `T` with `serde_dynamo`
+    /// and returned in record order.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any record is missing an `OldImage` or an
+    /// image cannot be decoded into `T`.
+    pub fn parse_dynamodb_old_images<T>(
+        &self,
+        event: DynamoDbEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| dynamodb_image("OldImage", index, record.change.old_image))
+            .collect()
+    }
+
     /// Parses JSON Kafka record values.
     ///
     /// Kafka records are returned with the same topic-partition grouping used
@@ -297,6 +346,31 @@ impl EventParser {
             .map(|record| self.parse_json_str(&record.sns.message))
             .collect()
     }
+}
+
+fn dynamodb_image<T>(
+    image_name: &str,
+    index: usize,
+    image: serde_dynamo::Item,
+) -> Result<ParsedEvent<T>, ParseError>
+where
+    T: DeserializeOwned,
+{
+    if image.is_empty() {
+        return Err(ParseError::new(
+            ParseErrorKind::Data,
+            format!("DynamoDB record at index {index} is missing {image_name}"),
+        ));
+    }
+
+    serde_dynamo::from_item(image)
+        .map(ParsedEvent::new)
+        .map_err(|error| {
+            ParseError::new(
+                ParseErrorKind::Data,
+                format!("DynamoDB record at index {index} {image_name} cannot be decoded: {error}"),
+            )
+        })
 }
 
 fn kafka_record_value(
@@ -392,6 +466,7 @@ mod tests {
             alb::AlbTargetGroupRequest,
             apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
             cloudwatch_logs::{LogEntry, LogsEvent},
+            dynamodb::Event as DynamoDbEvent,
             eventbridge::EventBridgeEvent,
             firehose::KinesisFirehoseEvent,
             kafka::{KafkaEvent, KafkaRecord},
@@ -631,6 +706,115 @@ mod tests {
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].payload().order_id, "order-1");
         assert_eq!(parsed[0].payload().quantity, 2);
+    }
+
+    #[test]
+    fn parses_dynamodb_new_images() {
+        let event: DynamoDbEvent = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "eventID": "1",
+                    "eventName": "INSERT",
+                    "awsRegion": "us-east-1",
+                    "eventSource": "aws:dynamodb",
+                    "dynamodb": {
+                        "ApproximateCreationDateTime": 1,
+                        "Keys": {
+                            "order_id": {"S": "order-1"}
+                        },
+                        "NewImage": {
+                            "order_id": {"S": "order-1"},
+                            "quantity": {"N": "2"}
+                        },
+                        "SequenceNumber": "1",
+                        "SizeBytes": 26,
+                        "StreamViewType": "NEW_IMAGE"
+                    }
+                }
+            ]
+        }))
+        .expect("DynamoDB event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_dynamodb_new_images::<OrderEvent>(event)
+            .expect("new image should parse");
+
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[0].payload().quantity, 2);
+    }
+
+    #[test]
+    fn parses_dynamodb_old_images() {
+        let event: DynamoDbEvent = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "eventID": "1",
+                    "eventName": "MODIFY",
+                    "awsRegion": "us-east-1",
+                    "eventSource": "aws:dynamodb",
+                    "dynamodb": {
+                        "ApproximateCreationDateTime": 1,
+                        "Keys": {
+                            "order_id": {"S": "order-1"}
+                        },
+                        "OldImage": {
+                            "order_id": {"S": "order-1"},
+                            "quantity": {"N": "1"}
+                        },
+                        "NewImage": {
+                            "order_id": {"S": "order-1"},
+                            "quantity": {"N": "2"}
+                        },
+                        "SequenceNumber": "1",
+                        "SizeBytes": 26,
+                        "StreamViewType": "NEW_AND_OLD_IMAGES"
+                    }
+                }
+            ]
+        }))
+        .expect("DynamoDB event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_dynamodb_old_images::<OrderEvent>(event)
+            .expect("old image should parse");
+
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[0].payload().quantity, 1);
+    }
+
+    #[test]
+    fn rejects_dynamodb_missing_new_image() {
+        let event: DynamoDbEvent = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "eventID": "1",
+                    "eventName": "REMOVE",
+                    "awsRegion": "us-east-1",
+                    "eventSource": "aws:dynamodb",
+                    "dynamodb": {
+                        "ApproximateCreationDateTime": 1,
+                        "Keys": {
+                            "order_id": {"S": "order-1"}
+                        },
+                        "OldImage": {
+                            "order_id": {"S": "order-1"},
+                            "quantity": {"N": "1"}
+                        },
+                        "SequenceNumber": "1",
+                        "SizeBytes": 26,
+                        "StreamViewType": "OLD_IMAGE"
+                    }
+                }
+            ]
+        }))
+        .expect("DynamoDB event should deserialize");
+
+        let error = EventParser::new()
+            .parse_dynamodb_new_images::<OrderEvent>(event)
+            .expect_err("missing new image should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert!(error.message().contains("NewImage"));
     }
 
     #[test]
