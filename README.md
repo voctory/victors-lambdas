@@ -20,7 +20,7 @@ first implementation tranche has landed:
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway
   REST/HTTP/WebSocket API, AppSync direct resolver arguments/source, Bedrock Agent input text, ALB, Lambda Function URL,
   and VPC Lattice body, SQS, SNS, SNS-over-SQS, S3, S3-over-SQS, EventBridge, CloudFormation custom resource
-  properties, CloudWatch Logs, Kinesis, Firehose, DynamoDB stream image, and Kafka envelopes
+  properties, SES, CloudWatch Logs, Kinesis, Firehose, DynamoDB stream image, and Kafka envelopes
 - sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and
   optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior
 - validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,

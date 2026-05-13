@@ -18,6 +18,7 @@ use aws_lambda_events::{
         kinesis::KinesisEvent,
         lambda_function_urls::LambdaFunctionUrlRequest,
         s3::S3Event,
+        ses::SimpleEmailEvent,
         sns::{SnsEvent, SnsMessage},
         sqs::SqsEvent,
         vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
@@ -477,6 +478,30 @@ impl EventParser {
         Ok(parsed)
     }
 
+    /// Parses Amazon SES event records.
+    ///
+    /// Each SES record is decoded into `T` and returned in record order. This
+    /// is most useful with a target type matching the SES record shape from
+    /// `aws_lambda_events::event::ses`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any SES record cannot be decoded into `T`.
+    pub fn parse_ses_records<T>(
+        &self,
+        event: SimpleEmailEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| parse_record_value(self, "SES", index, record))
+            .collect()
+    }
+
     /// Parses JSON SQS message bodies.
     ///
     /// Each record body is decoded into `T` and returned in record order.
@@ -728,6 +753,7 @@ mod tests {
             kinesis::KinesisEvent,
             lambda_function_urls::LambdaFunctionUrlRequest,
             s3::S3Event,
+            ses::SimpleEmailEvent,
             sns::{SnsEvent, SnsMessage, SnsRecord},
             sqs::{SqsEvent, SqsMessage},
             vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
@@ -774,6 +800,45 @@ mod tests {
     struct S3RecordObject {
         key: Option<String>,
         size: Option<i64>,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct SesRecordSummary {
+        event_source: Option<String>,
+        ses: SesRecordService,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct SesRecordService {
+        mail: SesRecordMail,
+        receipt: SesRecordReceipt,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct SesRecordMail {
+        message_id: Option<String>,
+        common_headers: SesRecordCommonHeaders,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct SesRecordCommonHeaders {
+        subject: Option<String>,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct SesRecordReceipt {
+        action: SesRecordAction,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    struct SesRecordAction {
+        #[serde(rename = "type")]
+        type_: Option<String>,
     }
 
     #[test]
@@ -1434,6 +1499,89 @@ mod tests {
 
         assert_eq!(error.kind(), ParseErrorKind::Data);
         assert!(error.message().contains("S3 event notification"));
+    }
+
+    #[test]
+    fn parses_ses_records() {
+        let event: SimpleEmailEvent = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "eventVersion": "1.0",
+                    "eventSource": "aws:ses",
+                    "ses": {
+                        "mail": {
+                            "timestamp": "2023-04-12T20:43:38.021Z",
+                            "source": "sender@example.com",
+                            "messageId": "message-1",
+                            "destination": ["recipient@example.com"],
+                            "headersTruncated": false,
+                            "headers": [
+                                {
+                                    "name": "Subject",
+                                    "value": "Order received"
+                                }
+                            ],
+                            "commonHeaders": {
+                                "from": ["sender@example.com"],
+                                "to": ["recipient@example.com"],
+                                "messageId": "message-1",
+                                "subject": "Order received"
+                            }
+                        },
+                        "receipt": {
+                            "timestamp": "2023-04-12T20:43:38.021Z",
+                            "processingTimeMillis": 100,
+                            "recipients": ["recipient@example.com"],
+                            "spamVerdict": {
+                                "status": "PASS"
+                            },
+                            "virusVerdict": {
+                                "status": "PASS"
+                            },
+                            "spfVerdict": {
+                                "status": "PASS"
+                            },
+                            "dkimVerdict": {
+                                "status": "PASS"
+                            },
+                            "dmarcVerdict": {
+                                "status": "PASS"
+                            },
+                            "action": {
+                                "type": "Lambda",
+                                "functionArn": "arn:aws:lambda:us-east-1:123456789012:function:handler",
+                                "invocationType": "Event"
+                            }
+                        }
+                    }
+                }
+            ]
+        }))
+        .expect("SES event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_ses_records::<SesRecordSummary>(event)
+            .expect("SES records should parse");
+
+        assert_eq!(parsed[0].payload().event_source.as_deref(), Some("aws:ses"));
+        assert_eq!(
+            parsed[0].payload().ses.mail.message_id.as_deref(),
+            Some("message-1")
+        );
+        assert_eq!(
+            parsed[0]
+                .payload()
+                .ses
+                .mail
+                .common_headers
+                .subject
+                .as_deref(),
+            Some("Order received")
+        );
+        assert_eq!(
+            parsed[0].payload().ses.receipt.action.type_.as_deref(),
+            Some("Lambda")
+        );
     }
 
     #[test]
