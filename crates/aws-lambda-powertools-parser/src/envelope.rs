@@ -1,5 +1,7 @@
 //! Event envelope adapters.
 
+use std::collections::HashMap;
+
 use aws_lambda_events::{
     encodings::Body,
     event::{
@@ -8,6 +10,7 @@ use aws_lambda_events::{
         cloudwatch_logs::LogsEvent,
         eventbridge::EventBridgeEvent,
         firehose::KinesisFirehoseEvent,
+        kafka::{KafkaEvent, KafkaRecord},
         kinesis::KinesisEvent,
         lambda_function_urls::LambdaFunctionUrlRequest,
         sns::SnsEvent,
@@ -211,6 +214,41 @@ impl EventParser {
             .collect()
     }
 
+    /// Parses JSON Kafka record values.
+    ///
+    /// Kafka records are returned with the same topic-partition grouping used
+    /// by the Lambda event. Each record value is base64-decoded before being
+    /// decoded into `T`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any record value is missing, is not valid
+    /// base64, or cannot be decoded into `T`.
+    pub fn parse_kafka_record_values<T>(
+        &self,
+        event: KafkaEvent,
+    ) -> Result<HashMap<String, Vec<ParsedEvent<T>>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .map(|(source, records)| {
+                let parsed_records = records
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, record)| {
+                        let value = kafka_record_value(&source, index, record)?;
+                        self.parse_json_slice(&value)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok((source, parsed_records))
+            })
+            .collect()
+    }
+
     /// Parses JSON SQS message bodies.
     ///
     /// Each record body is decoded into `T` and returned in record order.
@@ -259,6 +297,30 @@ impl EventParser {
             .map(|record| self.parse_json_str(&record.sns.message))
             .collect()
     }
+}
+
+fn kafka_record_value(
+    source: &str,
+    index: usize,
+    record: KafkaRecord,
+) -> Result<Vec<u8>, ParseError> {
+    let value = record.value.ok_or_else(|| {
+        ParseError::new(
+            ParseErrorKind::Data,
+            format!("Kafka record group {source} at index {index} is missing value"),
+        )
+    })?;
+
+    base64::engine::general_purpose::STANDARD
+        .decode(value)
+        .map_err(|error| {
+            ParseError::new(
+                ParseErrorKind::Data,
+                format!(
+                    "Kafka record group {source} at index {index} value is not valid base64: {error}"
+                ),
+            )
+        })
 }
 
 fn event_body(
@@ -322,6 +384,8 @@ fn gateway_body(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use aws_lambda_events::{
         encodings::Body,
         event::{
@@ -330,6 +394,7 @@ mod tests {
             cloudwatch_logs::{LogEntry, LogsEvent},
             eventbridge::EventBridgeEvent,
             firehose::KinesisFirehoseEvent,
+            kafka::{KafkaEvent, KafkaRecord},
             kinesis::KinesisEvent,
             lambda_function_urls::LambdaFunctionUrlRequest,
             sns::{SnsEvent, SnsMessage, SnsRecord},
@@ -337,6 +402,7 @@ mod tests {
             vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
         },
     };
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
     use serde::Deserialize;
     use serde_json::{Value, json};
 
@@ -565,6 +631,41 @@ mod tests {
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].payload().order_id, "order-1");
         assert_eq!(parsed[0].payload().quantity, 2);
+    }
+
+    #[test]
+    fn parses_kafka_record_values() {
+        let mut record = KafkaRecord::default();
+        record.topic = Some("orders".to_owned());
+        record.partition = 0;
+        record.offset = 1;
+        record.value = Some(STANDARD.encode(r#"{"order_id":"order-1","quantity":2}"#));
+        let mut event = KafkaEvent::default();
+        event.records = HashMap::from([("orders-0".to_owned(), vec![record])]);
+
+        let parsed = EventParser::new()
+            .parse_kafka_record_values::<OrderEvent>(event)
+            .expect("record value should parse");
+
+        assert_eq!(parsed["orders-0"][0].payload().order_id, "order-1");
+        assert_eq!(parsed["orders-0"][0].payload().quantity, 2);
+    }
+
+    #[test]
+    fn rejects_kafka_record_without_value() {
+        let mut record = KafkaRecord::default();
+        record.topic = Some("orders".to_owned());
+        record.partition = 0;
+        record.offset = 1;
+        let mut event = KafkaEvent::default();
+        event.records = HashMap::from([("orders-0".to_owned(), vec![record])]);
+
+        let error = EventParser::new()
+            .parse_kafka_record_values::<OrderEvent>(event)
+            .expect_err("missing value should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert!(error.message().contains("missing value"));
     }
 
     #[test]
