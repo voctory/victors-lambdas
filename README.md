@@ -39,8 +39,8 @@ first implementation tranche has landed:
   optional `tracing` span integration
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
   request/response middleware, CORS handling, optional validation hooks, optional gzip/deflate compression middleware,
-  and optional API Gateway REST/HTTP/WebSocket API, ALB, Lambda Function URL, VPC Lattice, AppSync direct resolver,
-  AppSync Events, Bedrock Agent OpenAPI adapter, and sync/async Bedrock Agent function-details resolver
+  and optional API Gateway REST/HTTP/WebSocket API, ALB, Lambda Function URL, VPC Lattice, sync/async AppSync direct
+  resolver, AppSync Events, Bedrock Agent OpenAPI adapter, and sync/async Bedrock Agent function-details resolver
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
 Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, richer idempotency examples, OpenTelemetry or
