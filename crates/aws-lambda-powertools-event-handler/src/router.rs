@@ -4,6 +4,12 @@ use std::{cmp::Ordering, fmt};
 
 use crate::{CorsConfig, Method, Request, Response, Route};
 
+/// Function signature used by request middleware.
+pub type RequestMiddleware = dyn Fn(Request) -> Request + Send + Sync + 'static;
+
+/// Function signature used by response middleware.
+pub type ResponseMiddleware = dyn Fn(&Request, Response) -> Response + Send + Sync + 'static;
+
 /// Stores HTTP route handlers and selects the most specific matching route.
 ///
 /// Route precedence is path-first: static path segments take precedence over
@@ -13,6 +19,8 @@ use crate::{CorsConfig, Method, Request, Response, Route};
 pub struct Router {
     routes: Vec<Route>,
     cors: Option<CorsConfig>,
+    request_middleware: Vec<Box<RequestMiddleware>>,
+    response_middleware: Vec<Box<ResponseMiddleware>>,
 }
 
 impl Router {
@@ -22,6 +30,8 @@ impl Router {
         Self {
             routes: Vec::new(),
             cors: None,
+            request_middleware: Vec::new(),
+            response_middleware: Vec::new(),
         }
     }
 
@@ -42,6 +52,36 @@ impl Router {
     #[must_use]
     pub const fn cors(&self) -> Option<&CorsConfig> {
         self.cors.as_ref()
+    }
+
+    /// Adds request middleware that runs before CORS preflight handling and route matching.
+    pub fn add_request_middleware(
+        &mut self,
+        middleware: impl Fn(Request) -> Request + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.request_middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Adds response middleware that runs after route handling and before CORS headers are applied.
+    pub fn add_response_middleware(
+        &mut self,
+        middleware: impl Fn(&Request, Response) -> Response + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.response_middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Returns the number of registered request middleware functions.
+    #[must_use]
+    pub fn request_middleware_len(&self) -> usize {
+        self.request_middleware.len()
+    }
+
+    /// Returns the number of registered response middleware functions.
+    #[must_use]
+    pub fn response_middleware_len(&self) -> usize {
+        self.response_middleware.len()
     }
 
     /// Adds a route handler.
@@ -157,6 +197,8 @@ impl Router {
     /// Handles a request with the matching route or returns `404 Not Found`.
     #[must_use]
     pub fn handle(&self, mut request: Request) -> Response {
+        request = self.apply_request_middleware(request);
+
         if let Some(cors) = &self.cors {
             if cors.is_preflight_request(&request) {
                 return cors.preflight_response();
@@ -164,12 +206,14 @@ impl Router {
         }
 
         let Some(route_match) = self.find(&request) else {
-            return self.apply_cors(Response::not_found());
+            let response = self.apply_response_middleware(&request, Response::not_found());
+            return self.apply_cors(response);
         };
         let route = route_match.route;
 
         request.set_path_params(route_match.path_params);
-        self.apply_cors(route.handle(&request))
+        let response = self.apply_response_middleware(&request, route.handle(&request));
+        self.apply_cors(response)
     }
 
     /// Returns registered routes in registration order.
@@ -197,6 +241,20 @@ impl Router {
             response
         }
     }
+
+    fn apply_request_middleware(&self, mut request: Request) -> Request {
+        for middleware in &self.request_middleware {
+            request = middleware(request);
+        }
+        request
+    }
+
+    fn apply_response_middleware(&self, request: &Request, mut response: Response) -> Response {
+        for middleware in &self.response_middleware {
+            response = middleware(request, response);
+        }
+        response
+    }
 }
 
 impl fmt::Debug for Router {
@@ -205,6 +263,8 @@ impl fmt::Debug for Router {
             .debug_struct("Router")
             .field("routes", &self.routes)
             .field("cors", &self.cors)
+            .field("request_middleware_len", &self.request_middleware.len())
+            .field("response_middleware_len", &self.response_middleware.len())
             .finish()
     }
 }
@@ -383,5 +443,38 @@ mod tests {
             router.cors().map(CorsConfig::allow_origin),
             Some("https://example.com")
         );
+    }
+
+    #[test]
+    fn request_middleware_runs_before_route_matching() {
+        let mut router = Router::new();
+        router.add_request_middleware(|request| {
+            if request.path() == "/legacy-orders" {
+                Request::new(request.method(), "/orders")
+            } else {
+                request
+            }
+        });
+        router.get("/orders", |_| Response::ok("orders"));
+
+        let response = router.handle(Request::new(Method::Get, "/legacy-orders"));
+
+        assert_eq!(router.request_middleware_len(), 1);
+        assert_eq!(response.body(), b"orders");
+    }
+
+    #[test]
+    fn response_middleware_runs_before_cors_headers_are_applied() {
+        let mut router = Router::new().with_cors(CorsConfig::default());
+        router.add_response_middleware(|request, response| {
+            response.with_header("x-path", request.path())
+        });
+        router.get("/orders", |_| Response::ok("orders"));
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(router.response_middleware_len(), 1);
+        assert_eq!(response.header("x-path"), Some("/orders"));
+        assert_eq!(response.header("access-control-allow-origin"), Some("*"));
     }
 }
