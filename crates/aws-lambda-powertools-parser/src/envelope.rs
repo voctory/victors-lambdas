@@ -1,15 +1,19 @@
 //! Event envelope adapters.
 
-use aws_lambda_events::event::{
-    alb::AlbTargetGroupRequest,
-    apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
-    cloudwatch_logs::LogsEvent,
-    eventbridge::EventBridgeEvent,
-    firehose::KinesisFirehoseEvent,
-    kinesis::KinesisEvent,
-    lambda_function_urls::LambdaFunctionUrlRequest,
-    sns::SnsEvent,
-    sqs::SqsEvent,
+use aws_lambda_events::{
+    encodings::Body,
+    event::{
+        alb::AlbTargetGroupRequest,
+        apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
+        cloudwatch_logs::LogsEvent,
+        eventbridge::EventBridgeEvent,
+        firehose::KinesisFirehoseEvent,
+        kinesis::KinesisEvent,
+        lambda_function_urls::LambdaFunctionUrlRequest,
+        sns::SnsEvent,
+        sqs::SqsEvent,
+        vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
+    },
 };
 use base64::Engine;
 use serde::de::DeserializeOwned;
@@ -83,6 +87,40 @@ impl EventParser {
         T: DeserializeOwned,
     {
         let body = gateway_body("Lambda Function URL", event.body, event.is_base64_encoded)?;
+        self.parse_json_slice(&body)
+    }
+
+    /// Parses an Amazon VPC Lattice v1 JSON body.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the body is missing, cannot be base64
+    /// decoded, or cannot be decoded into `T`.
+    pub fn parse_vpc_lattice_body<T>(
+        &self,
+        event: VpcLatticeRequestV1,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let body = event_body("VPC Lattice", event.body, event.is_base64_encoded)?;
+        self.parse_json_slice(&body)
+    }
+
+    /// Parses an Amazon VPC Lattice v2 JSON body.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the body is missing, cannot be base64
+    /// decoded, or cannot be decoded into `T`.
+    pub fn parse_vpc_lattice_v2_body<T>(
+        &self,
+        event: VpcLatticeRequestV2,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let body = gateway_body("VPC Lattice v2", event.body, event.is_base64_encoded)?;
         self.parse_json_slice(&body)
     }
 
@@ -223,6 +261,39 @@ impl EventParser {
     }
 }
 
+fn event_body(
+    source: &str,
+    body: Option<Body>,
+    is_base64_encoded: bool,
+) -> Result<Vec<u8>, ParseError> {
+    let body = body.ok_or_else(|| {
+        ParseError::new(
+            ParseErrorKind::Data,
+            format!("{source} event is missing body"),
+        )
+    })?;
+
+    if is_base64_encoded {
+        let encoded = std::str::from_utf8(body.as_ref()).map_err(|error| {
+            ParseError::new(
+                ParseErrorKind::Data,
+                format!("{source} body is not valid UTF-8 base64 text: {error}"),
+            )
+        })?;
+
+        base64::engine::general_purpose::STANDARD
+            .decode(encoded)
+            .map_err(|error| {
+                ParseError::new(
+                    ParseErrorKind::Data,
+                    format!("{source} body is not valid base64: {error}"),
+                )
+            })
+    } else {
+        Ok(body.as_ref().to_vec())
+    }
+}
+
 fn gateway_body(
     source: &str,
     body: Option<String>,
@@ -251,16 +322,20 @@ fn gateway_body(
 
 #[cfg(test)]
 mod tests {
-    use aws_lambda_events::event::{
-        alb::AlbTargetGroupRequest,
-        apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
-        cloudwatch_logs::{LogEntry, LogsEvent},
-        eventbridge::EventBridgeEvent,
-        firehose::KinesisFirehoseEvent,
-        kinesis::KinesisEvent,
-        lambda_function_urls::LambdaFunctionUrlRequest,
-        sns::{SnsEvent, SnsMessage, SnsRecord},
-        sqs::{SqsEvent, SqsMessage},
+    use aws_lambda_events::{
+        encodings::Body,
+        event::{
+            alb::AlbTargetGroupRequest,
+            apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
+            cloudwatch_logs::{LogEntry, LogsEvent},
+            eventbridge::EventBridgeEvent,
+            firehose::KinesisFirehoseEvent,
+            kinesis::KinesisEvent,
+            lambda_function_urls::LambdaFunctionUrlRequest,
+            sns::{SnsEvent, SnsMessage, SnsRecord},
+            sqs::{SqsEvent, SqsMessage},
+            vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
+        },
     };
     use serde::Deserialize;
     use serde_json::{Value, json};
@@ -337,6 +412,52 @@ mod tests {
 
         let parsed = EventParser::new()
             .parse_lambda_function_url_body::<OrderEvent>(event)
+            .expect("valid base64 body should parse");
+
+        assert_eq!(parsed.payload().quantity, 3);
+    }
+
+    #[test]
+    fn parses_vpc_lattice_body() {
+        let mut event = VpcLatticeRequestV1::default();
+        event.body = Some(Body::from(r#"{"order_id":"order-1","quantity":2}"#));
+
+        let parsed = EventParser::new()
+            .parse_vpc_lattice_body::<OrderEvent>(event)
+            .expect("valid body should parse");
+
+        assert_eq!(parsed.payload().order_id, "order-1");
+
+        let mut event = VpcLatticeRequestV1::default();
+        event.body = Some(Body::from(
+            "eyJvcmRlcl9pZCI6Im9yZGVyLTIiLCJxdWFudGl0eSI6M30=",
+        ));
+        event.is_base64_encoded = true;
+
+        let parsed = EventParser::new()
+            .parse_vpc_lattice_body::<OrderEvent>(event)
+            .expect("valid base64 body should parse");
+
+        assert_eq!(parsed.payload().quantity, 3);
+    }
+
+    #[test]
+    fn parses_vpc_lattice_v2_body() {
+        let mut event = VpcLatticeRequestV2::default();
+        event.body = Some(r#"{"order_id":"order-1","quantity":2}"#.to_owned());
+
+        let parsed = EventParser::new()
+            .parse_vpc_lattice_v2_body::<OrderEvent>(event)
+            .expect("valid body should parse");
+
+        assert_eq!(parsed.payload().order_id, "order-1");
+
+        let mut event = VpcLatticeRequestV2::default();
+        event.body = Some("eyJvcmRlcl9pZCI6Im9yZGVyLTIiLCJxdWFudGl0eSI6M30=".to_owned());
+        event.is_base64_encoded = true;
+
+        let parsed = EventParser::new()
+            .parse_vpc_lattice_v2_body::<OrderEvent>(event)
             .expect("valid base64 body should parse");
 
         assert_eq!(parsed.payload().quantity, 3);

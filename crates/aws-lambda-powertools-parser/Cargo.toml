@@ -24,6 +24,7 @@ aws-lambda-events = [
     "aws_lambda_events/lambda_function_urls",
     "aws_lambda_events/sns",
     "aws_lambda_events/sqs",
+    "aws_lambda_events/vpc_lattice",
 ]
 
 [dependencies]
