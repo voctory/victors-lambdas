@@ -6,6 +6,8 @@ mod alb;
 mod apigateway;
 #[cfg(feature = "aws-lambda-events")]
 mod appsync;
+#[cfg(feature = "appsync-events")]
+mod appsync_events;
 #[cfg(feature = "aws-lambda-events")]
 mod bedrock;
 #[cfg(feature = "compression")]
@@ -35,6 +37,13 @@ pub use apigateway::{
 pub use appsync::{
     AppSyncEvent, AppSyncHandler, AppSyncResolver, AppSyncResolverError, AppSyncResolverResult,
     AppSyncRoute,
+};
+#[cfg(feature = "appsync-events")]
+pub use appsync_events::{
+    AppSyncEventsAggregatePublishHandler, AppSyncEventsHandlerError, AppSyncEventsHandlerResult,
+    AppSyncEventsPublishHandler, AppSyncEventsPublishRoute, AppSyncEventsResolver,
+    AppSyncEventsResolverError, AppSyncEventsResolverResult, AppSyncEventsSubscribeHandler,
+    AppSyncEventsSubscribeRoute,
 };
 #[cfg(feature = "aws-lambda-events")]
 pub use bedrock::{

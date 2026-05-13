@@ -12,6 +12,10 @@ categories.workspace = true
 
 [features]
 default = []
+appsync-events = [
+    "dep:aws-lambda-powertools-parser",
+    "dep:serde_json",
+]
 compression = ["dep:flate2"]
 validation = ["dep:aws-lambda-powertools-validation"]
 aws-lambda-events = [
@@ -29,6 +33,7 @@ aws-lambda-events = [
 
 [dependencies]
 aws-lambda-powertools-core.workspace = true
+aws-lambda-powertools-parser = { workspace = true, optional = true }
 aws-lambda-powertools-validation = { workspace = true, optional = true }
 aws_lambda_events = { version = "1.2.0", default-features = false, optional = true }
 base64 = { version = "0.22", optional = true }

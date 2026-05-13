@@ -88,6 +88,14 @@ pub mod prelude {
         response_to_bedrock_agent, response_to_lambda_function_url, response_to_vpc_lattice,
     };
 
+    #[cfg(feature = "event-handler-appsync-events")]
+    pub use aws_lambda_powertools_event_handler::{
+        AppSyncEventsAggregatePublishHandler, AppSyncEventsHandlerError,
+        AppSyncEventsHandlerResult, AppSyncEventsPublishHandler, AppSyncEventsPublishRoute,
+        AppSyncEventsResolver, AppSyncEventsResolverError, AppSyncEventsResolverResult,
+        AppSyncEventsSubscribeHandler, AppSyncEventsSubscribeRoute,
+    };
+
     #[cfg(feature = "feature-flags")]
     pub use aws_lambda_powertools_feature_flags::{
         AsyncFeatureFlagStore, AsyncFeatureFlags, FeatureCondition, FeatureFlag,
