@@ -2,6 +2,8 @@
 
 use std::{fmt, future::Future, pin::Pin};
 
+#[cfg(feature = "validation")]
+use crate::ValidationConfig;
 use crate::{Method, Request, RequestMiddleware, Response, ResponseMiddleware};
 
 /// Function signature used by HTTP routes.
@@ -84,6 +86,8 @@ pub struct Route {
     handler: Box<Handler>,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
+    #[cfg(feature = "validation")]
+    validation: Option<ValidationConfig>,
 }
 
 impl Route {
@@ -103,6 +107,8 @@ impl Route {
             handler: Box::new(handler),
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
+            #[cfg(feature = "validation")]
+            validation: None,
         }
     }
 
@@ -187,6 +193,79 @@ impl Route {
         self
     }
 
+    /// Enables validation for this route.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub fn with_validation(mut self, validation: ValidationConfig) -> Self {
+        self.validation = Some(validation);
+        self
+    }
+
+    /// Returns this route's validation configuration when enabled.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub const fn validation(&self) -> Option<&ValidationConfig> {
+        self.validation.as_ref()
+    }
+
+    /// Returns a copy with a route-specific request validator appended.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub fn with_request_validator(
+        mut self,
+        validator: impl Fn(&Request) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.add_request_validator(validator);
+        self
+    }
+
+    /// Adds a route-specific request validator, enabling validation when needed.
+    #[cfg(feature = "validation")]
+    pub fn add_request_validator(
+        &mut self,
+        validator: impl Fn(&Request) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.validation
+            .get_or_insert_with(ValidationConfig::new)
+            .add_request_validator(validator);
+        self
+    }
+
+    /// Returns a copy with a route-specific response validator appended.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub fn with_response_validator(
+        mut self,
+        validator: impl Fn(&Request, &Response) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.add_response_validator(validator);
+        self
+    }
+
+    /// Adds a route-specific response validator, enabling validation when needed.
+    #[cfg(feature = "validation")]
+    pub fn add_response_validator(
+        &mut self,
+        validator: impl Fn(&Request, &Response) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.validation
+            .get_or_insert_with(ValidationConfig::new)
+            .add_response_validator(validator);
+        self
+    }
+
     pub(crate) fn match_request(&self, method: Method, path: &str) -> Option<RouteMatchData> {
         let method_score = self.method.match_score(method)?;
         let path_params = self.pattern.matches(path)?;
@@ -219,6 +298,31 @@ impl Route {
         response
     }
 
+    #[cfg(feature = "validation")]
+    pub(crate) fn validate_request(
+        &self,
+        request: &Request,
+    ) -> Result<(), aws_lambda_powertools_validation::ValidationError> {
+        if let Some(validation) = &self.validation {
+            validation.validate_request(request)?;
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "validation")]
+    pub(crate) fn validate_response(
+        &self,
+        request: &Request,
+        response: &Response,
+    ) -> Result<(), aws_lambda_powertools_validation::ValidationError> {
+        if let Some(validation) = &self.validation {
+            validation.validate_response(request, response)?;
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn with_path_prefix(mut self, prefix: &str) -> Self {
         let path = join_path_prefix(prefix, &self.path);
         self.pattern = PathPattern::parse(&path);
@@ -229,13 +333,15 @@ impl Route {
 
 impl fmt::Debug for Route {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("Route")
+        let mut debug = formatter.debug_struct("Route");
+        debug
             .field("method", &self.method)
             .field("path", &self.path)
             .field("request_middleware_len", &self.request_middleware.len())
-            .field("response_middleware_len", &self.response_middleware.len())
-            .finish_non_exhaustive()
+            .field("response_middleware_len", &self.response_middleware.len());
+        #[cfg(feature = "validation")]
+        debug.field("validation_enabled", &self.validation.is_some());
+        debug.finish_non_exhaustive()
     }
 }
 
@@ -250,6 +356,8 @@ pub struct AsyncRoute {
     handler: Box<AsyncHandler>,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
+    #[cfg(feature = "validation")]
+    validation: Option<ValidationConfig>,
 }
 
 impl AsyncRoute {
@@ -269,6 +377,8 @@ impl AsyncRoute {
             handler: Box::new(handler),
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
+            #[cfg(feature = "validation")]
+            validation: None,
         }
     }
 
@@ -352,6 +462,79 @@ impl AsyncRoute {
         self
     }
 
+    /// Enables validation for this asynchronous route.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub fn with_validation(mut self, validation: ValidationConfig) -> Self {
+        self.validation = Some(validation);
+        self
+    }
+
+    /// Returns this asynchronous route's validation configuration when enabled.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub const fn validation(&self) -> Option<&ValidationConfig> {
+        self.validation.as_ref()
+    }
+
+    /// Returns a copy with a route-specific request validator appended.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub fn with_request_validator(
+        mut self,
+        validator: impl Fn(&Request) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.add_request_validator(validator);
+        self
+    }
+
+    /// Adds a route-specific request validator, enabling validation when needed.
+    #[cfg(feature = "validation")]
+    pub fn add_request_validator(
+        &mut self,
+        validator: impl Fn(&Request) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.validation
+            .get_or_insert_with(ValidationConfig::new)
+            .add_request_validator(validator);
+        self
+    }
+
+    /// Returns a copy with a route-specific response validator appended.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub fn with_response_validator(
+        mut self,
+        validator: impl Fn(&Request, &Response) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.add_response_validator(validator);
+        self
+    }
+
+    /// Adds a route-specific response validator, enabling validation when needed.
+    #[cfg(feature = "validation")]
+    pub fn add_response_validator(
+        &mut self,
+        validator: impl Fn(&Request, &Response) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.validation
+            .get_or_insert_with(ValidationConfig::new)
+            .add_response_validator(validator);
+        self
+    }
+
     pub(crate) fn match_request(&self, method: Method, path: &str) -> Option<RouteMatchData> {
         let method_score = self.method.match_score(method)?;
         let path_params = self.pattern.matches(path)?;
@@ -384,6 +567,31 @@ impl AsyncRoute {
         response
     }
 
+    #[cfg(feature = "validation")]
+    pub(crate) fn validate_request(
+        &self,
+        request: &Request,
+    ) -> Result<(), aws_lambda_powertools_validation::ValidationError> {
+        if let Some(validation) = &self.validation {
+            validation.validate_request(request)?;
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "validation")]
+    pub(crate) fn validate_response(
+        &self,
+        request: &Request,
+        response: &Response,
+    ) -> Result<(), aws_lambda_powertools_validation::ValidationError> {
+        if let Some(validation) = &self.validation {
+            validation.validate_response(request, response)?;
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn with_path_prefix(mut self, prefix: &str) -> Self {
         let path = join_path_prefix(prefix, &self.path);
         self.pattern = PathPattern::parse(&path);
@@ -394,13 +602,15 @@ impl AsyncRoute {
 
 impl fmt::Debug for AsyncRoute {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("AsyncRoute")
+        let mut debug = formatter.debug_struct("AsyncRoute");
+        debug
             .field("method", &self.method)
             .field("path", &self.path)
             .field("request_middleware_len", &self.request_middleware.len())
-            .field("response_middleware_len", &self.response_middleware.len())
-            .finish_non_exhaustive()
+            .field("response_middleware_len", &self.response_middleware.len());
+        #[cfg(feature = "validation")]
+        debug.field("validation_enabled", &self.validation.is_some());
+        debug.finish_non_exhaustive()
     }
 }
 

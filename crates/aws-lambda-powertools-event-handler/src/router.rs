@@ -377,12 +377,20 @@ impl Router {
         request.set_path_params(&route_match.path_params);
         request = route.apply_request_middleware(request);
         #[cfg(feature = "validation")]
+        if let Err(error) = route.validate_request(&request) {
+            return self.apply_cors(request_validation_response(&error));
+        }
+        #[cfg(feature = "validation")]
         if let Some(response) = self.validate_request(&request) {
             return self.apply_cors(response);
         }
 
         let response = route.apply_response_middleware(&request, route.handle(&request));
         let response = self.apply_response_middleware(&request, response);
+        #[cfg(feature = "validation")]
+        if let Err(error) = route.validate_response(&request, &response) {
+            return self.apply_cors(response_validation_response(&error));
+        }
         #[cfg(feature = "validation")]
         if let Some(validation_response) = self.validate_response(&request, &response) {
             return self.apply_cors(validation_response);
@@ -784,12 +792,20 @@ impl AsyncRouter {
         request.set_path_params(&route_match.path_params);
         request = route.apply_request_middleware(request);
         #[cfg(feature = "validation")]
+        if let Err(error) = route.validate_request(&request) {
+            return self.apply_cors(request_validation_response(&error));
+        }
+        #[cfg(feature = "validation")]
         if let Some(response) = self.validate_request(&request) {
             return self.apply_cors(response);
         }
 
         let response = route.apply_response_middleware(&request, route.handle(&request).await);
         let response = self.apply_response_middleware(&request, response);
+        #[cfg(feature = "validation")]
+        if let Err(error) = route.validate_response(&request, &response) {
+            return self.apply_cors(response_validation_response(&error));
+        }
         #[cfg(feature = "validation")]
         if let Some(validation_response) = self.validate_response(&request, &response) {
             return self.apply_cors(validation_response);
@@ -1368,6 +1384,58 @@ mod tests {
 
     #[cfg(feature = "validation")]
     #[test]
+    fn route_specific_request_validation_runs_after_route_middleware() {
+        let route = Route::new(Method::Get, "/orders/{id}", |_| Response::ok("orders"))
+            .with_request_middleware(|request| {
+                let order_id = request.path_param("id").unwrap_or_default().to_owned();
+                request.with_header("x-order-id", order_id)
+            })
+            .with_request_validator(|request| {
+                Validator::new().ensure(
+                    "order_id",
+                    request.header("x-order-id") == Some("order-1"),
+                    "order header is required",
+                )
+            });
+
+        let mut router = Router::new();
+        router.register_route(route);
+
+        let response = router.handle(Request::new(Method::Get, "/orders/order-1"));
+
+        assert_eq!(
+            router.routes()[0]
+                .validation()
+                .map(ValidationConfig::request_validators_len),
+            Some(1)
+        );
+        assert_eq!(response.status_code(), 200);
+        assert_eq!(response.body(), b"orders");
+    }
+
+    #[cfg(feature = "validation")]
+    #[test]
+    fn route_specific_response_validation_runs_after_response_middleware() {
+        let route = Route::new(Method::Get, "/orders", |_| Response::ok("orders"))
+            .with_response_middleware(|_, response| response.with_body("not-ok"))
+            .with_response_validator(|_, response| {
+                Validator::new().ensure("body", response.body() == b"orders", "body must be orders")
+            });
+
+        let mut router = Router::new();
+        router.register_route(route);
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(response.status_code(), 500);
+        assert_eq!(
+            response.body(),
+            b"Response validation failed: body must be orders"
+        );
+    }
+
+    #[cfg(feature = "validation")]
+    #[test]
     fn async_router_runs_request_validation_before_handler() {
         let mut router = AsyncRouter::new();
         router.add_request_validator(|request| {
@@ -1394,6 +1462,39 @@ mod tests {
                 .map(ValidationConfig::request_validators_len),
             Some(1)
         );
+    }
+
+    #[cfg(feature = "validation")]
+    #[test]
+    fn async_route_specific_request_validation_runs_after_route_middleware() {
+        let route = AsyncRoute::new(Method::Get, "/orders/{id}", |_| {
+            async_response(async { Response::ok("orders") })
+        })
+        .with_request_middleware(|request| {
+            let order_id = request.path_param("id").unwrap_or_default().to_owned();
+            request.with_header("x-order-id", order_id)
+        })
+        .with_request_validator(|request| {
+            Validator::new().ensure(
+                "order_id",
+                request.header("x-order-id") == Some("order-1"),
+                "order header is required",
+            )
+        });
+
+        let mut router = AsyncRouter::new();
+        router.register_route(route);
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/orders/order-1")));
+
+        assert_eq!(
+            router.routes()[0]
+                .validation()
+                .map(ValidationConfig::request_validators_len),
+            Some(1)
+        );
+        assert_eq!(response.status_code(), 200);
+        assert_eq!(response.body(), b"orders");
     }
 
     #[test]
