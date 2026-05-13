@@ -2,6 +2,8 @@
 
 #[cfg(feature = "aws-lambda-events")]
 mod apigateway;
+#[cfg(feature = "aws-lambda-events")]
+mod appsync;
 #[cfg(feature = "compression")]
 mod compression;
 mod cors;
@@ -15,6 +17,11 @@ mod router;
 pub use apigateway::{
     ApiGatewayAdapterError, ApiGatewayAdapterResult, request_from_apigw_v1, request_from_apigw_v2,
     response_to_apigw_v1, response_to_apigw_v2,
+};
+#[cfg(feature = "aws-lambda-events")]
+pub use appsync::{
+    AppSyncEvent, AppSyncHandler, AppSyncResolver, AppSyncResolverError, AppSyncResolverResult,
+    AppSyncRoute,
 };
 #[cfg(feature = "compression")]
 pub use compression::{

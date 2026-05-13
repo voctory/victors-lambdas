@@ -92,6 +92,7 @@ dependencies = [
  "flate2",
  "futures-executor",
  "http",
+ "serde_json",
 ]
 
 [[package]]

@@ -26,13 +26,13 @@ tranche has landed:
 - tracer configuration, X-Ray header context parsing, trace segment records, and JSON-compatible trace values
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
   request/response middleware, CORS handling, optional gzip/deflate compression middleware, and optional API Gateway
-  REST/HTTP API adapters
+  REST/HTTP API and AppSync direct resolver adapters
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
 Not yet implemented: AWS SDK-backed parameter providers, DynamoDB-backed idempotency persistence, broader
-`aws_lambda_events` envelopes and fixtures, OpenTelemetry or X-Ray tracing integration, additional event-handler
-adapters, crates.io publishing, and full feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the
-current backlog.
+`aws_lambda_events` envelopes and fixtures, OpenTelemetry or X-Ray tracing integration, Bedrock Agent event-handler
+adapters, crates.io publishing, and full feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the current
+backlog.
 
 ## Workspace
 
