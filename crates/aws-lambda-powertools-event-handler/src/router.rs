@@ -197,6 +197,14 @@ impl Router {
         self
     }
 
+    /// Registers a prebuilt route.
+    ///
+    /// Use this when the route owns route-specific middleware.
+    pub fn register_route(&mut self, route: Route) -> &mut Self {
+        self.routes.push(route);
+        self
+    }
+
     /// Adds a `GET` route handler.
     pub fn get(
         &mut self,
@@ -367,12 +375,14 @@ impl Router {
         let route = route_match.route;
 
         request.set_path_params(&route_match.path_params);
+        request = route.apply_request_middleware(request);
         #[cfg(feature = "validation")]
         if let Some(response) = self.validate_request(&request) {
             return self.apply_cors(response);
         }
 
-        let response = self.apply_response_middleware(&request, route.handle(&request));
+        let response = route.apply_response_middleware(&request, route.handle(&request));
+        let response = self.apply_response_middleware(&request, response);
         #[cfg(feature = "validation")]
         if let Some(validation_response) = self.validate_response(&request, &response) {
             return self.apply_cors(validation_response);
@@ -595,6 +605,14 @@ impl AsyncRouter {
         self
     }
 
+    /// Registers a prebuilt asynchronous route.
+    ///
+    /// Use this when the route owns route-specific middleware.
+    pub fn register_route(&mut self, route: AsyncRoute) -> &mut Self {
+        self.routes.push(route);
+        self
+    }
+
     /// Adds an asynchronous `GET` route handler.
     pub fn get(
         &mut self,
@@ -764,12 +782,14 @@ impl AsyncRouter {
         let route = route_match.route;
 
         request.set_path_params(&route_match.path_params);
+        request = route.apply_request_middleware(request);
         #[cfg(feature = "validation")]
         if let Some(response) = self.validate_request(&request) {
             return self.apply_cors(response);
         }
 
-        let response = self.apply_response_middleware(&request, route.handle(&request).await);
+        let response = route.apply_response_middleware(&request, route.handle(&request).await);
+        let response = self.apply_response_middleware(&request, response);
         #[cfg(feature = "validation")]
         if let Some(validation_response) = self.validate_response(&request, &response) {
             return self.apply_cors(validation_response);
@@ -993,7 +1013,10 @@ mod tests {
 
     #[cfg(feature = "validation")]
     use crate::ValidationConfig;
-    use crate::{AsyncRouter, CorsConfig, Method, Request, Response, ResponseFuture, Router};
+    use crate::{
+        AsyncRoute, AsyncRouter, CorsConfig, Method, Request, Response, ResponseFuture, Route,
+        Router,
+    };
 
     fn async_response<'a>(
         future: impl Future<Output = Response> + Send + 'a,
@@ -1168,6 +1191,34 @@ mod tests {
     }
 
     #[test]
+    fn route_specific_middleware_runs_around_handler() {
+        let route = Route::new(Method::Get, "/orders/{id}", |request| {
+            Response::ok(request.header("x-order-id").unwrap_or_default())
+        })
+        .with_request_middleware(|request| {
+            let order_id = request.path_param("id").unwrap_or_default().to_owned();
+            request.with_header("x-order-id", order_id)
+        })
+        .with_response_middleware(|_, response| response.with_header("x-order", "route"));
+
+        let mut router = Router::new();
+        router.add_response_middleware(|_, response| response.with_header("x-order", "router"));
+        router.register_route(route);
+
+        let response = router.handle(Request::new(Method::Get, "/orders/order-1"));
+        let order_headers = response
+            .headers()
+            .iter()
+            .filter_map(|(name, value)| (name == "x-order").then_some(value.as_str()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(router.routes()[0].request_middleware_len(), 1);
+        assert_eq!(router.routes()[0].response_middleware_len(), 1);
+        assert_eq!(response.body(), b"order-1");
+        assert_eq!(order_headers, vec!["route", "router"]);
+    }
+
+    #[test]
     fn include_router_with_prefix_routes_child_paths() {
         let mut child = Router::new();
         child.get("/orders/{id}", |request| {
@@ -1185,6 +1236,29 @@ mod tests {
         assert_eq!(router.len(), 1);
         assert_eq!(router.routes()[0].path(), "/api/orders/{id}");
         assert_eq!(response.body(), b"order:order-1");
+    }
+
+    #[test]
+    fn include_router_preserves_route_specific_middleware_with_prefix() {
+        let route = Route::new(Method::Get, "/orders/{id}", |request| {
+            Response::ok(request.header("x-order-id").unwrap_or_default())
+        })
+        .with_request_middleware(|request| {
+            let order_id = request.path_param("id").unwrap_or_default().to_owned();
+            request.with_header("x-order-id", order_id)
+        });
+
+        let mut child = Router::new();
+        child.register_route(route);
+
+        let mut router = Router::new();
+        router.include_router_with_prefix("/api", child);
+
+        let response = router.handle(Request::new(Method::Get, "/api/orders/order-1"));
+
+        assert_eq!(router.routes()[0].path(), "/api/orders/{id}");
+        assert_eq!(router.routes()[0].request_middleware_len(), 1);
+        assert_eq!(response.body(), b"order-1");
     }
 
     #[test]
@@ -1383,6 +1457,36 @@ mod tests {
         assert_eq!(response.body(), b"/orders");
         assert_eq!(response.header("x-path"), Some("/orders"));
         assert_eq!(response.header("access-control-allow-origin"), Some("*"));
+    }
+
+    #[test]
+    fn async_route_specific_middleware_runs_around_handler() {
+        let route = AsyncRoute::new(Method::Get, "/orders/{id}", |request| {
+            async_response(async move {
+                Response::ok(request.header("x-order-id").unwrap_or_default().to_owned())
+            })
+        })
+        .with_request_middleware(|request| {
+            let order_id = request.path_param("id").unwrap_or_default().to_owned();
+            request.with_header("x-order-id", order_id)
+        })
+        .with_response_middleware(|_, response| response.with_header("x-order", "route"));
+
+        let mut router = AsyncRouter::new();
+        router.add_response_middleware(|_, response| response.with_header("x-order", "router"));
+        router.register_route(route);
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/orders/order-1")));
+        let order_headers = response
+            .headers()
+            .iter()
+            .filter_map(|(name, value)| (name == "x-order").then_some(value.as_str()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(router.routes()[0].request_middleware_len(), 1);
+        assert_eq!(router.routes()[0].response_middleware_len(), 1);
+        assert_eq!(response.body(), b"order-1");
+        assert_eq!(order_headers, vec!["route", "router"]);
     }
 
     #[test]

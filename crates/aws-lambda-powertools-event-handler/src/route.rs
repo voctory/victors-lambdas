@@ -2,7 +2,7 @@
 
 use std::{fmt, future::Future, pin::Pin};
 
-use crate::{Method, Request, Response};
+use crate::{Method, Request, RequestMiddleware, Response, ResponseMiddleware};
 
 /// Function signature used by HTTP routes.
 pub type Handler = dyn Fn(&Request) -> Response + Send + Sync + 'static;
@@ -82,6 +82,8 @@ pub struct Route {
     path: String,
     pattern: PathPattern,
     handler: Box<Handler>,
+    request_middleware: Vec<Box<RequestMiddleware>>,
+    response_middleware: Vec<Box<ResponseMiddleware>>,
 }
 
 impl Route {
@@ -99,6 +101,8 @@ impl Route {
             pattern: PathPattern::parse(&path),
             path,
             handler: Box::new(handler),
+            request_middleware: Vec::new(),
+            response_middleware: Vec::new(),
         }
     }
 
@@ -127,6 +131,62 @@ impl Route {
         (self.handler)(request)
     }
 
+    /// Returns the number of route-specific request middleware functions.
+    #[must_use]
+    pub fn request_middleware_len(&self) -> usize {
+        self.request_middleware.len()
+    }
+
+    /// Returns the number of route-specific response middleware functions.
+    #[must_use]
+    pub fn response_middleware_len(&self) -> usize {
+        self.response_middleware.len()
+    }
+
+    /// Returns a copy with route-specific request middleware appended.
+    ///
+    /// Route-specific request middleware runs after route matching and path
+    /// parameter capture, but before request validation and the route handler.
+    #[must_use]
+    pub fn with_request_middleware(
+        mut self,
+        middleware: impl Fn(Request) -> Request + Send + Sync + 'static,
+    ) -> Self {
+        self.add_request_middleware(middleware);
+        self
+    }
+
+    /// Adds route-specific request middleware.
+    pub fn add_request_middleware(
+        &mut self,
+        middleware: impl Fn(Request) -> Request + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.request_middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Returns a copy with route-specific response middleware appended.
+    ///
+    /// Route-specific response middleware runs after the route handler and
+    /// before router-level response middleware.
+    #[must_use]
+    pub fn with_response_middleware(
+        mut self,
+        middleware: impl Fn(&Request, Response) -> Response + Send + Sync + 'static,
+    ) -> Self {
+        self.add_response_middleware(middleware);
+        self
+    }
+
+    /// Adds route-specific response middleware.
+    pub fn add_response_middleware(
+        &mut self,
+        middleware: impl Fn(&Request, Response) -> Response + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.response_middleware.push(Box::new(middleware));
+        self
+    }
+
     pub(crate) fn match_request(&self, method: Method, path: &str) -> Option<RouteMatchData> {
         let method_score = self.method.match_score(method)?;
         let path_params = self.pattern.matches(path)?;
@@ -139,6 +199,24 @@ impl Route {
 
     pub(crate) fn path_precedence(&self) -> &[u8] {
         self.pattern.precedence()
+    }
+
+    pub(crate) fn apply_request_middleware(&self, mut request: Request) -> Request {
+        for middleware in &self.request_middleware {
+            request = middleware(request);
+        }
+        request
+    }
+
+    pub(crate) fn apply_response_middleware(
+        &self,
+        request: &Request,
+        mut response: Response,
+    ) -> Response {
+        for middleware in &self.response_middleware {
+            response = middleware(request, response);
+        }
+        response
     }
 
     pub(crate) fn with_path_prefix(mut self, prefix: &str) -> Self {
@@ -155,6 +233,8 @@ impl fmt::Debug for Route {
             .debug_struct("Route")
             .field("method", &self.method)
             .field("path", &self.path)
+            .field("request_middleware_len", &self.request_middleware.len())
+            .field("response_middleware_len", &self.response_middleware.len())
             .finish_non_exhaustive()
     }
 }
@@ -168,6 +248,8 @@ pub struct AsyncRoute {
     path: String,
     pattern: PathPattern,
     handler: Box<AsyncHandler>,
+    request_middleware: Vec<Box<RequestMiddleware>>,
+    response_middleware: Vec<Box<ResponseMiddleware>>,
 }
 
 impl AsyncRoute {
@@ -185,6 +267,8 @@ impl AsyncRoute {
             pattern: PathPattern::parse(&path),
             path,
             handler: Box::new(handler),
+            request_middleware: Vec::new(),
+            response_middleware: Vec::new(),
         }
     }
 
@@ -212,6 +296,62 @@ impl AsyncRoute {
         (self.handler)(request)
     }
 
+    /// Returns the number of route-specific request middleware functions.
+    #[must_use]
+    pub fn request_middleware_len(&self) -> usize {
+        self.request_middleware.len()
+    }
+
+    /// Returns the number of route-specific response middleware functions.
+    #[must_use]
+    pub fn response_middleware_len(&self) -> usize {
+        self.response_middleware.len()
+    }
+
+    /// Returns a copy with route-specific request middleware appended.
+    ///
+    /// Route-specific request middleware runs after route matching and path
+    /// parameter capture, but before request validation and the route handler.
+    #[must_use]
+    pub fn with_request_middleware(
+        mut self,
+        middleware: impl Fn(Request) -> Request + Send + Sync + 'static,
+    ) -> Self {
+        self.add_request_middleware(middleware);
+        self
+    }
+
+    /// Adds route-specific request middleware.
+    pub fn add_request_middleware(
+        &mut self,
+        middleware: impl Fn(Request) -> Request + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.request_middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Returns a copy with route-specific response middleware appended.
+    ///
+    /// Route-specific response middleware runs after the route handler and
+    /// before router-level response middleware.
+    #[must_use]
+    pub fn with_response_middleware(
+        mut self,
+        middleware: impl Fn(&Request, Response) -> Response + Send + Sync + 'static,
+    ) -> Self {
+        self.add_response_middleware(middleware);
+        self
+    }
+
+    /// Adds route-specific response middleware.
+    pub fn add_response_middleware(
+        &mut self,
+        middleware: impl Fn(&Request, Response) -> Response + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.response_middleware.push(Box::new(middleware));
+        self
+    }
+
     pub(crate) fn match_request(&self, method: Method, path: &str) -> Option<RouteMatchData> {
         let method_score = self.method.match_score(method)?;
         let path_params = self.pattern.matches(path)?;
@@ -224,6 +364,24 @@ impl AsyncRoute {
 
     pub(crate) fn path_precedence(&self) -> &[u8] {
         self.pattern.precedence()
+    }
+
+    pub(crate) fn apply_request_middleware(&self, mut request: Request) -> Request {
+        for middleware in &self.request_middleware {
+            request = middleware(request);
+        }
+        request
+    }
+
+    pub(crate) fn apply_response_middleware(
+        &self,
+        request: &Request,
+        mut response: Response,
+    ) -> Response {
+        for middleware in &self.response_middleware {
+            response = middleware(request, response);
+        }
+        response
     }
 
     pub(crate) fn with_path_prefix(mut self, prefix: &str) -> Self {
@@ -240,6 +398,8 @@ impl fmt::Debug for AsyncRoute {
             .debug_struct("AsyncRoute")
             .field("method", &self.method)
             .field("path", &self.path)
+            .field("request_middleware_len", &self.request_middleware.len())
+            .field("response_middleware_len", &self.response_middleware.len())
             .finish_non_exhaustive()
     }
 }
