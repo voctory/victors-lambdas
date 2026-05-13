@@ -2,6 +2,8 @@
 
 #[cfg(feature = "aws-lambda-events")]
 mod apigateway;
+#[cfg(feature = "compression")]
+mod compression;
 mod cors;
 mod method;
 mod request;
@@ -13,6 +15,11 @@ mod router;
 pub use apigateway::{
     ApiGatewayAdapterError, ApiGatewayAdapterResult, request_from_apigw_v1, request_from_apigw_v2,
     response_to_apigw_v1, response_to_apigw_v2,
+};
+#[cfg(feature = "compression")]
+pub use compression::{
+    CompressionConfig, CompressionEncoding, DEFAULT_COMPRESSION_THRESHOLD, compress_response,
+    compression_middleware,
 };
 pub use cors::CorsConfig;
 pub use method::{Method, ParseMethodError};

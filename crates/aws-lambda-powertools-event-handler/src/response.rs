@@ -72,6 +72,21 @@ impl Response {
         self
     }
 
+    /// Removes response headers that match a case-insensitive name.
+    #[must_use]
+    pub fn without_header(mut self, name: &str) -> Self {
+        self.headers
+            .retain(|(header_name, _)| !header_name.eq_ignore_ascii_case(name));
+        self
+    }
+
+    /// Replaces all response headers matching `name` with one new value.
+    #[must_use]
+    pub fn with_replaced_header(self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        let name = name.into();
+        self.without_header(&name).with_header(name, value)
+    }
+
     /// Sets the response body bytes.
     #[must_use]
     pub fn with_body(mut self, body: impl Into<Vec<u8>>) -> Self {

@@ -16,6 +16,7 @@ default = []
 all = [
     "batch",
     "event-handler",
+    "event-handler-compression",
     "idempotency",
     "logger",
     "metrics",
@@ -30,6 +31,10 @@ event-handler = ["dep:aws-lambda-powertools-event-handler"]
 event-handler-aws-lambda-events = [
     "event-handler",
     "aws-lambda-powertools-event-handler/aws-lambda-events",
+]
+event-handler-compression = [
+    "event-handler",
+    "aws-lambda-powertools-event-handler/compression",
 ]
 idempotency = ["dep:aws-lambda-powertools-idempotency"]
 logger = ["dep:aws-lambda-powertools-logger"]
