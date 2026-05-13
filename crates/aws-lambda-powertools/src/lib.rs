@@ -96,6 +96,9 @@ pub mod prelude {
         RuleAction,
     };
 
+    #[cfg(feature = "feature-flags-appconfig")]
+    pub use aws_lambda_powertools_feature_flags::AppConfigFeatureFlagStore;
+
     #[cfg(feature = "idempotency")]
     pub use aws_lambda_powertools_idempotency::{
         AsyncIdempotency, AsyncIdempotencyStore, Idempotency, IdempotencyConfig, IdempotencyError,

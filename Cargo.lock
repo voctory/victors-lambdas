@@ -119,6 +119,7 @@ dependencies = [
 name = "aws-lambda-powertools-feature-flags"
 version = "0.1.0"
 dependencies = [
+ "aws-lambda-powertools-parameters",
  "futures-executor",
  "indexmap 2.14.0",
  "serde",

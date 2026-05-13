@@ -8,14 +8,23 @@ This first Rust implementation includes:
 
 - typed feature flag configuration parsing from JSON
 - boolean and JSON-valued features
-- an in-memory store plus `FeatureFlagStore` and `AsyncFeatureFlagStore` traits for custom stores
+- an in-memory store, an optional AppConfig store, plus `FeatureFlagStore` and `AsyncFeatureFlagStore` traits for custom
+  stores
 - single-feature evaluation with caller-provided defaults
 - enabled-feature listing for boolean flags
 - common context comparators, including equality, ordering, string prefix/suffix, collection membership, and modulo
   ranges
 
-AppConfig-backed stores and time-window rules are still planned. Use the Parameters utility for simple static values
-that do not need rule evaluation.
+Time-window rules are still planned. Use the Parameters utility for simple static values that do not need rule
+evaluation.
+
+## AppConfig
+
+Enable `feature-flags-appconfig` on the umbrella crate to load a feature flag configuration from AWS AppConfig. The store
+wraps the Parameters utility's AppConfig provider and is evaluated with `AsyncFeatureFlags`.
+
+Use `with_envelope("features")` for a top-level object key or `with_envelope("/runtime/features")` for a JSON Pointer
+inside a larger AppConfig document.
 
 ## Example
 
