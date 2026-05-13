@@ -140,6 +140,13 @@ impl Route {
     pub(crate) fn path_precedence(&self) -> &[u8] {
         self.pattern.precedence()
     }
+
+    pub(crate) fn with_path_prefix(mut self, prefix: &str) -> Self {
+        let path = join_path_prefix(prefix, &self.path);
+        self.pattern = PathPattern::parse(&path);
+        self.path = path;
+        self
+    }
 }
 
 impl fmt::Debug for Route {
@@ -217,6 +224,13 @@ impl AsyncRoute {
 
     pub(crate) fn path_precedence(&self) -> &[u8] {
         self.pattern.precedence()
+    }
+
+    pub(crate) fn with_path_prefix(mut self, prefix: &str) -> Self {
+        let path = join_path_prefix(prefix, &self.path);
+        self.pattern = PathPattern::parse(&path);
+        self.path = path;
+        self
     }
 }
 
@@ -308,5 +322,19 @@ fn split_path(path: &str) -> Vec<&str> {
         Vec::new()
     } else {
         path.strip_prefix('/').unwrap_or(path).split('/').collect()
+    }
+}
+
+fn join_path_prefix(prefix: &str, path: &str) -> String {
+    let prefix = prefix.trim_matches('/');
+    if prefix.is_empty() {
+        return path.to_owned();
+    }
+
+    let path = path.trim_matches('/');
+    if path.is_empty() {
+        format!("/{prefix}")
+    } else {
+        format!("/{prefix}/{path}")
     }
 }

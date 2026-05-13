@@ -101,6 +101,11 @@ impl ValidationConfig {
 
         Ok(())
     }
+
+    pub(crate) fn append(&mut self, other: Self) {
+        self.request_validators.extend(other.request_validators);
+        self.response_validators.extend(other.response_validators);
+    }
 }
 
 pub(crate) fn request_validation_response(error: &ValidationError) -> Response {

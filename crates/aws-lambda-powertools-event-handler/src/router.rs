@@ -242,6 +242,52 @@ impl Router {
         self.add_route(Method::Any, path, handler)
     }
 
+    /// Includes routes, middleware, and validation hooks from another router.
+    ///
+    /// Included routes behave as if they were registered after this router's
+    /// existing routes. The included router's CORS configuration is not merged.
+    pub fn include_router(&mut self, router: Router) -> &mut Self {
+        self.include_router_with_prefix("", router)
+    }
+
+    /// Includes another router, prefixing each included route path.
+    ///
+    /// A prefix of `/api` turns an included route `/orders/{id}` into
+    /// `/api/orders/{id}`. Included middleware runs after this router's
+    /// existing middleware. The included router's CORS configuration is not
+    /// merged.
+    pub fn include_router_with_prefix(
+        &mut self,
+        prefix: impl AsRef<str>,
+        router: Router,
+    ) -> &mut Self {
+        let Router {
+            routes,
+            cors: _,
+            request_middleware,
+            response_middleware,
+            #[cfg(feature = "validation")]
+            validation,
+        } = router;
+        let prefix = prefix.as_ref();
+
+        self.routes.extend(
+            routes
+                .into_iter()
+                .map(|route| route.with_path_prefix(prefix)),
+        );
+        self.request_middleware.extend(request_middleware);
+        self.response_middleware.extend(response_middleware);
+        #[cfg(feature = "validation")]
+        if let Some(validation) = validation {
+            self.validation
+                .get_or_insert_with(ValidationConfig::new)
+                .append(validation);
+        }
+
+        self
+    }
+
     /// Returns the most specific route match for a request.
     #[must_use]
     pub fn find(&self, request: &Request) -> Option<RouteMatch<'_>> {
@@ -556,6 +602,52 @@ impl AsyncRouter {
         handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
     ) -> &mut Self {
         self.add_route(Method::Any, path, handler)
+    }
+
+    /// Includes routes, middleware, and validation hooks from another asynchronous router.
+    ///
+    /// Included routes behave as if they were registered after this router's
+    /// existing routes. The included router's CORS configuration is not merged.
+    pub fn include_router(&mut self, router: AsyncRouter) -> &mut Self {
+        self.include_router_with_prefix("", router)
+    }
+
+    /// Includes another asynchronous router, prefixing each included route path.
+    ///
+    /// A prefix of `/api` turns an included route `/orders/{id}` into
+    /// `/api/orders/{id}`. Included middleware runs after this router's
+    /// existing middleware. The included router's CORS configuration is not
+    /// merged.
+    pub fn include_router_with_prefix(
+        &mut self,
+        prefix: impl AsRef<str>,
+        router: AsyncRouter,
+    ) -> &mut Self {
+        let AsyncRouter {
+            routes,
+            cors: _,
+            request_middleware,
+            response_middleware,
+            #[cfg(feature = "validation")]
+            validation,
+        } = router;
+        let prefix = prefix.as_ref();
+
+        self.routes.extend(
+            routes
+                .into_iter()
+                .map(|route| route.with_path_prefix(prefix)),
+        );
+        self.request_middleware.extend(request_middleware);
+        self.response_middleware.extend(response_middleware);
+        #[cfg(feature = "validation")]
+        if let Some(validation) = validation {
+            self.validation
+                .get_or_insert_with(ValidationConfig::new)
+                .append(validation);
+        }
+
+        self
     }
 
     /// Returns the most specific route match for a request.
@@ -980,6 +1072,43 @@ mod tests {
         assert_eq!(response.header("access-control-allow-origin"), Some("*"));
     }
 
+    #[test]
+    fn include_router_with_prefix_routes_child_paths() {
+        let mut child = Router::new();
+        child.get("/orders/{id}", |request| {
+            Response::ok(format!(
+                "order:{}",
+                request.path_param("id").expect("id is captured")
+            ))
+        });
+
+        let mut router = Router::new();
+        router.include_router_with_prefix("/api", child);
+
+        let response = router.handle(Request::new(Method::Get, "/api/orders/order-1"));
+
+        assert_eq!(router.len(), 1);
+        assert_eq!(router.routes()[0].path(), "/api/orders/{id}");
+        assert_eq!(response.body(), b"order:order-1");
+    }
+
+    #[test]
+    fn include_router_merges_middleware_after_existing_middleware() {
+        let mut child = Router::new();
+        child.add_response_middleware(|_, response| response.with_header("x-child", "1"));
+        child.get("/orders", |_| Response::ok("orders"));
+
+        let mut router = Router::new();
+        router.add_response_middleware(|_, response| response.with_header("x-parent", "1"));
+        router.include_router(child);
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(router.response_middleware_len(), 2);
+        assert_eq!(response.header("x-parent"), Some("1"));
+        assert_eq!(response.header("x-child"), Some("1"));
+    }
+
     #[cfg(feature = "validation")]
     #[test]
     fn request_validation_runs_after_route_matching_and_before_handler() {
@@ -1020,6 +1149,37 @@ mod tests {
         assert_eq!(
             response.body(),
             b"Response validation failed: body must be ok"
+        );
+    }
+
+    #[cfg(feature = "validation")]
+    #[test]
+    fn include_router_merges_validation_hooks() {
+        let mut child = Router::new();
+        child.add_request_validator(|request| {
+            Validator::new().ensure(
+                "tenant",
+                request.header("x-tenant").is_some(),
+                "tenant header is required",
+            )
+        });
+        child.get("/orders", |_| Response::ok("orders"));
+
+        let mut router = Router::new();
+        router.include_router(child);
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(
+            router
+                .validation()
+                .map(ValidationConfig::request_validators_len),
+            Some(1)
+        );
+        assert_eq!(response.status_code(), 422);
+        assert_eq!(
+            response.body(),
+            b"Request validation failed: tenant header is required"
         );
     }
 
@@ -1097,5 +1257,27 @@ mod tests {
         assert_eq!(response.body(), b"/orders");
         assert_eq!(response.header("x-path"), Some("/orders"));
         assert_eq!(response.header("access-control-allow-origin"), Some("*"));
+    }
+
+    #[test]
+    fn async_include_router_with_prefix_routes_child_paths() {
+        let mut child = AsyncRouter::new();
+        child.get("/orders/{id}", |request| {
+            async_response(async move {
+                Response::ok(format!(
+                    "order:{}",
+                    request.path_param("id").expect("id is captured")
+                ))
+            })
+        });
+
+        let mut router = AsyncRouter::new();
+        router.include_router_with_prefix("api", child);
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/api/orders/order-1")));
+
+        assert_eq!(router.len(), 1);
+        assert_eq!(router.routes()[0].path(), "/api/orders/{id}");
+        assert_eq!(response.body(), b"order:order-1");
     }
 }
