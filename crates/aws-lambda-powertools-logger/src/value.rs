@@ -1,6 +1,6 @@
 //! JSON-compatible log field values.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
 /// A deterministic map of structured log fields.
@@ -142,6 +142,29 @@ impl LogValue {
                 }
                 output.push('}');
             }
+        }
+    }
+
+    pub(crate) fn redact_keys(&mut self, keys: &BTreeSet<String>) {
+        match &mut self.kind {
+            LogValueKind::Array(values) => {
+                for value in values {
+                    value.redact_keys(keys);
+                }
+            }
+            LogValueKind::Object(fields) => {
+                for (key, value) in fields {
+                    if keys.contains(key) {
+                        *value = Self::string("[REDACTED]");
+                    } else {
+                        value.redact_keys(keys);
+                    }
+                }
+            }
+            LogValueKind::Null
+            | LogValueKind::Bool(_)
+            | LogValueKind::Number(_)
+            | LogValueKind::String(_) => {}
         }
     }
 

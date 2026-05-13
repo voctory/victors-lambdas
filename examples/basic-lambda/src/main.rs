@@ -8,9 +8,9 @@ use std::{
 use aws_lambda_powertools::prelude::{
     BatchProcessor, BatchRecord, CachePolicy, EventParser, IdempotencyConfig, IdempotencyKey,
     IdempotencyRecord, IdempotencyStore, InMemoryIdempotencyStore, InMemoryParameterProvider,
-    LogLevel, Logger, LoggerConfig, Method, MetricResolution, MetricUnit, Metrics, MetricsConfig,
-    Parameters, Request, Response, Router, ServiceConfig, Tracer, TracerConfig, Validate,
-    ValidationResult, Validator,
+    LambdaContextFields, LogLevel, Logger, LoggerConfig, Method, MetricResolution, MetricUnit,
+    Metrics, MetricsConfig, Parameters, Request, Response, Router, ServiceConfig, Tracer,
+    TracerConfig, Validate, ValidationResult, Validator,
 };
 
 struct Order {
@@ -27,8 +27,17 @@ impl Validate for Order {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let service = ServiceConfig::new("basic-lambda");
-    let logger =
-        Logger::with_config(LoggerConfig::new(service.service_name()).with_level(LogLevel::Info));
+    let context = LambdaContextFields::new("request-1", service.service_name())
+        .with_function_memory_size(128)
+        .with_cold_start(true);
+    let logger = Logger::with_config(
+        LoggerConfig::new(service.service_name())
+            .with_level(LogLevel::Info)
+            .with_sample_rate(0.0),
+    )
+    .with_correlation_id("correlation-1")
+    .with_lambda_context(&context)
+    .with_redacted_field("table");
 
     let order = EventParser::new()
         .parse(Order {

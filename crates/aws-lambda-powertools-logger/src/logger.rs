@@ -1,8 +1,11 @@
 //! Logger type and log levels.
 
+use std::collections::BTreeSet;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use aws_lambda_powertools_core::env;
 
-use crate::{LogEntry, LogFields, LogValue, LoggerConfig, normalize_key};
+use crate::{LambdaLogContext, LogEntry, LogFields, LogValue, LoggerConfig, normalize_key};
 
 /// Log severity level.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -58,6 +61,8 @@ impl LogLevel {
 pub struct Logger {
     config: LoggerConfig,
     fields: LogFields,
+    redacted_fields: BTreeSet<String>,
+    sampled: bool,
 }
 
 impl Logger {
@@ -70,9 +75,12 @@ impl Logger {
     /// Creates a logger with explicit configuration.
     #[must_use]
     pub fn with_config(config: LoggerConfig) -> Self {
+        let sampled = should_sample(config.sample_rate());
         Self {
             config,
             fields: LogFields::new(),
+            redacted_fields: BTreeSet::new(),
+            sampled,
         }
     }
 
@@ -94,6 +102,28 @@ impl Logger {
         self.config.level()
     }
 
+    /// Returns the effective log level after debug sampling is applied.
+    #[must_use]
+    pub fn effective_level(&self) -> LogLevel {
+        if self.sampled && self.config.level() > LogLevel::Debug {
+            LogLevel::Debug
+        } else {
+            self.config.level()
+        }
+    }
+
+    /// Returns the configured debug sampling rate.
+    #[must_use]
+    pub fn sample_rate(&self) -> f64 {
+        self.config.sample_rate()
+    }
+
+    /// Returns whether this logger is currently sampled into debug logging.
+    #[must_use]
+    pub fn is_sampled(&self) -> bool {
+        self.sampled
+    }
+
     /// Returns whether incoming events should be logged.
     #[must_use]
     pub fn logs_events(&self) -> bool {
@@ -104,6 +134,12 @@ impl Logger {
     #[must_use]
     pub fn persistent_fields(&self) -> &LogFields {
         &self.fields
+    }
+
+    /// Returns the field names that are redacted recursively before rendering.
+    #[must_use]
+    pub fn redacted_fields(&self) -> &BTreeSet<String> {
+        &self.redacted_fields
     }
 
     /// Returns a copy of the logger with an additional persistent field.
@@ -128,6 +164,27 @@ impl Logger {
         V: Into<LogValue>,
     {
         self.append_fields(fields);
+        self
+    }
+
+    /// Returns a copy of the logger with a persistent correlation id.
+    #[must_use]
+    pub fn with_correlation_id(mut self, correlation_id: impl Into<String>) -> Self {
+        self.set_correlation_id(correlation_id);
+        self
+    }
+
+    /// Returns a copy of the logger enriched with Lambda context fields.
+    #[must_use]
+    pub fn with_lambda_context(mut self, context: &impl LambdaLogContext) -> Self {
+        self.append_lambda_context(context);
+        self
+    }
+
+    /// Returns a copy of the logger with a redacted field name.
+    #[must_use]
+    pub fn with_redacted_field(mut self, key: impl Into<String>) -> Self {
+        self.redact_field(key);
         self
     }
 
@@ -160,6 +217,92 @@ impl Logger {
         self
     }
 
+    /// Sets a persistent correlation id.
+    ///
+    /// Passing a blank value removes the current correlation id.
+    pub fn set_correlation_id(&mut self, correlation_id: impl Into<String>) -> &mut Self {
+        if let Some(correlation_id) = normalize_key(correlation_id) {
+            self.fields
+                .insert("correlation_id".to_owned(), correlation_id.into());
+        } else {
+            self.fields.remove("correlation_id");
+        }
+        self
+    }
+
+    /// Returns the current persistent correlation id value.
+    #[must_use]
+    pub fn correlation_id(&self) -> Option<&LogValue> {
+        self.fields.get("correlation_id")
+    }
+
+    /// Clears the persistent correlation id.
+    pub fn clear_correlation_id(&mut self) -> Option<LogValue> {
+        self.fields.remove("correlation_id")
+    }
+
+    /// Appends Lambda context fields to persistent log fields.
+    pub fn append_lambda_context(&mut self, context: &impl LambdaLogContext) -> &mut Self {
+        self.append_field("function_request_id", context.function_request_id());
+        self.append_field("function_name", context.function_name());
+        if let Some(function_version) = context.function_version() {
+            self.append_field("function_version", function_version);
+        }
+        if let Some(function_arn) = context.function_arn() {
+            self.append_field("function_arn", function_arn);
+        }
+        if let Some(function_memory_size) = context.function_memory_size() {
+            self.append_field("function_memory_size", function_memory_size);
+        }
+        if let Some(cold_start) = context.cold_start() {
+            self.append_field("cold_start", cold_start);
+        }
+        self
+    }
+
+    /// Redacts a field by name before rendering.
+    ///
+    /// Redaction is recursive, so matching keys inside objects and arrays are
+    /// replaced with `"[REDACTED]"`.
+    pub fn redact_field(&mut self, key: impl Into<String>) -> &mut Self {
+        if let Some(key) = normalize_key(key) {
+            self.redacted_fields.insert(key);
+        }
+        self
+    }
+
+    /// Redacts multiple field names before rendering.
+    pub fn redact_fields<I, K>(&mut self, keys: I) -> &mut Self
+    where
+        I: IntoIterator<Item = K>,
+        K: Into<String>,
+    {
+        for key in keys {
+            self.redact_field(key);
+        }
+        self
+    }
+
+    /// Clears configured redacted field names.
+    pub fn clear_redacted_fields(&mut self) {
+        self.redacted_fields.clear();
+    }
+
+    /// Recomputes the debug sampling decision.
+    pub fn refresh_sampling_decision(&mut self) -> &mut Self {
+        self.sampled = should_sample(self.config.sample_rate());
+        self
+    }
+
+    /// Overrides the current debug sampling decision.
+    ///
+    /// This is useful for deterministic tests and handler integrations that
+    /// make the sampling decision externally.
+    pub fn set_sampling_decision(&mut self, sampled: bool) -> &mut Self {
+        self.sampled = sampled;
+        self
+    }
+
     /// Removes a persistent field from the logger.
     pub fn remove_field(&mut self, key: &str) -> Option<LogValue> {
         self.fields.remove(key)
@@ -173,7 +316,7 @@ impl Logger {
     /// Returns whether entries at `level` are enabled by the configured threshold.
     #[must_use]
     pub fn is_enabled(&self, level: LogLevel) -> bool {
-        level >= self.level()
+        level >= self.effective_level()
     }
 
     /// Creates a structured log entry at the provided severity level.
@@ -241,6 +384,9 @@ impl Logger {
         fields.insert("level".to_owned(), entry.level().as_str().into());
         fields.insert("message".to_owned(), entry.message().into());
         fields.insert("service".to_owned(), self.service_name().into());
+        if self.sample_rate() > 0.0 {
+            fields.insert("sampling_rate".to_owned(), self.sample_rate().into());
+        }
 
         if self.logs_events() {
             if let Some(event) = entry.event_ref() {
@@ -248,7 +394,12 @@ impl Logger {
             }
         }
 
-        Some(LogValue::from(fields).to_json_string())
+        let mut value = LogValue::from(fields);
+        if !self.redacted_fields.is_empty() {
+            value.redact_keys(&self.redacted_fields);
+        }
+
+        Some(value.to_json_string())
     }
 }
 
@@ -258,9 +409,27 @@ impl Default for Logger {
     }
 }
 
+fn should_sample(sample_rate: f64) -> bool {
+    if sample_rate <= 0.0 {
+        false
+    } else if sample_rate >= 1.0 {
+        true
+    } else {
+        sample_draw() < sample_rate
+    }
+}
+
+fn sample_draw() -> f64 {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |duration| duration.subsec_nanos());
+
+    f64::from(nanos % 1_000_000) / 1_000_000.0
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{LogLevel, LogValue, Logger, LoggerConfig};
+    use crate::{LambdaContextFields, LogLevel, LogValue, Logger, LoggerConfig};
 
     #[test]
     fn log_levels_parse_names_and_filter_by_threshold() {
@@ -284,6 +453,34 @@ mod tests {
     }
 
     #[test]
+    fn sampling_decision_enables_debug_logs_and_renders_rate() {
+        let mut logger = Logger::with_config(
+            LoggerConfig::new("orders")
+                .with_level(LogLevel::Info)
+                .with_sample_rate(0.5),
+        );
+
+        logger.set_sampling_decision(true);
+
+        assert_eq!(logger.effective_level(), LogLevel::Debug);
+        assert!(logger.is_enabled(LogLevel::Debug));
+        assert!(!logger.is_enabled(LogLevel::Trace));
+        assert_eq!(
+            logger.debug("details").render(),
+            Some(
+                "{\"level\":\"DEBUG\",\"message\":\"details\",\
+                 \"sampling_rate\":0.5,\"service\":\"orders\"}"
+                    .replace(['\n', ' '], "")
+            )
+        );
+
+        logger.set_sampling_decision(false);
+
+        assert_eq!(logger.effective_level(), LogLevel::Info);
+        assert_eq!(logger.debug("details").render(), None);
+    }
+
+    #[test]
     fn persistent_and_temporary_fields_are_rendered() {
         let mut logger = Logger::with_config(LoggerConfig::new("orders"))
             .with_field("cold_start", true)
@@ -300,6 +497,64 @@ mod tests {
             Some(
                 "{\"attempt\":2,\"cold_start\":true,\"level\":\"INFO\",\
                  \"message\":\"created\",\"request_id\":\"override\",\
+                 \"service\":\"orders\"}"
+                    .replace(['\n', ' '], "")
+            )
+        );
+    }
+
+    #[test]
+    fn correlation_id_and_lambda_context_are_rendered() {
+        let context = LambdaContextFields::new("req-1", "orders-fn")
+            .with_function_version("$LATEST")
+            .with_function_arn("arn:aws:lambda:us-east-1:123456789012:function:orders-fn")
+            .with_function_memory_size(128)
+            .with_cold_start(true);
+        let mut logger = Logger::with_config(LoggerConfig::new("orders"))
+            .with_correlation_id("corr-1")
+            .with_lambda_context(&context);
+
+        assert_eq!(logger.correlation_id(), Some(&LogValue::from("corr-1")));
+        assert_eq!(
+            logger.info("created").render(),
+            Some(
+                "{\"cold_start\":true,\"correlation_id\":\"corr-1\",\
+                 \"function_arn\":\"arn:aws:lambda:us-east-1:123456789012:function:orders-fn\",\
+                 \"function_memory_size\":128,\"function_name\":\"orders-fn\",\
+                 \"function_request_id\":\"req-1\",\"function_version\":\"$LATEST\",\
+                 \"level\":\"INFO\",\"message\":\"created\",\"service\":\"orders\"}"
+                    .replace(['\n', ' '], "")
+            )
+        );
+
+        assert_eq!(
+            logger.clear_correlation_id(),
+            Some(LogValue::from("corr-1"))
+        );
+        assert_eq!(logger.correlation_id(), None);
+    }
+
+    #[test]
+    fn redacted_fields_are_replaced_recursively() {
+        let logger = Logger::with_config(LoggerConfig::new("orders").with_event_logging(true))
+            .with_redacted_field("password");
+
+        assert_eq!(
+            logger
+                .info("created")
+                .field("password", "top-secret")
+                .event(LogValue::object([(
+                    "user",
+                    LogValue::object([
+                        ("id", LogValue::from("user-1")),
+                        ("password", LogValue::from("nested-secret")),
+                    ]),
+                )]))
+                .render(),
+            Some(
+                "{\"event\":{\"user\":{\"id\":\"user-1\",\
+                 \"password\":\"[REDACTED]\"}},\"level\":\"INFO\",\
+                 \"message\":\"created\",\"password\":\"[REDACTED]\",\
                  \"service\":\"orders\"}"
                     .replace(['\n', ' '], "")
             )

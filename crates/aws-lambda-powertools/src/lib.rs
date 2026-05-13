@@ -70,7 +70,8 @@ pub mod prelude {
 
     #[cfg(feature = "logger")]
     pub use aws_lambda_powertools_logger::{
-        LogEntry, LogFields, LogLevel, LogValue, Logger, LoggerConfig,
+        LambdaContextFields, LambdaLogContext, LogEntry, LogFields, LogLevel, LogValue, Logger,
+        LoggerConfig,
     };
 
     #[cfg(feature = "metrics")]
