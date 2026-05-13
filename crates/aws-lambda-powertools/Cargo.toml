@@ -33,6 +33,7 @@ event-handler-aws-lambda-events = [
 ]
 idempotency = ["dep:aws-lambda-powertools-idempotency"]
 logger = ["dep:aws-lambda-powertools-logger"]
+logger-tracing = ["logger", "aws-lambda-powertools-logger/tracing"]
 metrics = ["dep:aws-lambda-powertools-metrics"]
 parameters = ["dep:aws-lambda-powertools-parameters"]
 parser = ["dep:aws-lambda-powertools-parser"]

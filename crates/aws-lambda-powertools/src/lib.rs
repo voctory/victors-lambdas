@@ -84,6 +84,9 @@ pub mod prelude {
         LogLevel, LogRedactor, LogValue, Logger, LoggerConfig,
     };
 
+    #[cfg(feature = "logger-tracing")]
+    pub use aws_lambda_powertools_logger::LoggerLayer;
+
     #[cfg(feature = "metrics")]
     pub use aws_lambda_powertools_metrics::{
         MetadataValue, Metric, MetricResolution, MetricUnit, Metrics, MetricsConfig, MetricsError,

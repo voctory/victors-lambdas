@@ -10,9 +10,14 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = []
+tracing = ["dep:tracing", "dep:tracing-subscriber"]
+
 [dependencies]
 aws-lambda-powertools-core.workspace = true
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", default-features = false, optional = true, features = ["registry"] }
 
 [lints]
 workspace = true
-

@@ -8,7 +8,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 - Workspace: virtual Cargo workspace with resolver `3`, Rust 2024, Rust `1.85.0`, committed `Cargo.lock`, shared lints,
   a `release-lambda` profile, and CI for fmt, clippy, test, and check.
 - Crates: one umbrella crate, `aws-lambda-powertools`, plus utility crates under `crates/`.
-- Feature flags: the umbrella crate exposes `logger`, `metrics`, `tracer`, `parameters`, `parser`,
+- Feature flags: the umbrella crate exposes `logger`, `logger-tracing`, `metrics`, `tracer`, `parameters`, `parser`,
   `parser-aws-lambda-events`, `batch`, `batch-aws-lambda-events`, `idempotency`, `validation`,
   `validation-jsonschema`, `event-handler`, `event-handler-aws-lambda-events`, and `all`.
 - Example: `examples/basic-lambda` builds against the umbrella crate with all current utility features enabled.
@@ -40,7 +40,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Workspace | Workspace layout, shared package metadata, lints, lockfile, Rust toolchain, CI, `release-lambda` profile | Release automation, changelog, publishing workflow |
 | Umbrella crate | Feature-gated re-exports and a prelude across current utility crates | Published crate metadata review and docs.rs examples |
 | Core | `ServiceConfig`, env constants and parsers, cold-start tracking, user-agent metadata | Cross-crate error conventions beyond concrete utility errors |
-| Logger | `LoggerConfig`, `LogLevel`, `Logger`, `LogEntry`, `LogValue`, `LogFormatter`, `LogRedactor`, `JsonLogFormatter`, `LambdaContextFields`, JSON rendering, persistent fields, temporary fields, event rendering toggle, level filtering, debug sampling, correlation ID helpers, Lambda context fields, key redaction, custom formatter/redaction hook APIs, stdout emission | `tracing` subscriber integration |
+| Logger | `LoggerConfig`, `LogLevel`, `Logger`, `LogEntry`, `LogValue`, `LogFormatter`, `LogRedactor`, `JsonLogFormatter`, `LambdaContextFields`, `LoggerLayer`, JSON rendering, persistent fields, temporary fields, event rendering toggle, level filtering, debug sampling, correlation ID helpers, Lambda context fields, key redaction, custom formatter/redaction hook APIs, optional `tracing` subscriber integration, stdout emission | User-facing docs/snippets |
 | Metrics | `MetricsConfig`, `Metric`, `MetricUnit`, `MetricResolution`, `MetadataValue`, EMF JSON renderer, request dimensions, default dimensions, metadata, name/value validation, service dimension, cold-start metric, high-resolution metric definitions, stdout flush API, explicit timestamp rendering/writing, opt-in overflow flush helpers, async capture helpers, CloudWatch limits | User-facing docs/snippets |
 | Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing, `TraceSegment`, `TraceValue` | Real `tracing` spans, OpenTelemetry, X-Ray propagation/export |
 | Parameters | `ParameterProvider`, `Parameters`, `Parameter`, `CachePolicy`, in-memory provider, force-fetch support, JSON transforms, and base64 binary transforms | SSM, Secrets Manager, AppConfig, DynamoDB providers, decrypt options |
@@ -55,8 +55,8 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 
 The next durable work should turn the landed primitives into Lambda-facing utilities:
 
-1. Harden logger and metrics: logger `tracing` subscriber integration, async metrics handler ergonomics, and buildable
-   docs/snippets.
+1. Harden logger and metrics: buildable user-facing docs/snippets for the implemented structured logging and EMF
+   surfaces.
 2. Replace tracer records with real `tracing` span integration, then add optional OpenTelemetry and X-Ray-compatible
    propagation/export features.
 3. Add parameter provider integrations behind feature flags. Confirm the AWS SDK MSRV impact before enabling those
@@ -72,7 +72,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | --- | --- | --- |
 | `aws-lambda-powertools` | Primary user-facing crate | Depends on support crates through optional dependencies and re-exports enabled utilities |
 | `aws-lambda-powertools-core` | Shared foundations | Keep small: config, env, cold start, metadata, and other genuine cross-crate foundations |
-| `aws-lambda-powertools-logger` | Structured logs | JSON renderer, sampling, correlation IDs, Lambda context fields, key redaction, and custom formatter/redaction hooks exist; next work should avoid forcing one subscriber setup |
+| `aws-lambda-powertools-logger` | Structured logs | JSON renderer, sampling, correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, and optional `tracing` subscriber layer exist; next work is user-facing docs and snippets |
 | `aws-lambda-powertools-metrics` | CloudWatch EMF metrics | Renderer, flush API, high-resolution metrics, default dimensions, explicit timestamps, overflow flush helpers, and async capture helpers exist; next work is user-facing docs and snippets |
 | `aws-lambda-powertools-tracer` | Tracing facade | Segment records exist; next work is integration with Rust tracing/export pipelines |
 | `aws-lambda-powertools-parameters` | Parameter retrieval | Trait, cache facade, in-memory provider, force-fetch support, and JSON/base64 transforms exist; AWS providers are next |
@@ -91,6 +91,7 @@ ergonomic for users.
 Implemented umbrella features:
 
 - `logger`
+- `logger-tracing`
 - `metrics`
 - `tracer`
 - `parameters`
@@ -165,7 +166,7 @@ Powertools conventions.
 - [ ] Add user-facing docs and snippets for implemented logger and metrics behavior.
 - [x] Add logger sampling, key redaction, correlation IDs, and Lambda context helpers.
 - [x] Add logger custom formatter/redaction hook APIs.
-- [ ] Add logger `tracing` subscriber integration.
+- [x] Add logger `tracing` subscriber integration.
 - [x] Add metrics flush ergonomics, high-resolution metrics, and default dimension helpers.
 - [x] Add metrics explicit timestamp rendering and overflow flush helpers.
 - [x] Add metrics async capture helpers.
