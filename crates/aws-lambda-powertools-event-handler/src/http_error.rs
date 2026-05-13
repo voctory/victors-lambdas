@@ -51,10 +51,31 @@ impl HttpError {
         Self::new(405, message)
     }
 
+    /// Creates a `408 Request Timeout` error.
+    #[must_use]
+    pub fn request_timeout(message: impl Into<String>) -> Self {
+        Self::new(408, message)
+    }
+
     /// Creates a `409 Conflict` error.
     #[must_use]
     pub fn conflict(message: impl Into<String>) -> Self {
         Self::new(409, message)
+    }
+
+    /// Creates a `413 Payload Too Large` error.
+    #[must_use]
+    pub fn payload_too_large(message: impl Into<String>) -> Self {
+        Self::new(413, message)
+    }
+
+    /// Creates a `413 Request Entity Too Large` error.
+    ///
+    /// This aliases [`HttpError::payload_too_large`] for compatibility with
+    /// Powertools terminology used by Python and TypeScript.
+    #[must_use]
+    pub fn request_entity_too_large(message: impl Into<String>) -> Self {
+        Self::payload_too_large(message)
     }
 
     /// Creates a `422 Unprocessable Entity` error.
@@ -67,6 +88,12 @@ impl HttpError {
     #[must_use]
     pub fn internal_server_error(message: impl Into<String>) -> Self {
         Self::new(500, message)
+    }
+
+    /// Creates a `503 Service Unavailable` error.
+    #[must_use]
+    pub fn service_unavailable(message: impl Into<String>) -> Self {
+        Self::new(503, message)
     }
 
     /// Returns the HTTP status code.
@@ -110,11 +137,19 @@ mod tests {
     fn helper_constructors_set_status_codes() {
         let bad_request = HttpError::bad_request("invalid payload");
         let not_found = HttpError::not_found("missing order");
+        let request_timeout = HttpError::request_timeout("slow request");
+        let request_entity_too_large = HttpError::request_entity_too_large("too large");
+        let payload_too_large = HttpError::payload_too_large("payload too large");
+        let service_unavailable = HttpError::service_unavailable("try later");
 
         assert_eq!(bad_request.status_code(), 400);
         assert_eq!(bad_request.message(), "invalid payload");
         assert_eq!(not_found.status_code(), 404);
         assert_eq!(not_found.message(), "missing order");
+        assert_eq!(request_timeout.status_code(), 408);
+        assert_eq!(request_entity_too_large.status_code(), 413);
+        assert_eq!(payload_too_large.status_code(), 413);
+        assert_eq!(service_unavailable.status_code(), 503);
     }
 
     #[test]
