@@ -60,11 +60,9 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 
 1. Replace tracer records with real `tracing` span integration, then add optional OpenTelemetry and X-Ray-compatible
    propagation/export features.
-2. Add remaining parameter provider integrations behind feature flags. Keep AWS SDK dependencies aligned with the
-   documented MSRV.
+2. Expand parameter provider docs and examples. Keep AWS SDK dependencies aligned with the documented MSRV.
 3. Expand parser envelopes and fixtures using `aws_lambda_events` as the default event model source.
-4. Expand idempotency where AWS retry semantics overlap: DynamoDB persistence, conditional writes, and concurrency
-   behavior.
+4. Expand idempotency where AWS retry semantics overlap: Lambda-context timeout handling and richer examples.
 5. Add event-handler adapters for additional resolver families and document the current HTTP, WebSocket, ALB, Lambda
    Function URL, VPC Lattice, AppSync, and Bedrock surfaces.
 

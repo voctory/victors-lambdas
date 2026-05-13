@@ -33,10 +33,9 @@ first implementation tranche has landed:
   REST/HTTP/WebSocket API, ALB, Lambda Function URL, VPC Lattice, AppSync direct resolver, and Bedrock Agent adapters
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
-Not yet implemented: DynamoDB-backed idempotency persistence, broader
-`aws_lambda_events` envelopes and fixtures, OpenTelemetry or X-Ray tracing integration, additional event-handler
-adapters, crates.io publishing, and remaining feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the
-current backlog.
+Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, Lambda-context idempotency timeout handling,
+OpenTelemetry or X-Ray tracing integration, additional event-handler adapters, crates.io publishing, and remaining
+feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the current backlog.
 
 ## Workspace
 
