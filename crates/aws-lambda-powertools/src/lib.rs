@@ -78,10 +78,11 @@ pub mod prelude {
 
     #[cfg(feature = "idempotency")]
     pub use aws_lambda_powertools_idempotency::{
-        Idempotency, IdempotencyConfig, IdempotencyError, IdempotencyExecutionError,
-        IdempotencyKey, IdempotencyOutcome, IdempotencyRecord, IdempotencyResult,
-        IdempotencyStatus, IdempotencyStore, IdempotencyStoreError, IdempotencyStoreResult,
-        InMemoryIdempotencyStore, hash_payload, key_from_json_pointer, key_from_payload,
+        AsyncIdempotency, AsyncIdempotencyStore, Idempotency, IdempotencyConfig, IdempotencyError,
+        IdempotencyExecutionError, IdempotencyKey, IdempotencyOutcome, IdempotencyRecord,
+        IdempotencyResult, IdempotencyStatus, IdempotencyStore, IdempotencyStoreError,
+        IdempotencyStoreFuture, IdempotencyStoreResult, InMemoryIdempotencyStore, hash_payload,
+        key_from_json_pointer, key_from_payload,
     };
 
     #[cfg(feature = "logger")]

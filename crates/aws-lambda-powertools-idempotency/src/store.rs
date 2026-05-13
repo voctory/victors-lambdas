@@ -1,11 +1,15 @@
 //! Idempotency persistence traits and in-memory store.
 
-use std::{collections::BTreeMap, time::SystemTime};
+use std::{collections::BTreeMap, future::Future, pin::Pin, time::SystemTime};
 
 use crate::{IdempotencyKey, IdempotencyRecord};
 
 /// Result returned by idempotency store operations.
 pub type IdempotencyStoreResult<T> = Result<T, IdempotencyStoreError>;
+
+/// Boxed future returned by asynchronous idempotency stores.
+pub type IdempotencyStoreFuture<'a, T> =
+    Pin<Box<dyn Future<Output = IdempotencyStoreResult<T>> + Send + 'a>>;
 
 /// Error returned by an idempotency persistence backend.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -70,6 +74,46 @@ pub trait IdempotencyStore {
     ///
     /// Returns an error when the backing store cannot remove expired records.
     fn clear_expired(&mut self, now: SystemTime) -> IdempotencyStoreResult<usize>;
+}
+
+/// Asynchronous persistence operations for idempotency records.
+pub trait AsyncIdempotencyStore: Sync {
+    /// Retrieves a record by idempotency key.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the backing store cannot complete the lookup.
+    fn get<'a>(
+        &'a self,
+        key: &'a IdempotencyKey,
+    ) -> IdempotencyStoreFuture<'a, Option<IdempotencyRecord>>;
+
+    /// Inserts or replaces a record.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the backing store cannot persist the record.
+    fn put(
+        &self,
+        record: IdempotencyRecord,
+    ) -> IdempotencyStoreFuture<'_, Option<IdempotencyRecord>>;
+
+    /// Removes a record by idempotency key.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the backing store cannot remove the record.
+    fn remove<'a>(
+        &'a self,
+        key: &'a IdempotencyKey,
+    ) -> IdempotencyStoreFuture<'a, Option<IdempotencyRecord>>;
+
+    /// Removes expired records and returns the number removed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the backing store cannot remove expired records.
+    fn clear_expired(&self, now: SystemTime) -> IdempotencyStoreFuture<'_, usize>;
 }
 
 /// In-memory idempotency store for tests and local examples.

@@ -1,12 +1,13 @@
 //! Idempotent handler workflow.
 
-use std::time::SystemTime;
+use std::{future::Future, time::SystemTime};
 
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
-    IdempotencyConfig, IdempotencyError, IdempotencyExecutionError, IdempotencyKey,
-    IdempotencyRecord, IdempotencyStatus, IdempotencyStore, hash_payload, key_from_payload,
+    AsyncIdempotencyStore, IdempotencyConfig, IdempotencyError, IdempotencyExecutionError,
+    IdempotencyKey, IdempotencyRecord, IdempotencyStatus, IdempotencyStore, hash_payload,
+    key_from_payload,
 };
 
 /// Result of an idempotent handler invocation.
@@ -55,6 +56,13 @@ pub struct Idempotency<S> {
     store: S,
 }
 
+/// Coordinates async idempotent handler execution with an async idempotency store.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AsyncIdempotency<S> {
+    config: IdempotencyConfig,
+    store: S,
+}
+
 impl<S> Idempotency<S> {
     /// Creates an idempotency workflow with default configuration.
     #[must_use]
@@ -83,6 +91,38 @@ impl<S> Idempotency<S> {
     /// Returns a mutable reference to the backing idempotency store.
     pub const fn store_mut(&mut self) -> &mut S {
         &mut self.store
+    }
+
+    /// Consumes the workflow and returns the backing idempotency store.
+    #[must_use]
+    pub fn into_store(self) -> S {
+        self.store
+    }
+}
+
+impl<S> AsyncIdempotency<S> {
+    /// Creates an async idempotency workflow with default configuration.
+    #[must_use]
+    pub fn new(store: S) -> Self {
+        Self::with_config(store, IdempotencyConfig::default())
+    }
+
+    /// Creates an async idempotency workflow with explicit configuration.
+    #[must_use]
+    pub const fn with_config(store: S, config: IdempotencyConfig) -> Self {
+        Self { config, store }
+    }
+
+    /// Returns the idempotency configuration.
+    #[must_use]
+    pub const fn config(&self) -> &IdempotencyConfig {
+        &self.config
+    }
+
+    /// Returns the backing idempotency store.
+    #[must_use]
+    pub const fn store(&self) -> &S {
+        &self.store
     }
 
     /// Consumes the workflow and returns the backing idempotency store.
@@ -151,12 +191,12 @@ where
                 .map_err(IdempotencyExecutionError::Handler);
         }
 
-        let key = self.scoped_key(key.into())?;
+        let key = scoped_key(&self.config, key.into())?;
         let payload_hash = hash_payload(payload)?;
         let now = SystemTime::now();
 
         if let Some(record) = self.store.get(&key).map_err(IdempotencyError::from)? {
-            match Self::evaluate_existing_record(&key, &payload_hash, &record, now)? {
+            match evaluate_existing_record(&key, &payload_hash, &record, now)? {
                 ExistingRecord::Replay(response) => {
                     return Ok(IdempotencyOutcome::Replayed(response));
                 }
@@ -190,49 +230,166 @@ where
             }
         }
     }
+}
 
-    fn scoped_key(&self, key: IdempotencyKey) -> Result<IdempotencyKey, IdempotencyError> {
-        if key.is_empty() {
-            return Err(IdempotencyError::MissingKey);
+impl<S> AsyncIdempotency<S>
+where
+    S: AsyncIdempotencyStore,
+{
+    /// Executes an async handler using a key derived from the hashed payload.
+    ///
+    /// Successful handler responses are JSON serialized and cached. Later calls
+    /// with the same key replay the cached response without running the handler.
+    ///
+    /// # Errors
+    ///
+    /// Returns an idempotency error when key generation, store access, response
+    /// serialization, or replay deserialization fails. Returns a handler error
+    /// when the wrapped handler fails.
+    pub async fn execute_json<T, R, E, F>(
+        &self,
+        payload: &T,
+        handler: impl FnOnce() -> F,
+    ) -> Result<IdempotencyOutcome<R>, IdempotencyExecutionError<E>>
+    where
+        T: Serialize + ?Sized,
+        R: Serialize + DeserializeOwned,
+        F: Future<Output = Result<R, E>>,
+    {
+        if self.config.disabled() {
+            return handler()
+                .await
+                .map(IdempotencyOutcome::Executed)
+                .map_err(IdempotencyExecutionError::Handler);
         }
 
-        match self.config.key_prefix() {
-            Some(prefix) if !prefix.is_empty() => {
-                Ok(IdempotencyKey::new(format!("{prefix}#{}", key.value())))
+        let key = key_from_payload(payload)?;
+        self.execute_json_with_key(key, payload, handler).await
+    }
+
+    /// Executes an async handler using an explicit idempotency key and payload hash.
+    ///
+    /// Use this when the idempotency key is extracted from a stable subset of
+    /// the payload while the full payload hash should still be validated.
+    ///
+    /// # Errors
+    ///
+    /// Returns an idempotency error when the key is empty, store access,
+    /// response serialization, or replay deserialization fails. Returns a
+    /// handler error when the wrapped handler fails.
+    pub async fn execute_json_with_key<T, R, E, F>(
+        &self,
+        key: impl Into<IdempotencyKey>,
+        payload: &T,
+        handler: impl FnOnce() -> F,
+    ) -> Result<IdempotencyOutcome<R>, IdempotencyExecutionError<E>>
+    where
+        T: Serialize + ?Sized,
+        R: Serialize + DeserializeOwned,
+        F: Future<Output = Result<R, E>>,
+    {
+        if self.config.disabled() {
+            return handler()
+                .await
+                .map(IdempotencyOutcome::Executed)
+                .map_err(IdempotencyExecutionError::Handler);
+        }
+
+        let key = scoped_key(&self.config, key.into())?;
+        let payload_hash = hash_payload(payload)?;
+        let now = SystemTime::now();
+
+        if let Some(record) = self.store.get(&key).await.map_err(IdempotencyError::from)? {
+            match evaluate_existing_record(&key, &payload_hash, &record, now)? {
+                ExistingRecord::Replay(response) => {
+                    return Ok(IdempotencyOutcome::Replayed(response));
+                }
+                ExistingRecord::Expired => {
+                    self.store
+                        .remove(&key)
+                        .await
+                        .map_err(IdempotencyError::from)?;
+                }
             }
-            Some(_) | None => Ok(key),
+        }
+
+        let in_progress_expires_at = now + self.config.in_progress_ttl();
+        let in_progress = IdempotencyRecord::in_progress_until(key.clone(), in_progress_expires_at)
+            .with_payload_hash(payload_hash.clone());
+        self.store
+            .put(in_progress)
+            .await
+            .map_err(IdempotencyError::from)?;
+
+        match handler().await {
+            Ok(response) => {
+                let response_data = serde_json::to_vec(&response)
+                    .map_err(|error| IdempotencyError::serialization(error.to_string()))?;
+                let completed_expires_at = now + self.config.record_ttl();
+                let completed = IdempotencyRecord::completed_until(key, completed_expires_at)
+                    .with_payload_hash(payload_hash)
+                    .with_response_data(response_data);
+                self.store
+                    .put(completed)
+                    .await
+                    .map_err(IdempotencyError::from)?;
+                Ok(IdempotencyOutcome::Executed(response))
+            }
+            Err(error) => {
+                self.store
+                    .remove(&key)
+                    .await
+                    .map_err(IdempotencyError::from)?;
+                Err(IdempotencyExecutionError::Handler(error))
+            }
+        }
+    }
+}
+
+fn scoped_key(
+    config: &IdempotencyConfig,
+    key: IdempotencyKey,
+) -> Result<IdempotencyKey, IdempotencyError> {
+    if key.is_empty() {
+        return Err(IdempotencyError::MissingKey);
+    }
+
+    match config.key_prefix() {
+        Some(prefix) if !prefix.is_empty() => {
+            Ok(IdempotencyKey::new(format!("{prefix}#{}", key.value())))
+        }
+        Some(_) | None => Ok(key),
+    }
+}
+
+fn evaluate_existing_record<R>(
+    key: &IdempotencyKey,
+    payload_hash: &str,
+    record: &IdempotencyRecord,
+    now: SystemTime,
+) -> Result<ExistingRecord<R>, IdempotencyError>
+where
+    R: DeserializeOwned,
+{
+    if let Some(stored_hash) = record.payload_hash() {
+        if stored_hash != payload_hash {
+            return Err(IdempotencyError::PayloadMismatch { key: key.clone() });
         }
     }
 
-    fn evaluate_existing_record<R>(
-        key: &IdempotencyKey,
-        payload_hash: &str,
-        record: &IdempotencyRecord,
-        now: SystemTime,
-    ) -> Result<ExistingRecord<R>, IdempotencyError>
-    where
-        R: DeserializeOwned,
-    {
-        if let Some(stored_hash) = record.payload_hash() {
-            if stored_hash != payload_hash {
-                return Err(IdempotencyError::PayloadMismatch { key: key.clone() });
-            }
+    match record.status_at(now) {
+        IdempotencyStatus::Completed => {
+            let response_data = record
+                .response_data()
+                .ok_or_else(|| IdempotencyError::MissingStoredResponse { key: key.clone() })?;
+            let response = serde_json::from_slice(response_data)
+                .map_err(|error| IdempotencyError::serialization(error.to_string()))?;
+            Ok(ExistingRecord::Replay(response))
         }
-
-        match record.status_at(now) {
-            IdempotencyStatus::Completed => {
-                let response_data = record
-                    .response_data()
-                    .ok_or_else(|| IdempotencyError::MissingStoredResponse { key: key.clone() })?;
-                let response = serde_json::from_slice(response_data)
-                    .map_err(|error| IdempotencyError::serialization(error.to_string()))?;
-                Ok(ExistingRecord::Replay(response))
-            }
-            IdempotencyStatus::InProgress => {
-                Err(IdempotencyError::AlreadyInProgress { key: key.clone() })
-            }
-            IdempotencyStatus::Expired => Ok(ExistingRecord::Expired),
+        IdempotencyStatus::InProgress => {
+            Err(IdempotencyError::AlreadyInProgress { key: key.clone() })
         }
+        IdempotencyStatus::Expired => Ok(ExistingRecord::Expired),
     }
 }
 
@@ -243,13 +400,90 @@ enum ExistingRecord<R> {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        cell::Cell,
+        collections::BTreeMap,
+        sync::{Mutex, PoisonError},
+        time::SystemTime,
+    };
+
+    use futures_executor::block_on;
     use serde_json::{Value, json};
 
     use crate::{
-        Idempotency, IdempotencyConfig, IdempotencyError, IdempotencyExecutionError,
-        IdempotencyKey, IdempotencyOutcome, IdempotencyRecord, InMemoryIdempotencyStore,
-        hash_payload,
+        AsyncIdempotency, AsyncIdempotencyStore, Idempotency, IdempotencyConfig, IdempotencyError,
+        IdempotencyExecutionError, IdempotencyKey, IdempotencyOutcome, IdempotencyRecord,
+        IdempotencyStoreFuture, InMemoryIdempotencyStore, hash_payload,
     };
+
+    #[derive(Debug, Default)]
+    struct AsyncMemoryStore {
+        records: Mutex<BTreeMap<IdempotencyKey, IdempotencyRecord>>,
+    }
+
+    impl AsyncMemoryStore {
+        fn new() -> Self {
+            Self::default()
+        }
+
+        fn len(&self) -> usize {
+            self.records
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .len()
+        }
+    }
+
+    impl AsyncIdempotencyStore for AsyncMemoryStore {
+        fn get<'a>(
+            &'a self,
+            key: &'a IdempotencyKey,
+        ) -> IdempotencyStoreFuture<'a, Option<IdempotencyRecord>> {
+            Box::pin(async move {
+                Ok(self
+                    .records
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .get(key)
+                    .cloned())
+            })
+        }
+
+        fn put(
+            &self,
+            record: IdempotencyRecord,
+        ) -> IdempotencyStoreFuture<'_, Option<IdempotencyRecord>> {
+            Box::pin(async move {
+                Ok(self
+                    .records
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .insert(record.key().clone(), record))
+            })
+        }
+
+        fn remove<'a>(
+            &'a self,
+            key: &'a IdempotencyKey,
+        ) -> IdempotencyStoreFuture<'a, Option<IdempotencyRecord>> {
+            Box::pin(async move {
+                Ok(self
+                    .records
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .remove(key))
+            })
+        }
+
+        fn clear_expired(&self, now: SystemTime) -> IdempotencyStoreFuture<'_, usize> {
+            Box::pin(async move {
+                let mut records = self.records.lock().unwrap_or_else(PoisonError::into_inner);
+                let before = records.len();
+                records.retain(|_, record| !record.is_expired_at(now));
+                Ok(before - records.len())
+            })
+        }
+    }
 
     #[test]
     fn execute_json_runs_once_and_replays_response() {
@@ -279,6 +513,51 @@ mod tests {
             second,
             IdempotencyOutcome::Replayed(json!({"status": "created"}))
         );
+    }
+
+    #[test]
+    fn async_execute_json_runs_once_and_replays_response() {
+        let idempotency = AsyncIdempotency::new(AsyncMemoryStore::new());
+        let payload = json!({"order_id": "abc"});
+        let calls = Cell::new(0);
+
+        let first = block_on(idempotency.execute_json(&payload, || async {
+            calls.set(calls.get() + 1);
+            Ok::<_, &'static str>(json!({"status": "created"}))
+        }))
+        .expect("first call succeeds");
+        let second = block_on(idempotency.execute_json(&payload, || async {
+            calls.set(calls.get() + 1);
+            Ok::<_, &'static str>(json!({"status": "duplicate"}))
+        }))
+        .expect("second call replays");
+
+        assert_eq!(calls.get(), 1);
+        assert_eq!(
+            first,
+            IdempotencyOutcome::Executed(json!({"status": "created"}))
+        );
+        assert_eq!(
+            second,
+            IdempotencyOutcome::Replayed(json!({"status": "created"}))
+        );
+    }
+
+    #[test]
+    fn async_execute_json_removes_record_when_handler_fails() {
+        let store = AsyncMemoryStore::new();
+        let idempotency = AsyncIdempotency::new(store);
+        let payload = json!({"order_id": "abc"});
+
+        let result = block_on(
+            idempotency.execute_json(&payload, || async { Err::<Value, _>("handler failed") }),
+        );
+
+        assert_eq!(
+            result,
+            Err(IdempotencyExecutionError::Handler("handler failed"))
+        );
+        assert_eq!(idempotency.store().len(), 0);
     }
 
     #[test]
