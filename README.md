@@ -27,6 +27,8 @@ first implementation tranche has landed:
   and optional local JSON Schema validation with a compiled schema cache
 - idempotency keys, payload hashing, JSON Pointer key extraction, sync and async handler workflows, replay behavior,
   sync and async store traits, an in-memory store, and an optional DynamoDB store
+- feature flag schema parsing, sync store trait, in-memory store, boolean and JSON-valued evaluation, enabled-feature
+  listing, and common context comparators
 - tracer configuration, X-Ray header context parsing, trace segment records, JSON-compatible trace values, and optional
   `tracing` span integration
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
@@ -36,8 +38,9 @@ first implementation tranche has landed:
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
 Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, Lambda-context idempotency timeout handling,
-OpenTelemetry or X-Ray tracing integration, additional event-handler adapters, crates.io publishing, and remaining
-feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the current backlog.
+feature flag AppConfig/time-window integrations, OpenTelemetry or X-Ray tracing integration, additional event-handler
+adapters, crates.io publishing, and remaining feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the
+current backlog.
 
 ## Workspace
 
@@ -56,6 +59,7 @@ Initial feature docs:
 
 - [Logger](docs/features/logger.md)
 - [Metrics](docs/features/metrics.md)
+- [Feature Flags](docs/features/feature-flags.md)
 
 ## Validation
 

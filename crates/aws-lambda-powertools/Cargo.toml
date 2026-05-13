@@ -18,6 +18,7 @@ all = [
     "event-handler",
     "event-handler-compression",
     "event-handler-validation",
+    "feature-flags",
     "idempotency",
     "logger",
     "metrics",
@@ -42,6 +43,7 @@ event-handler-validation = [
     "validation",
     "aws-lambda-powertools-event-handler/validation",
 ]
+feature-flags = ["dep:aws-lambda-powertools-feature-flags"]
 idempotency = ["dep:aws-lambda-powertools-idempotency"]
 idempotency-dynamodb = ["idempotency", "aws-lambda-powertools-idempotency/dynamodb"]
 logger = ["dep:aws-lambda-powertools-logger"]
@@ -63,6 +65,7 @@ validation-jsonschema = ["validation", "aws-lambda-powertools-validation/jsonsch
 aws-lambda-powertools-core.workspace = true
 aws-lambda-powertools-batch = { workspace = true, optional = true }
 aws-lambda-powertools-event-handler = { workspace = true, optional = true }
+aws-lambda-powertools-feature-flags = { workspace = true, optional = true }
 aws-lambda-powertools-idempotency = { workspace = true, optional = true }
 aws-lambda-powertools-logger = { workspace = true, optional = true }
 aws-lambda-powertools-metrics = { workspace = true, optional = true }

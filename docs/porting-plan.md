@@ -11,16 +11,18 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 - Feature flags: the umbrella crate exposes `logger`, `logger-tracing`, `metrics`, `tracer`, `tracer-tracing`, `parameters`,
   `parameters-appconfig`, `parameters-dynamodb`, `parameters-secrets`, `parameters-ssm`, `parser`,
   `parser-aws-lambda-events`, `batch`, `batch-aws-lambda-events`, `idempotency`, `idempotency-dynamodb`,
-  `validation`, `validation-jsonschema`, `event-handler`, `event-handler-compression`, `event-handler-validation`,
-  `event-handler-aws-lambda-events`, and `all`.
+  `feature-flags`, `validation`, `validation-jsonschema`, `event-handler`, `event-handler-compression`,
+  `event-handler-validation`, `event-handler-aws-lambda-events`, and `all`.
 - Examples: `examples/basic-lambda` builds against the umbrella crate with all current utility features enabled, and
-  `examples/snippets/logger` plus `examples/snippets/metrics` provide buildable docs snippets.
+  `examples/snippets/logger`, `examples/snippets/metrics`, and `examples/snippets/feature-flags` provide buildable
+  docs snippets.
 - Publishing: no crates.io release is documented yet. Local examples use path dependencies.
 
 ## Goals
 
 - Provide Rust-native utilities for common Lambda operational practices: structured logging, CloudWatch EMF metrics,
-  tracing, parameter retrieval, event parsing, batch responses, validation, idempotency, and event handling.
+  tracing, parameter retrieval, event parsing, batch responses, validation, idempotency, feature flags, and event
+  handling.
 - Keep provider integrations and heavier dependencies behind Cargo features so users do not pay for unused integrations.
 - Preserve useful cross-language Powertools conventions where they fit Rust, especially environment variable names and
   utility boundaries.
@@ -51,6 +53,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, sequential and concurrent generic processing, stream checkpoint helpers, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior | Parser-integrated processors and larger examples |
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, inbound/outbound validation wrappers, optional local JSON Schema backend, compiled schema cache, and event-handler validation hooks | Richer docs/examples |
 | Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `Idempotency`, `AsyncIdempotency`, `IdempotencyOutcome`, typed workflow errors, SHA-256 JSON payload hashing, JSON Pointer key extraction, sync and async handler wrappers, payload hash validation, result replay, sync and async store traits/errors/results, in-memory store, and optional DynamoDB store | Lambda-context timeout integration and richer examples |
+| Feature flags | `FeatureFlagConfig`, `FeatureFlag`, `FeatureRule`, `FeatureCondition`, `RuleAction`, `FeatureFlags`, `FeatureFlagStore`, `InMemoryFeatureFlagStore`, boolean and JSON-valued evaluation, enabled-feature listing, common context comparators, and modulo range matching | AppConfig-backed store, time-window rules, caching, and richer docs/examples |
 | Event handler | `Method`, method parsing/matching, `Request`, `Response`, `PathParams`, `Route`, `AsyncRoute`, `Router`, `AsyncRouter`, static/dynamic path precedence, `ANY` routes, 404 dispatch, request/response middleware, `CorsConfig`, preflight responses, routed/404 CORS headers, optional validation hooks, optional gzip/deflate compression middleware, optional AppSync direct resolver routing, optional Bedrock Agent adapter, optional ALB, Lambda Function URL, and VPC Lattice adapters, and optional API Gateway REST API v1 / HTTP API v2 / WebSocket API adapters | Additional resolver families and docs |
 | Testing | `LambdaContextStub`, parameter provider stub re-export, text/bytes fixture readers, and JSON fixture decoder | Fake AWS providers, handler harnesses |
 
@@ -62,7 +65,8 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 2. Expand parameter provider docs and examples. Keep AWS SDK dependencies aligned with the documented MSRV.
 3. Expand parser envelopes and fixtures using `aws_lambda_events` as the default event model source.
 4. Expand idempotency where AWS retry semantics overlap: Lambda-context timeout handling and richer examples.
-5. Add event-handler adapters for additional resolver families and document the current HTTP, WebSocket, ALB, Lambda
+5. Add AppConfig-backed feature flag storage, cache policy support, and time-window rule actions.
+6. Add event-handler adapters for additional resolver families and document the current HTTP, WebSocket, ALB, Lambda
    Function URL, VPC Lattice, AppSync, and Bedrock surfaces.
 
 ## Crate Strategy
@@ -79,6 +83,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential/concurrent processing, stream checkpoint helpers, and SQS, Kinesis, and DynamoDB stream adapters exist; parser-integrated processors and examples are next |
 | `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, sync and async handler workflows, replay, records, in-memory store, and optional DynamoDB persistence exist; Lambda-context timeout integration and richer examples are next |
 | `aws-lambda-powertools-validation` | Payload validation | Basic validators, inbound/outbound wrappers, optional JSON Schema validation, schema caching, and event-handler validation hooks exist; next work is richer examples |
+| `aws-lambda-powertools-feature-flags` | Feature flag evaluation | Typed configuration, rule evaluation, in-memory store, boolean/JSON-valued flags, enabled-feature listing, and common comparators exist; next work is AppConfig storage, caching, and time-window rule actions |
 | `aws-lambda-powertools-event-handler` | Routing | Dependency-free sync/async routing, middleware, CORS, optional validation hooks, optional compression middleware, optional AppSync direct resolver routing, optional Bedrock Agent adapter, optional ALB, Lambda Function URL, and VPC Lattice adapters, and optional API Gateway REST API, HTTP API, and WebSocket API adapters exist; next work is additional event adapters and docs |
 | `aws-lambda-powertools-testing` | Test helpers | Context stubs, parameter provider stubs, and fixture loaders exist; expand fake providers and handler harnesses only as real utilities need them |
 
@@ -105,6 +110,7 @@ Implemented umbrella features:
 - `batch-aws-lambda-events`
 - `idempotency`
 - `idempotency-dynamodb`
+- `feature-flags`
 - `validation`
 - `validation-jsonschema`
 - `event-handler`
@@ -120,6 +126,7 @@ Likely future provider and integration features:
 - `parser-schemars`
 - `tracer-otel`
 - `tracer-xray-propagation`
+- `feature-flags-appconfig`
 
 ## Environment Variable Compatibility
 
@@ -204,6 +211,9 @@ Powertools conventions.
 - [x] Add idempotency handler workflow, key hashing, payload validation, and replay behavior.
 - [x] Add async idempotency store and handler workflow.
 - [x] Add DynamoDB idempotency persistence and provider-level concurrency semantics.
+- [x] Add first-pass feature flag schema parsing and rule evaluation.
+- [ ] Add AppConfig-backed feature flag store and cache policy support.
+- [ ] Add feature flag time-window rule actions.
 - [x] Add API Gateway REST API and HTTP API adapters for event-handler routing.
 - [x] Add event-handler CORS configuration and preflight handling.
 - [x] Add event-handler request/response middleware.

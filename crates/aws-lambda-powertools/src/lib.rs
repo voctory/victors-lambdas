@@ -17,6 +17,12 @@ pub mod event_handler {
     pub use aws_lambda_powertools_event_handler::*;
 }
 
+/// Feature flag evaluation utility.
+#[cfg(feature = "feature-flags")]
+pub mod feature_flags {
+    pub use aws_lambda_powertools_feature_flags::*;
+}
+
 /// Idempotency utility.
 #[cfg(feature = "idempotency")]
 pub mod idempotency {
@@ -80,6 +86,13 @@ pub mod prelude {
         request_from_vpc_lattice, request_from_vpc_lattice_v2, response_to_alb,
         response_to_apigw_v1, response_to_apigw_v2, response_to_apigw_websocket,
         response_to_bedrock_agent, response_to_lambda_function_url, response_to_vpc_lattice,
+    };
+
+    #[cfg(feature = "feature-flags")]
+    pub use aws_lambda_powertools_feature_flags::{
+        FeatureCondition, FeatureFlag, FeatureFlagConfig, FeatureFlagContext, FeatureFlagError,
+        FeatureFlagErrorKind, FeatureFlagResult, FeatureFlagStore, FeatureFlags, FeatureRule,
+        InMemoryFeatureFlagStore, RuleAction,
     };
 
     #[cfg(feature = "idempotency")]
