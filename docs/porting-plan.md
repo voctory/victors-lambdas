@@ -49,7 +49,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, inbound/outbound validation wrappers, optional local JSON Schema backend, and compiled schema cache | Handler middleware/docs integration |
 | Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `Idempotency`, `IdempotencyOutcome`, typed workflow errors, SHA-256 JSON payload hashing, JSON Pointer key extraction, handler wrapper, payload hash validation, result replay, store trait/error/result, in-memory store | DynamoDB store and provider-level concurrency semantics |
 | Event handler | `Method`, method parsing/matching, `Request`, `Response`, `PathParams`, `Route`, `AsyncRoute`, `Router`, `AsyncRouter`, static/dynamic path precedence, `ANY` routes, 404 dispatch, request/response middleware, `CorsConfig`, preflight responses, routed/404 CORS headers, and optional API Gateway REST API v1 / HTTP API v2 adapters | Compression, AppSync, Bedrock Agent |
-| Testing | `LambdaContextStub` and parameter provider stub re-export | Fixture loaders, fake AWS providers, handler harnesses |
+| Testing | `LambdaContextStub`, parameter provider stub re-export, text/bytes fixture readers, and JSON fixture decoder | Fake AWS providers, handler harnesses |
 
 ## Next Durable Work
 
@@ -81,7 +81,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, handler workflow, replay, records, and stores exist; DynamoDB persistence is next |
 | `aws-lambda-powertools-validation` | Payload validation | Basic validators, inbound/outbound wrappers, optional JSON Schema validation, and schema caching exist; next work is handler middleware and examples |
 | `aws-lambda-powertools-event-handler` | Routing | Dependency-free sync/async routing, middleware, CORS, and optional API Gateway adapters exist; next work is compression and additional event adapters |
-| `aws-lambda-powertools-testing` | Test helpers | Minimal stubs exist; expand only as real utilities need them |
+| `aws-lambda-powertools-testing` | Test helpers | Context stubs, parameter provider stubs, and fixture loaders exist; expand fake providers and handler harnesses only as real utilities need them |
 
 Provider features should live on the owning utility crate first and be re-exposed by the umbrella crate only when that is
 ergonomic for users.
@@ -186,6 +186,7 @@ Powertools conventions.
 - [x] Add event-handler CORS configuration and preflight handling.
 - [x] Add event-handler request/response middleware.
 - [x] Add event-handler async handlers and related HTTP routing integrations.
+- [x] Add testing fixture loaders.
 - [ ] Add release notes, crates.io publishing checks, docs.rs coverage, and provenance/SBOM work after API boundaries
   settle.
 

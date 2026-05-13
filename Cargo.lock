@@ -136,6 +136,8 @@ name = "aws-lambda-powertools-testing"
 version = "0.1.0"
 dependencies = [
  "aws-lambda-powertools-parameters",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
