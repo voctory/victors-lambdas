@@ -2,21 +2,27 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
+use std::io::{self, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use aws_lambda_powertools_core::cold_start::ColdStart;
 
-use crate::{MetadataValue, Metric, MetricUnit, MetricsConfig, MetricsError, validation};
+use crate::{
+    MetadataValue, Metric, MetricResolution, MetricUnit, MetricsConfig, MetricsError, validation,
+};
 
 const MAX_METRICS_PER_EVENT: usize = 100;
 const MAX_DIMENSIONS_PER_METRIC: usize = 30;
 static COLD_START: ColdStart = ColdStart::new();
+
+type MetricValues<'metric> = BTreeMap<&'metric str, (MetricUnit, MetricResolution, Vec<f64>)>;
 
 /// Collects metrics before emission.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metrics {
     config: MetricsConfig,
     metrics: Vec<Metric>,
+    default_dimensions: BTreeMap<String, String>,
     dimensions: BTreeMap<String, String>,
     metadata: BTreeMap<String, MetadataValue>,
 }
@@ -34,6 +40,7 @@ impl Metrics {
         Self {
             config,
             metrics: Vec::new(),
+            default_dimensions: BTreeMap::new(),
             dimensions: BTreeMap::new(),
             metadata: BTreeMap::new(),
         }
@@ -63,7 +70,42 @@ impl Metrics {
         value: f64,
         unit: MetricUnit,
     ) -> Result<&mut Self, MetricsError> {
-        let metric = Metric::try_new(name, value, unit)?;
+        self.try_add_metric_with_resolution(name, value, unit, MetricResolution::Standard)
+    }
+
+    /// Adds a metric data point with a storage resolution.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the metric name or value is invalid, or when adding the
+    /// metric would exceed the EMF metric value limit. Use
+    /// [`try_add_metric_with_resolution`](Self::try_add_metric_with_resolution)
+    /// to handle validation errors.
+    pub fn add_metric_with_resolution(
+        &mut self,
+        name: impl Into<String>,
+        value: f64,
+        unit: MetricUnit,
+        resolution: MetricResolution,
+    ) {
+        self.try_add_metric_with_resolution(name, value, unit, resolution)
+            .expect("metric data point must be valid");
+    }
+
+    /// Adds a validated metric data point with a storage resolution.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`MetricsError`] when the metric name or value is invalid, or
+    /// when adding the metric would exceed the EMF metric value limit.
+    pub fn try_add_metric_with_resolution(
+        &mut self,
+        name: impl Into<String>,
+        value: f64,
+        unit: MetricUnit,
+        resolution: MetricResolution,
+    ) -> Result<&mut Self, MetricsError> {
+        let metric = Metric::try_new_with_resolution(name, value, unit, resolution)?;
         self.ensure_metric_capacity(1)?;
         self.metrics.push(metric);
         Ok(self)
@@ -90,6 +132,62 @@ impl Metrics {
         self.ensure_dimension_capacity(&name)?;
         self.dimensions.insert(name, value.into());
         Ok(self)
+    }
+
+    /// Adds or replaces a persistent default dimension.
+    ///
+    /// Default dimensions are rendered with every metric set and are preserved
+    /// when request-scoped metrics, dimensions, and metadata are cleared.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`MetricsError`] when the dimension name is invalid or when the
+    /// merged dimension set would exceed the `CloudWatch` limit.
+    pub fn add_default_dimension(
+        &mut self,
+        name: impl Into<String>,
+        value: impl Into<String>,
+    ) -> Result<&mut Self, MetricsError> {
+        let name = name.into();
+        validation::validate_dimension_name(&name)?;
+        self.ensure_dimension_capacity(&name)?;
+        self.default_dimensions.insert(name, value.into());
+        Ok(self)
+    }
+
+    /// Replaces persistent default dimensions.
+    ///
+    /// This method validates the full replacement set before mutating the
+    /// collector, so invalid input cannot leave partially-updated defaults.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`MetricsError`] when a dimension name is invalid or when the
+    /// merged dimension set would exceed the `CloudWatch` limit.
+    pub fn set_default_dimensions<I, K, V>(
+        &mut self,
+        dimensions: I,
+    ) -> Result<&mut Self, MetricsError>
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: Into<String>,
+        V: Into<String>,
+    {
+        let mut defaults = BTreeMap::new();
+        for (name, value) in dimensions {
+            let name = name.into();
+            validation::validate_dimension_name(&name)?;
+            defaults.insert(name, value.into());
+        }
+
+        self.ensure_dimension_capacity_with_defaults(&defaults)?;
+        self.default_dimensions = defaults;
+        Ok(self)
+    }
+
+    /// Clears persistent default dimensions.
+    pub fn clear_default_dimensions(&mut self) {
+        self.default_dimensions.clear();
     }
 
     /// Adds or replaces metadata.
@@ -143,6 +241,46 @@ impl Metrics {
         self.to_emf_json_at(current_time_millis()?)
     }
 
+    /// Writes the pending metric set to stdout as one EMF JSON line.
+    ///
+    /// Request-scoped metrics, dimensions, and metadata are cleared after a
+    /// successful render, even when metrics are disabled. Default dimensions are
+    /// preserved for subsequent invocations.
+    ///
+    /// Returns whether a line was emitted.
+    ///
+    /// # Errors
+    ///
+    /// Returns any validation, rendering, or stdout write error.
+    pub fn flush(&mut self) -> io::Result<bool> {
+        let mut stdout = io::stdout().lock();
+        self.write_to(&mut stdout)
+    }
+
+    /// Writes the pending metric set to a stream as one EMF JSON line.
+    ///
+    /// Request-scoped metrics, dimensions, and metadata are cleared after a
+    /// successful render, even when metrics are disabled. Default dimensions are
+    /// preserved for subsequent invocations.
+    ///
+    /// Returns whether a line was written. The written line includes a trailing
+    /// newline.
+    ///
+    /// # Errors
+    ///
+    /// Returns any validation, rendering, or writer error.
+    pub fn write_to(&mut self, writer: &mut impl Write) -> io::Result<bool> {
+        let line = self.to_emf_json().map_err(io::Error::other)?;
+        let written = if let Some(line) = line {
+            writeln!(writer, "{line}")?;
+            true
+        } else {
+            false
+        };
+        self.clear();
+        Ok(written)
+    }
+
     /// Returns the metrics configuration.
     #[must_use]
     pub fn config(&self) -> &MetricsConfig {
@@ -153,6 +291,12 @@ impl Metrics {
     #[must_use]
     pub fn metrics(&self) -> &[Metric] {
         &self.metrics
+    }
+
+    /// Returns persistent default dimensions.
+    #[must_use]
+    pub fn default_dimensions(&self) -> &BTreeMap<String, String> {
+        &self.default_dimensions
     }
 
     /// Returns configured dimensions.
@@ -167,7 +311,11 @@ impl Metrics {
         &self.metadata
     }
 
-    /// Clears pending metrics, dimensions, and metadata.
+    /// Clears request-scoped metrics, dimensions, and metadata.
+    ///
+    /// Persistent default dimensions are preserved. Use
+    /// [`clear_default_dimensions`](Self::clear_default_dimensions) to remove
+    /// them.
     pub fn clear(&mut self) {
         self.metrics.clear();
         self.dimensions.clear();
@@ -187,14 +335,7 @@ impl Metrics {
     }
 
     fn ensure_dimension_capacity(&self, added_name: &str) -> Result<(), MetricsError> {
-        let non_service_dimensions = self
-            .dimensions
-            .keys()
-            .filter(|name| name.as_str() != "service")
-            .count();
-        let adds_non_service_dimension =
-            added_name != "service" && !self.dimensions.contains_key(added_name);
-        let count = 1 + non_service_dimensions + usize::from(adds_non_service_dimension);
+        let count = self.dimension_count_after(Some(added_name));
 
         if count > MAX_DIMENSIONS_PER_METRIC {
             return Err(MetricsError::TooManyDimensions {
@@ -204,6 +345,40 @@ impl Metrics {
         }
 
         Ok(())
+    }
+
+    fn ensure_dimension_capacity_with_defaults(
+        &self,
+        defaults: &BTreeMap<String, String>,
+    ) -> Result<(), MetricsError> {
+        let count = self.dimension_count_with_defaults(defaults, None);
+        if count > MAX_DIMENSIONS_PER_METRIC {
+            return Err(MetricsError::TooManyDimensions {
+                count,
+                max: MAX_DIMENSIONS_PER_METRIC,
+            });
+        }
+
+        Ok(())
+    }
+
+    fn dimension_count_after(&self, added_name: Option<&str>) -> usize {
+        self.dimension_count_with_defaults(&self.default_dimensions, added_name)
+    }
+
+    fn dimension_count_with_defaults(
+        &self,
+        defaults: &BTreeMap<String, String>,
+        added_name: Option<&str>,
+    ) -> usize {
+        let mut names = BTreeSet::new();
+        names.insert("service");
+        names.extend(defaults.keys().map(String::as_str));
+        names.extend(self.dimensions.keys().map(String::as_str));
+        if let Some(added_name) = added_name {
+            names.insert(added_name);
+        }
+        names.len()
     }
 
     fn add_cold_start_metric_with_tracker(
@@ -249,7 +424,7 @@ impl Metrics {
             value.write_json(&mut output);
         }
 
-        for (name, (_unit, values)) in metric_values {
+        for (name, (_unit, _resolution, values)) in metric_values {
             output.push(',');
             push_json_string(&mut output, name);
             output.push(':');
@@ -260,21 +435,24 @@ impl Metrics {
         Ok(Some(output))
     }
 
-    fn dimension_entries(&self) -> Result<Vec<(&str, &str)>, MetricsError> {
-        let mut entries = Vec::with_capacity(self.dimensions.len() + 1);
-        let service_name = self.config.service().service_name();
-        let mut service_value = service_name;
-
+    fn dimension_entries(&self) -> Result<Vec<(String, String)>, MetricsError> {
+        let mut dimension_values = self.default_dimensions.clone();
         for (name, value) in &self.dimensions {
-            validation::validate_dimension_name(name)?;
-            if name == "service" {
-                service_value = value;
-            } else {
-                entries.push((name.as_str(), value.as_str()));
-            }
+            dimension_values.insert(name.clone(), value.clone());
         }
 
-        entries.insert(0, ("service", service_value));
+        for name in dimension_values.keys() {
+            validation::validate_dimension_name(name)?;
+        }
+
+        let service_value = dimension_values
+            .remove("service")
+            .unwrap_or_else(|| self.config.service().service_name().to_owned());
+
+        let mut entries = Vec::with_capacity(dimension_values.len() + 1);
+        entries.push(("service".to_owned(), service_value));
+        entries.extend(dimension_values);
+
         if entries.len() > MAX_DIMENSIONS_PER_METRIC {
             return Err(MetricsError::TooManyDimensions {
                 count: entries.len(),
@@ -285,7 +463,7 @@ impl Metrics {
         Ok(entries)
     }
 
-    fn metric_values(&self) -> Result<BTreeMap<&str, (MetricUnit, Vec<f64>)>, MetricsError> {
+    fn metric_values(&self) -> Result<MetricValues<'_>, MetricsError> {
         if self.metrics.len() > MAX_METRICS_PER_EVENT {
             return Err(MetricsError::TooManyMetrics {
                 count: self.metrics.len(),
@@ -304,13 +482,18 @@ impl Metrics {
 
             let entry = values
                 .entry(metric.name())
-                .or_insert_with(|| (metric.unit(), Vec::new()));
+                .or_insert_with(|| (metric.unit(), metric.resolution(), Vec::new()));
             if entry.0 != metric.unit() {
                 return Err(MetricsError::ConflictingMetricUnit {
                     name: metric.name().to_owned(),
                 });
             }
-            entry.1.push(metric.value());
+            if entry.1 != metric.resolution() {
+                return Err(MetricsError::ConflictingMetricResolution {
+                    name: metric.name().to_owned(),
+                });
+            }
+            entry.2.push(metric.value());
         }
 
         Ok(values)
@@ -318,12 +501,12 @@ impl Metrics {
 
     fn validate_name_conflicts(
         &self,
-        dimensions: &[(&str, &str)],
-        metrics: &BTreeMap<&str, (MetricUnit, Vec<f64>)>,
+        dimensions: &[(String, String)],
+        metrics: &MetricValues<'_>,
     ) -> Result<(), MetricsError> {
         let dimension_names = dimensions
             .iter()
-            .map(|(name, _value)| *name)
+            .map(|(name, _value)| name.as_str())
             .collect::<BTreeSet<_>>();
 
         for metric_name in metrics.keys() {
@@ -369,8 +552,8 @@ impl Metrics {
         &self,
         output: &mut String,
         timestamp_millis: u64,
-        dimensions: &[(&str, &str)],
-        metric_values: &BTreeMap<&str, (MetricUnit, Vec<f64>)>,
+        dimensions: &[(String, String)],
+        metric_values: &MetricValues<'_>,
     ) {
         output.push('{');
         push_json_string(output, "Timestamp");
@@ -394,7 +577,7 @@ impl Metrics {
         output.push_str("]],");
         push_json_string(output, "Metrics");
         output.push_str(":[");
-        for (index, (name, (unit, _values))) in metric_values.iter().enumerate() {
+        for (index, (name, (unit, resolution, _values))) in metric_values.iter().enumerate() {
             if index > 0 {
                 output.push(',');
             }
@@ -406,6 +589,12 @@ impl Metrics {
             push_json_string(output, "Unit");
             output.push(':');
             push_json_string(output, unit.as_str());
+            if let Some(storage_resolution) = resolution.storage_resolution() {
+                output.push(',');
+                push_json_string(output, "StorageResolution");
+                output.push(':');
+                output.push_str(&storage_resolution.to_string());
+            }
             output.push('}');
         }
         output.push_str("]}]}");
@@ -528,6 +717,68 @@ mod tests {
     }
 
     #[test]
+    fn to_emf_json_renders_default_dimensions() {
+        let mut metrics = configured_metrics();
+        metrics
+            .add_default_dimension("Environment", "test")
+            .expect("default dimension should be valid");
+        metrics
+            .add_dimension("Operation", "CreateOrder")
+            .expect("dimension should be valid");
+        metrics
+            .try_add_metric("Processed", 1.0, MetricUnit::Count)
+            .expect("metric should be valid");
+
+        let output = metrics
+            .to_emf_json_at(1)
+            .expect("rendering should succeed")
+            .expect("metrics should render");
+
+        assert_eq!(
+            output,
+            "{\"_aws\":{\"Timestamp\":1,\"CloudWatchMetrics\":[{\"Namespace\":\"Orders\",\"Dimensions\":[[\"service\",\"Environment\",\"Operation\"]],\"Metrics\":[{\"Name\":\"Processed\",\"Unit\":\"Count\"}]}]},\"service\":\"checkout\",\"Environment\":\"test\",\"Operation\":\"CreateOrder\",\"Processed\":1}"
+        );
+
+        metrics.clear();
+        metrics
+            .try_add_metric("Processed", 1.0, MetricUnit::Count)
+            .expect("metric should be valid");
+
+        let output = metrics
+            .to_emf_json_at(2)
+            .expect("rendering should succeed")
+            .expect("metrics should render");
+
+        assert_eq!(
+            output,
+            "{\"_aws\":{\"Timestamp\":2,\"CloudWatchMetrics\":[{\"Namespace\":\"Orders\",\"Dimensions\":[[\"service\",\"Environment\"]],\"Metrics\":[{\"Name\":\"Processed\",\"Unit\":\"Count\"}]}]},\"service\":\"checkout\",\"Environment\":\"test\",\"Processed\":1}"
+        );
+    }
+
+    #[test]
+    fn to_emf_json_renders_high_resolution_metric_definitions() {
+        let mut metrics = configured_metrics();
+        metrics
+            .try_add_metric_with_resolution(
+                "Latency",
+                12.5,
+                MetricUnit::Milliseconds,
+                MetricResolution::High,
+            )
+            .expect("metric should be valid");
+
+        let output = metrics
+            .to_emf_json_at(1)
+            .expect("rendering should succeed")
+            .expect("metrics should render");
+
+        assert_eq!(
+            output,
+            "{\"_aws\":{\"Timestamp\":1,\"CloudWatchMetrics\":[{\"Namespace\":\"Orders\",\"Dimensions\":[[\"service\"]],\"Metrics\":[{\"Name\":\"Latency\",\"Unit\":\"Milliseconds\",\"StorageResolution\":1}]}]},\"service\":\"checkout\",\"Latency\":12.5}"
+        );
+    }
+
+    #[test]
     fn to_emf_json_returns_none_when_empty_or_disabled() {
         let empty = configured_metrics();
         assert_eq!(
@@ -594,6 +845,28 @@ mod tests {
     }
 
     #[test]
+    fn add_default_dimension_rejects_capacity_overflow() {
+        let mut metrics = configured_metrics();
+        for index in 0..(MAX_DIMENSIONS_PER_METRIC - 1) {
+            metrics
+                .add_default_dimension(format!("Dimension{index}"), "value")
+                .expect("default dimension should fit");
+        }
+
+        let error = metrics
+            .add_dimension("Overflow", "value")
+            .expect_err("service plus 30 merged dimensions is invalid");
+
+        assert_eq!(
+            error,
+            MetricsError::TooManyDimensions {
+                count: MAX_DIMENSIONS_PER_METRIC + 1,
+                max: MAX_DIMENSIONS_PER_METRIC
+            }
+        );
+    }
+
+    #[test]
     fn to_emf_json_rejects_conflicting_metric_units() {
         let mut metrics = configured_metrics();
         metrics
@@ -611,6 +884,33 @@ mod tests {
             error,
             MetricsError::ConflictingMetricUnit {
                 name: "Processed".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn to_emf_json_rejects_conflicting_metric_resolutions() {
+        let mut metrics = configured_metrics();
+        metrics
+            .try_add_metric("Latency", 1.0, MetricUnit::Milliseconds)
+            .expect("metric should be valid");
+        metrics
+            .try_add_metric_with_resolution(
+                "Latency",
+                1.0,
+                MetricUnit::Milliseconds,
+                MetricResolution::High,
+            )
+            .expect("metric name is valid even with conflicting resolution");
+
+        let error = metrics
+            .to_emf_json_at(1)
+            .expect_err("rendering should reject conflicting resolutions");
+
+        assert_eq!(
+            error,
+            MetricsError::ConflictingMetricResolution {
+                name: "Latency".to_owned()
             }
         );
     }
@@ -794,6 +1094,51 @@ mod tests {
         assert!(metrics.metrics().is_empty());
         assert!(metrics.dimensions().is_empty());
         assert!(metrics.metadata().is_empty());
+    }
+
+    #[test]
+    fn write_to_flushes_and_clears_request_state() {
+        let mut metrics = configured_metrics();
+        metrics
+            .add_default_dimension("Environment", "test")
+            .expect("default dimension should be valid");
+        metrics
+            .add_dimension("Operation", "CreateOrder")
+            .expect("dimension should be valid");
+        metrics
+            .add_metadata("request_id", "abc-123")
+            .expect("metadata should be valid");
+        metrics
+            .try_add_metric("Processed", 1.0, MetricUnit::Count)
+            .expect("metric should be valid");
+
+        let mut output = Vec::new();
+        assert!(
+            metrics
+                .write_to(&mut output)
+                .expect("buffer writes should succeed")
+        );
+        let output = String::from_utf8(output).expect("metrics output should be utf-8");
+
+        assert!(output.ends_with('\n'));
+        assert!(output.contains("\"Environment\":\"test\""));
+        assert!(output.contains("\"Operation\":\"CreateOrder\""));
+        assert!(output.contains("\"request_id\":\"abc-123\""));
+        assert!(metrics.metrics().is_empty());
+        assert!(metrics.dimensions().is_empty());
+        assert!(metrics.metadata().is_empty());
+        assert_eq!(
+            metrics.default_dimensions().get("Environment"),
+            Some(&"test".to_owned())
+        );
+
+        let mut empty_output = Vec::new();
+        assert!(
+            !metrics
+                .write_to(&mut empty_output)
+                .expect("buffer writes should succeed")
+        );
+        assert!(empty_output.is_empty());
     }
 
     #[test]

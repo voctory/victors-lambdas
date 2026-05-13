@@ -8,9 +8,9 @@ use std::{
 use aws_lambda_powertools::prelude::{
     BatchProcessor, BatchRecord, CachePolicy, EventParser, IdempotencyConfig, IdempotencyKey,
     IdempotencyRecord, IdempotencyStore, InMemoryIdempotencyStore, InMemoryParameterProvider,
-    LogLevel, Logger, LoggerConfig, Method, MetricUnit, Metrics, MetricsConfig, Parameters,
-    Request, Response, Router, ServiceConfig, Tracer, TracerConfig, Validate, ValidationResult,
-    Validator,
+    LogLevel, Logger, LoggerConfig, Method, MetricResolution, MetricUnit, Metrics, MetricsConfig,
+    Parameters, Request, Response, Router, ServiceConfig, Tracer, TracerConfig, Validate,
+    ValidationResult, Validator,
 };
 
 struct Order {
@@ -83,7 +83,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     segment.capture_response("accepted");
 
     let mut metrics = Metrics::with_config(MetricsConfig::new(service.service_name(), "Example"));
+    metrics.add_default_dimension("environment", "local")?;
     metrics.add_metric("OrdersProcessed", 1.0, MetricUnit::Count);
+    metrics.add_metric_with_resolution(
+        "HandlerLatency",
+        42.0,
+        MetricUnit::Milliseconds,
+        MetricResolution::High,
+    );
     metrics.add_dimension("route", router.routes()[0].path())?;
     metrics.add_metadata("table", table.as_str())?;
     metrics.add_metadata("idempotent", idempotent)?;
@@ -102,9 +109,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .unwrap_or_default();
     println!("{log_line}");
 
-    if let Some(emf) = metrics.to_emf_json()? {
-        println!("{emf}");
-    }
+    metrics.flush()?;
 
     Ok(())
 }

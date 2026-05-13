@@ -9,7 +9,8 @@ tranche has landed:
 
 - shared service config, environment parsing helpers, cold-start tracking, and runtime metadata
 - structured JSON logging with levels, persistent and per-entry fields, optional event rendering, and stdout emission
-- CloudWatch EMF JSON rendering with metric, dimension, metadata, validation, limits, and cold-start metric support
+- CloudWatch EMF JSON rendering with metrics, dimensions, default dimensions, metadata, validation, limits,
+  high-resolution metrics, stdout flushing, and cold-start metric support
 - parameter provider/cache traits with an in-memory provider
 - serde JSON parsing facade with structured parse errors
 - batch record processing and partial batch response builders

@@ -39,6 +39,11 @@ pub enum MetricsError {
         /// Metric name with conflicting unit definitions.
         name: String,
     },
+    /// A metric name was used with more than one resolution in the same EMF event.
+    ConflictingMetricResolution {
+        /// Metric name with conflicting resolution definitions.
+        name: String,
+    },
     /// A top-level EMF member name is used by more than one category.
     NameConflict {
         /// Conflicting top-level member name.
@@ -94,6 +99,12 @@ impl std::fmt::Display for MetricsError {
                 write!(
                     formatter,
                     "metric {name:?} cannot use multiple units in one EMF event"
+                )
+            }
+            Self::ConflictingMetricResolution { name } => {
+                write!(
+                    formatter,
+                    "metric {name:?} cannot use multiple resolutions in one EMF event"
                 )
             }
             Self::NameConflict {
