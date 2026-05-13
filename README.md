@@ -72,6 +72,7 @@ Initial feature docs:
 - [Tracer](docs/features/tracer.md)
 - [Parameters](docs/features/parameters.md)
 - [Parser](docs/features/parser.md)
+- [Batch](docs/features/batch.md)
 - [Idempotency](docs/features/idempotency.md)
 - [Validation](docs/features/validation.md)
 - [Feature Flags](docs/features/feature-flags.md)
