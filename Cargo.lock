@@ -38,6 +38,7 @@ name = "aws-lambda-powertools-batch"
 version = "0.1.0"
 dependencies = [
  "aws-lambda-powertools-core",
+ "aws_lambda_events",
  "serde",
  "serde_json",
 ]

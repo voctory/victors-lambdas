@@ -25,6 +25,7 @@ all = [
     "validation",
 ]
 batch = ["dep:aws-lambda-powertools-batch"]
+batch-aws-lambda-events = ["batch", "aws-lambda-powertools-batch/aws-lambda-events"]
 event-handler = ["dep:aws-lambda-powertools-event-handler"]
 idempotency = ["dep:aws-lambda-powertools-idempotency"]
 logger = ["dep:aws-lambda-powertools-logger"]
