@@ -14,8 +14,8 @@ first implementation tranche has landed:
 - CloudWatch EMF JSON rendering with metrics, dimensions, default dimensions, metadata, validation, limits,
   high-resolution metrics, stdout flushing, explicit timestamps, overflow flush helpers, async capture helpers, and
   cold-start metric support
-- sync and async parameter provider/cache traits with in-memory, optional SSM Parameter Store single, by-name, and path
-  retrieval, and optional Secrets Manager providers, force-fetch support, and JSON/base64 transforms
+- sync and async parameter provider/cache traits with in-memory, optional SSM Parameter Store single, by-name, path, and
+  set operations, and optional Secrets Manager providers, force-fetch support, and JSON/base64 transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway, ALB, Lambda
   Function URL, and VPC Lattice body, SQS, SNS, EventBridge, CloudWatch Logs, Kinesis, and Firehose envelopes
 - sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and

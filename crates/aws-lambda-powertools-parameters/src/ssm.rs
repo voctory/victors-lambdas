@@ -4,9 +4,9 @@ use aws_sdk_ssm::{
     Client,
     operation::{
         get_parameter::GetParameterOutput, get_parameters::GetParametersOutput,
-        get_parameters_by_path::GetParametersByPathOutput,
+        get_parameters_by_path::GetParametersByPathOutput, put_parameter::PutParameterOutput,
     },
-    types::Parameter as SdkParameter,
+    types::{Parameter as SdkParameter, ParameterType as SdkParameterType},
 };
 
 use crate::{
@@ -60,6 +60,27 @@ impl SsmParametersByName {
     fn extend(&mut self, parameters: Vec<Parameter>, invalid_names: &[String]) {
         self.parameters.extend(parameters);
         self.invalid_names.extend(invalid_names.iter().cloned());
+    }
+}
+
+/// SSM parameter value type used when writing a parameter.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SsmParameterType {
+    /// Plain string parameter.
+    String,
+    /// Comma-separated string list parameter.
+    StringList,
+    /// Encrypted secure string parameter.
+    SecureString,
+}
+
+impl SsmParameterType {
+    fn into_sdk(self) -> SdkParameterType {
+        match self {
+            Self::String => SdkParameterType::String,
+            Self::StringList => SdkParameterType::StringList,
+            Self::SecureString => SdkParameterType::SecureString,
+        }
     }
 }
 
@@ -171,6 +192,46 @@ impl SsmParameterProvider {
         self.fetch_parameters_by_path(path, true).await
     }
 
+    /// Writes a plain string parameter without overwriting an existing value.
+    ///
+    /// Returns the SSM parameter version assigned by `PutParameter`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParameterProviderError`] when the SSM request fails.
+    pub async fn set_parameter(&self, name: &str, value: &str) -> ParameterProviderResult<i64> {
+        self.set_parameter_with_options(name, value, SsmParameterType::String, false)
+            .await
+    }
+
+    /// Writes an SSM parameter and returns the assigned version number.
+    ///
+    /// Use `overwrite` to allow replacing an existing parameter value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParameterProviderError`] when the SSM request fails.
+    pub async fn set_parameter_with_options(
+        &self,
+        name: &str,
+        value: &str,
+        parameter_type: SsmParameterType,
+        overwrite: bool,
+    ) -> ParameterProviderResult<i64> {
+        let output = self
+            .client
+            .put_parameter()
+            .name(name)
+            .value(value)
+            .r#type(parameter_type.into_sdk())
+            .overwrite(overwrite)
+            .send()
+            .await
+            .map_err(|error| ParameterProviderError::new(name, error.to_string()))?;
+
+        Ok(put_parameter_version(&output))
+    }
+
     async fn fetch_parameter(&self, name: &str) -> ParameterProviderResult<Option<String>> {
         let output = self
             .client
@@ -257,6 +318,10 @@ fn relative_name(path: &str, name: &str) -> String {
         .to_owned()
 }
 
+fn put_parameter_version(output: &PutParameterOutput) -> i64 {
+    output.version()
+}
+
 #[cfg(test)]
 mod tests {
     use aws_sdk_ssm::{
@@ -264,16 +329,16 @@ mod tests {
         config::{BehaviorVersion, Credentials, Region},
         operation::{
             get_parameter::GetParameterOutput, get_parameters::GetParametersOutput,
-            get_parameters_by_path::GetParametersByPathOutput,
+            get_parameters_by_path::GetParametersByPathOutput, put_parameter::PutParameterOutput,
         },
-        types::Parameter as SdkParameter,
+        types::{Parameter as SdkParameter, ParameterType as SdkParameterType},
     };
 
     use crate::Parameter;
 
     use super::{
-        SsmParameterProvider, SsmParametersByName, parameter_value, parameters_by_name,
-        parameters_by_path, relative_name,
+        SsmParameterProvider, SsmParameterType, SsmParametersByName, parameter_value,
+        parameters_by_name, parameters_by_path, put_parameter_version, relative_name,
     };
 
     #[test]
@@ -359,6 +424,29 @@ mod tests {
                 Parameter::new("port", "5432")
             ]
         );
+    }
+
+    #[test]
+    fn parameter_type_maps_to_sdk_type() {
+        assert_eq!(
+            SsmParameterType::String.into_sdk(),
+            SdkParameterType::String
+        );
+        assert_eq!(
+            SsmParameterType::StringList.into_sdk(),
+            SdkParameterType::StringList
+        );
+        assert_eq!(
+            SsmParameterType::SecureString.into_sdk(),
+            SdkParameterType::SecureString
+        );
+    }
+
+    #[test]
+    fn put_parameter_output_returns_version() {
+        let output = PutParameterOutput::builder().version(42).build();
+
+        assert_eq!(put_parameter_version(&output), 42);
     }
 
     #[test]
