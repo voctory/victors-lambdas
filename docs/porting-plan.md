@@ -40,7 +40,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Workspace | Workspace layout, shared package metadata, lints, lockfile, Rust toolchain, CI, `release-lambda` profile | Release automation, changelog, publishing workflow |
 | Umbrella crate | Feature-gated re-exports and a prelude across current utility crates | Published crate metadata review and docs.rs examples |
 | Core | `ServiceConfig`, env constants and parsers, cold-start tracking, user-agent metadata | Cross-crate error conventions beyond concrete utility errors |
-| Logger | `LoggerConfig`, `LogLevel`, `Logger`, `LogEntry`, `LogValue`, `LambdaContextFields`, JSON rendering, persistent fields, temporary fields, event rendering toggle, level filtering, debug sampling, correlation ID helpers, Lambda context fields, key redaction, stdout emission | Custom formatter/redaction hook APIs, `tracing` subscriber integration |
+| Logger | `LoggerConfig`, `LogLevel`, `Logger`, `LogEntry`, `LogValue`, `LogFormatter`, `LogRedactor`, `JsonLogFormatter`, `LambdaContextFields`, JSON rendering, persistent fields, temporary fields, event rendering toggle, level filtering, debug sampling, correlation ID helpers, Lambda context fields, key redaction, custom formatter/redaction hook APIs, stdout emission | `tracing` subscriber integration |
 | Metrics | `MetricsConfig`, `Metric`, `MetricUnit`, `MetricResolution`, `MetadataValue`, EMF JSON renderer, request dimensions, default dimensions, metadata, name/value validation, service dimension, cold-start metric, high-resolution metric definitions, stdout flush API, explicit timestamp rendering/writing, opt-in overflow flush helpers, CloudWatch limits | Async handler ergonomics |
 | Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing, `TraceSegment`, `TraceValue` | Real `tracing` spans, OpenTelemetry, X-Ray propagation/export |
 | Parameters | `ParameterProvider`, `Parameters`, `Parameter`, `CachePolicy`, in-memory provider | SSM, Secrets Manager, AppConfig, DynamoDB providers, decrypt options, forced fetch, transforms |
@@ -55,8 +55,8 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 
 The next durable work should turn the landed primitives into Lambda-facing utilities:
 
-1. Harden logger and metrics: logger custom formatter/redaction hook APIs, async metrics handler ergonomics, and
-   buildable docs/snippets.
+1. Harden logger and metrics: logger `tracing` subscriber integration, async metrics handler ergonomics, and buildable
+   docs/snippets.
 2. Replace tracer records with real `tracing` span integration, then add optional OpenTelemetry and X-Ray-compatible
    propagation/export features.
 3. Add parameter provider integrations behind feature flags. Confirm the AWS SDK MSRV impact before enabling those
@@ -72,7 +72,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | --- | --- | --- |
 | `aws-lambda-powertools` | Primary user-facing crate | Depends on support crates through optional dependencies and re-exports enabled utilities |
 | `aws-lambda-powertools-core` | Shared foundations | Keep small: config, env, cold start, metadata, and other genuine cross-crate foundations |
-| `aws-lambda-powertools-logger` | Structured logs | JSON renderer, sampling, correlation IDs, Lambda context fields, and key redaction exist; next work should avoid forcing one subscriber setup |
+| `aws-lambda-powertools-logger` | Structured logs | JSON renderer, sampling, correlation IDs, Lambda context fields, key redaction, and custom formatter/redaction hooks exist; next work should avoid forcing one subscriber setup |
 | `aws-lambda-powertools-metrics` | CloudWatch EMF metrics | Renderer, flush API, high-resolution metrics, default dimensions, explicit timestamps, and overflow flush helpers exist; next work is async handler ergonomics |
 | `aws-lambda-powertools-tracer` | Tracing facade | Segment records exist; next work is integration with Rust tracing/export pipelines |
 | `aws-lambda-powertools-parameters` | Parameter retrieval | Trait, cache facade, and in-memory provider exist; AWS providers are next |
@@ -164,7 +164,8 @@ Powertools conventions.
 - [x] Complete tracer records, HTTP method/request/response work, prelude exports, and the expanded workspace example.
 - [ ] Add user-facing docs and snippets for implemented logger and metrics behavior.
 - [x] Add logger sampling, key redaction, correlation IDs, and Lambda context helpers.
-- [ ] Add logger custom formatter/redaction hook APIs and `tracing` subscriber integration.
+- [x] Add logger custom formatter/redaction hook APIs.
+- [ ] Add logger `tracing` subscriber integration.
 - [x] Add metrics flush ergonomics, high-resolution metrics, and default dimension helpers.
 - [x] Add metrics explicit timestamp rendering and overflow flush helpers.
 - [ ] Implement `tracing` span integration and optional OpenTelemetry/X-Ray features.

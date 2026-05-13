@@ -2,7 +2,7 @@
 
 use std::io::{self, Write};
 
-use crate::{LogFields, LogLevel, LogValue, Logger, normalize_key};
+use crate::{LogFields, LogFormatter, LogLevel, LogRedactor, LogValue, Logger, normalize_key};
 
 /// A structured log entry being prepared for rendering or emission.
 #[derive(Clone, Debug)]
@@ -99,6 +99,29 @@ impl<'logger> LogEntry<'logger> {
     #[must_use]
     pub fn render(&self) -> Option<String> {
         self.logger.render_entry(self)
+    }
+
+    /// Renders this entry with a custom formatter when it meets the logger level.
+    #[must_use]
+    pub fn render_with_formatter(&self, formatter: &impl LogFormatter) -> Option<String> {
+        self.logger.render_entry_with_formatter(self, formatter)
+    }
+
+    /// Renders this entry with a custom redaction hook before JSON formatting.
+    #[must_use]
+    pub fn render_with_redactor(&self, redactor: &impl LogRedactor) -> Option<String> {
+        self.logger.render_entry_with_redactor(self, redactor)
+    }
+
+    /// Renders this entry with a custom redaction hook and formatter.
+    #[must_use]
+    pub fn render_with_hooks(
+        &self,
+        redactor: &impl LogRedactor,
+        formatter: &impl LogFormatter,
+    ) -> Option<String> {
+        self.logger
+            .render_entry_with_hooks(self, redactor, formatter)
     }
 
     /// Emits this entry to stdout when it meets the logger level.

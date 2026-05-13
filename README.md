@@ -9,7 +9,7 @@ tranche has landed:
 
 - shared service config, environment parsing helpers, cold-start tracking, and runtime metadata
 - structured JSON logging with levels, persistent and per-entry fields, optional event rendering, debug sampling,
-  correlation IDs, Lambda context fields, key redaction, and stdout emission
+  correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, and stdout emission
 - CloudWatch EMF JSON rendering with metrics, dimensions, default dimensions, metadata, validation, limits,
   high-resolution metrics, stdout flushing, explicit timestamps, overflow flush helpers, and cold-start metric support
 - parameter provider/cache traits with an in-memory provider

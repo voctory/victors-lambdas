@@ -114,6 +114,30 @@ impl LogValue {
         output
     }
 
+    /// Recursively replaces matching object keys with `"[REDACTED]"`.
+    pub fn redact_fields<I, K>(&mut self, keys: I) -> &mut Self
+    where
+        I: IntoIterator<Item = K>,
+        K: Into<String>,
+    {
+        self.redact_fields_with(keys, Self::string("[REDACTED]"))
+    }
+
+    /// Recursively replaces matching object keys with a custom replacement.
+    pub fn redact_fields_with<I, K>(
+        &mut self,
+        keys: I,
+        replacement: impl Into<LogValue>,
+    ) -> &mut Self
+    where
+        I: IntoIterator<Item = K>,
+        K: Into<String>,
+    {
+        let keys = keys.into_iter().filter_map(normalize_key).collect();
+        self.redact_keys(&keys, &replacement.into());
+        self
+    }
+
     pub(crate) fn write_json(&self, output: &mut String) {
         match &self.kind {
             LogValueKind::Null => output.push_str("null"),
@@ -145,19 +169,19 @@ impl LogValue {
         }
     }
 
-    pub(crate) fn redact_keys(&mut self, keys: &BTreeSet<String>) {
+    pub(crate) fn redact_keys(&mut self, keys: &BTreeSet<String>, replacement: &Self) {
         match &mut self.kind {
             LogValueKind::Array(values) => {
                 for value in values {
-                    value.redact_keys(keys);
+                    value.redact_keys(keys, replacement);
                 }
             }
             LogValueKind::Object(fields) => {
                 for (key, value) in fields {
                     if keys.contains(key) {
-                        *value = Self::string("[REDACTED]");
+                        *value = replacement.clone();
                     } else {
-                        value.redact_keys(keys);
+                        value.redact_keys(keys, replacement);
                     }
                 }
             }
@@ -331,5 +355,25 @@ mod tests {
         let value = LogValue::object([("  ", "ignored"), ("kept", "value")]);
 
         assert_eq!(value.to_json_string(), "{\"kept\":\"value\"}");
+    }
+
+    #[test]
+    fn redacts_fields_with_default_and_custom_replacements() {
+        let mut value = LogValue::object([
+            ("password", LogValue::from("secret")),
+            (
+                "nested",
+                LogValue::object([("token", LogValue::from("token-1"))]),
+            ),
+        ]);
+
+        value
+            .redact_fields(["password"])
+            .redact_fields_with(["token"], "[MASKED]");
+
+        assert_eq!(
+            value.to_json_string(),
+            "{\"nested\":{\"token\":\"[MASKED]\"},\"password\":\"[REDACTED]\"}"
+        );
     }
 }

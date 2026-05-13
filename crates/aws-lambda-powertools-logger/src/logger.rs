@@ -5,7 +5,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use aws_lambda_powertools_core::env;
 
-use crate::{LambdaLogContext, LogEntry, LogFields, LogValue, LoggerConfig, normalize_key};
+use crate::{
+    JsonLogFormatter, LambdaLogContext, LogEntry, LogFields, LogFormatter, LogRedactor, LogValue,
+    LoggerConfig, normalize_key,
+};
 
 /// Log severity level.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -361,6 +364,28 @@ impl Logger {
         self.entry(level, message).render()
     }
 
+    /// Renders a log entry using a custom formatter when it meets the configured threshold.
+    #[must_use]
+    pub fn render_with_formatter(
+        &self,
+        level: LogLevel,
+        message: impl Into<String>,
+        formatter: &impl LogFormatter,
+    ) -> Option<String> {
+        self.entry(level, message).render_with_formatter(formatter)
+    }
+
+    /// Renders a log entry using a custom redaction hook before JSON formatting.
+    #[must_use]
+    pub fn render_with_redactor(
+        &self,
+        level: LogLevel,
+        message: impl Into<String>,
+        redactor: &impl LogRedactor,
+    ) -> Option<String> {
+        self.entry(level, message).render_with_redactor(redactor)
+    }
+
     /// Emits a log entry to stdout when it meets the configured threshold.
     ///
     /// Returns whether a line was emitted.
@@ -369,6 +394,38 @@ impl Logger {
     }
 
     pub(crate) fn render_entry(&self, entry: &LogEntry<'_>) -> Option<String> {
+        self.render_entry_with_formatter(entry, &JsonLogFormatter)
+    }
+
+    pub(crate) fn render_entry_with_formatter(
+        &self,
+        entry: &LogEntry<'_>,
+        formatter: &impl LogFormatter,
+    ) -> Option<String> {
+        self.entry_value(entry)
+            .map(|value| formatter.format(&value))
+    }
+
+    pub(crate) fn render_entry_with_redactor(
+        &self,
+        entry: &LogEntry<'_>,
+        redactor: &impl LogRedactor,
+    ) -> Option<String> {
+        self.render_entry_with_hooks(entry, redactor, &JsonLogFormatter)
+    }
+
+    pub(crate) fn render_entry_with_hooks(
+        &self,
+        entry: &LogEntry<'_>,
+        redactor: &impl LogRedactor,
+        formatter: &impl LogFormatter,
+    ) -> Option<String> {
+        let mut value = self.entry_value(entry)?;
+        redactor.redact(&mut value);
+        Some(formatter.format(&value))
+    }
+
+    pub(crate) fn entry_value(&self, entry: &LogEntry<'_>) -> Option<LogValue> {
         if !self.is_enabled(entry.level()) {
             return None;
         }
@@ -396,10 +453,10 @@ impl Logger {
 
         let mut value = LogValue::from(fields);
         if !self.redacted_fields.is_empty() {
-            value.redact_keys(&self.redacted_fields);
+            value.redact_keys(&self.redacted_fields, &LogValue::string("[REDACTED]"));
         }
 
-        Some(value.to_json_string())
+        Some(value)
     }
 }
 
@@ -557,6 +614,46 @@ mod tests {
                  \"message\":\"created\",\"password\":\"[REDACTED]\",\
                  \"service\":\"orders\"}"
                     .replace(['\n', ' '], "")
+            )
+        );
+    }
+
+    #[test]
+    fn custom_redactor_hook_runs_after_configured_redaction() {
+        let logger =
+            Logger::with_config(LoggerConfig::new("orders")).with_redacted_field("password");
+
+        assert_eq!(
+            logger
+                .info("created")
+                .field("password", "secret")
+                .field("token", "token-1")
+                .render_with_redactor(&|value: &mut LogValue| {
+                    value.redact_fields_with(["token"], "[MASKED]");
+                }),
+            Some(
+                "{\"level\":\"INFO\",\"message\":\"created\",\
+                 \"password\":\"[REDACTED]\",\"service\":\"orders\",\
+                 \"token\":\"[MASKED]\"}"
+                    .replace(['\n', ' '], "")
+            )
+        );
+    }
+
+    #[test]
+    fn custom_formatter_can_render_structured_value() {
+        let logger = Logger::with_config(LoggerConfig::new("orders"));
+
+        assert_eq!(
+            logger
+                .info("created")
+                .render_with_formatter(&|value: &LogValue| format!(
+                    "custom:{}",
+                    value.to_json_string()
+                )),
+            Some(
+                "custom:{\"level\":\"INFO\",\"message\":\"created\",\"service\":\"orders\"}"
+                    .to_owned()
             )
         );
     }
