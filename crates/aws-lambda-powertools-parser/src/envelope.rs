@@ -9,6 +9,7 @@ use aws_lambda_events::{
         apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
         appsync::AppSyncDirectResolverEvent,
         bedrock_agent_runtime::AgentEvent,
+        cloudformation::CloudFormationCustomResourceRequest,
         cloudwatch_logs::LogsEvent,
         dynamodb::Event as DynamoDbEvent,
         eventbridge::EventBridgeEvent,
@@ -215,6 +216,60 @@ impl EventParser {
         T: DeserializeOwned,
     {
         self.parse_json_value(event.detail)
+    }
+
+    /// Parses `CloudFormation` custom resource `ResourceProperties`.
+    ///
+    /// The current resource properties are decoded into `T` for `Create`,
+    /// `Update`, and `Delete` custom resource requests.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when `ResourceProperties` cannot be decoded into
+    /// `T`.
+    pub fn parse_cloudformation_resource_properties<T>(
+        &self,
+        event: CloudFormationCustomResourceRequest<Value, Value>,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let properties = match event {
+            CloudFormationCustomResourceRequest::Create(request) => request.resource_properties,
+            CloudFormationCustomResourceRequest::Update(request) => request.resource_properties,
+            CloudFormationCustomResourceRequest::Delete(request) => request.resource_properties,
+            _ => {
+                return Err(ParseError::new(
+                    ParseErrorKind::Data,
+                    "CloudFormation custom resource request type is not supported",
+                ));
+            }
+        };
+
+        self.parse_json_value(properties)
+    }
+
+    /// Parses `CloudFormation` custom resource `OldResourceProperties`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the request is not an `Update` request or
+    /// `OldResourceProperties` cannot be decoded into `T`.
+    pub fn parse_cloudformation_old_resource_properties<T>(
+        &self,
+        event: CloudFormationCustomResourceRequest<Value, Value>,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let CloudFormationCustomResourceRequest::Update(request) = event else {
+            return Err(ParseError::new(
+                ParseErrorKind::Data,
+                "CloudFormation custom resource request is not an Update request",
+            ));
+        };
+
+        self.parse_json_value(request.old_resource_properties)
     }
 
     /// Parses JSON `CloudWatch Logs` event messages.
@@ -664,6 +719,7 @@ mod tests {
             },
             appsync::AppSyncDirectResolverEvent,
             bedrock_agent_runtime::AgentEvent,
+            cloudformation::CloudFormationCustomResourceRequest,
             cloudwatch_logs::{LogEntry, LogsEvent},
             dynamodb::Event as DynamoDbEvent,
             eventbridge::EventBridgeEvent,
@@ -687,6 +743,13 @@ mod tests {
     struct OrderEvent {
         order_id: String,
         quantity: u32,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "PascalCase")]
+    struct CustomResourceProperties {
+        bucket_name: String,
+        retention_days: u32,
     }
 
     #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -939,6 +1002,89 @@ mod tests {
                 quantity: 2,
             }
         );
+    }
+
+    #[test]
+    fn parses_cloudformation_resource_properties() {
+        let event: CloudFormationCustomResourceRequest<Value, Value> =
+            serde_json::from_value(json!({
+                "RequestType": "Create",
+                "ServiceToken": "arn:aws:lambda:us-east-1:123456789012:function:handler",
+                "RequestId": "request-1",
+                "ResponseURL": "https://example.com/response",
+                "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/test/1",
+                "ResourceType": "Custom::BucketPolicy",
+                "LogicalResourceId": "BucketPolicy",
+                "ResourceProperties": {
+                    "BucketName": "orders",
+                    "RetentionDays": 30
+                }
+            }))
+            .expect("CloudFormation request should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cloudformation_resource_properties::<CustomResourceProperties>(event)
+            .expect("resource properties should parse");
+
+        assert_eq!(parsed.payload().bucket_name, "orders");
+        assert_eq!(parsed.payload().retention_days, 30);
+    }
+
+    #[test]
+    fn parses_cloudformation_old_resource_properties() {
+        let event: CloudFormationCustomResourceRequest<Value, Value> =
+            serde_json::from_value(json!({
+                "RequestType": "Update",
+                "ServiceToken": "arn:aws:lambda:us-east-1:123456789012:function:handler",
+                "RequestId": "request-1",
+                "ResponseURL": "https://example.com/response",
+                "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/test/1",
+                "ResourceType": "Custom::BucketPolicy",
+                "LogicalResourceId": "BucketPolicy",
+                "PhysicalResourceId": "bucket-policy-1",
+                "ResourceProperties": {
+                    "BucketName": "orders",
+                    "RetentionDays": 30
+                },
+                "OldResourceProperties": {
+                    "BucketName": "orders",
+                    "RetentionDays": 7
+                }
+            }))
+            .expect("CloudFormation request should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cloudformation_old_resource_properties::<CustomResourceProperties>(event)
+            .expect("old resource properties should parse");
+
+        assert_eq!(parsed.payload().bucket_name, "orders");
+        assert_eq!(parsed.payload().retention_days, 7);
+    }
+
+    #[test]
+    fn rejects_cloudformation_old_resource_properties_for_create() {
+        let event: CloudFormationCustomResourceRequest<Value, Value> =
+            serde_json::from_value(json!({
+                "RequestType": "Create",
+                "ServiceToken": "arn:aws:lambda:us-east-1:123456789012:function:handler",
+                "RequestId": "request-1",
+                "ResponseURL": "https://example.com/response",
+                "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/test/1",
+                "ResourceType": "Custom::BucketPolicy",
+                "LogicalResourceId": "BucketPolicy",
+                "ResourceProperties": {
+                    "BucketName": "orders",
+                    "RetentionDays": 30
+                }
+            }))
+            .expect("CloudFormation request should deserialize");
+
+        let error = EventParser::new()
+            .parse_cloudformation_old_resource_properties::<CustomResourceProperties>(event)
+            .expect_err("create request should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert!(error.message().contains("not an Update request"));
     }
 
     #[test]

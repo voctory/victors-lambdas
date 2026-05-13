@@ -20,6 +20,7 @@ aws-lambda-events = [
     "aws_lambda_events/apigw",
     "aws_lambda_events/appsync",
     "aws_lambda_events/bedrock_agent_runtime",
+    "aws_lambda_events/cloudformation",
     "aws_lambda_events/cloudwatch_logs",
     "aws_lambda_events/dynamodb",
     "aws_lambda_events/eventbridge",
