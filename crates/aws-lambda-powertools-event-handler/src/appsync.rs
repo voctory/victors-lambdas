@@ -11,12 +11,22 @@ pub type AppSyncEvent = AppSyncDirectResolverEvent<Value, Value, Value>;
 /// Handler function for an `AppSync` resolver route.
 pub type AppSyncHandler = dyn Fn(&AppSyncEvent) -> Value + Send + Sync + 'static;
 
+/// Handler function for an `AppSync` batch resolver route.
+pub type AppSyncBatchHandler = dyn Fn(&[AppSyncEvent]) -> Vec<Value> + Send + Sync + 'static;
+
 /// Boxed future returned by asynchronous `AppSync` resolver handlers.
 pub type AppSyncResponseFuture<'a> = Pin<Box<dyn Future<Output = Value> + Send + 'a>>;
+
+/// Boxed future returned by asynchronous `AppSync` batch resolver handlers.
+pub type AppSyncBatchResponseFuture<'a> = Pin<Box<dyn Future<Output = Vec<Value>> + Send + 'a>>;
 
 /// Asynchronous handler function for an `AppSync` resolver route.
 pub type AsyncAppSyncHandler =
     dyn for<'a> Fn(&'a AppSyncEvent) -> AppSyncResponseFuture<'a> + Send + Sync + 'static;
+
+/// Asynchronous handler function for an `AppSync` batch resolver route.
+pub type AsyncAppSyncBatchHandler =
+    dyn for<'a> Fn(&'a [AppSyncEvent]) -> AppSyncBatchResponseFuture<'a> + Send + Sync + 'static;
 
 /// Error returned when an `AppSync` event cannot be routed.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -85,20 +95,8 @@ impl AppSyncRoute {
         &self.field_name
     }
 
-    fn matches(&self, type_name: &str, field_name: &str) -> bool {
-        self.field_name == field_name && (self.type_name == type_name || self.type_name == "*")
-    }
-
     fn match_score(&self, type_name: &str, field_name: &str) -> Option<u8> {
-        if !self.matches(type_name, field_name) {
-            return None;
-        }
-
-        if self.type_name == type_name {
-            Some(2)
-        } else {
-            Some(1)
-        }
+        route_match_score(&self.type_name, &self.field_name, type_name, field_name)
     }
 
     fn handle(&self, event: &AppSyncEvent) -> Value {
@@ -110,6 +108,59 @@ impl fmt::Debug for AppSyncRoute {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("AppSyncRoute")
+            .field("type_name", &self.type_name)
+            .field("field_name", &self.field_name)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Registered `AppSync` batch resolver route.
+pub struct AppSyncBatchRoute {
+    type_name: String,
+    field_name: String,
+    handler: Box<AppSyncBatchHandler>,
+}
+
+impl AppSyncBatchRoute {
+    /// Creates an `AppSync` batch resolver route.
+    #[must_use]
+    pub fn new(
+        type_name: impl Into<String>,
+        field_name: impl Into<String>,
+        handler: impl Fn(&[AppSyncEvent]) -> Vec<Value> + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            type_name: type_name.into(),
+            field_name: field_name.into(),
+            handler: Box::new(handler),
+        }
+    }
+
+    /// Returns the GraphQL parent type matched by this route.
+    #[must_use]
+    pub fn type_name(&self) -> &str {
+        &self.type_name
+    }
+
+    /// Returns the GraphQL field matched by this route.
+    #[must_use]
+    pub fn field_name(&self) -> &str {
+        &self.field_name
+    }
+
+    fn match_score(&self, type_name: &str, field_name: &str) -> Option<u8> {
+        route_match_score(&self.type_name, &self.field_name, type_name, field_name)
+    }
+
+    fn handle(&self, events: &[AppSyncEvent]) -> Vec<Value> {
+        (self.handler)(events)
+    }
+}
+
+impl fmt::Debug for AppSyncBatchRoute {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("AppSyncBatchRoute")
             .field("type_name", &self.type_name)
             .field("field_name", &self.field_name)
             .finish_non_exhaustive()
@@ -150,20 +201,8 @@ impl AsyncAppSyncRoute {
         &self.field_name
     }
 
-    fn matches(&self, type_name: &str, field_name: &str) -> bool {
-        self.field_name == field_name && (self.type_name == type_name || self.type_name == "*")
-    }
-
     fn match_score(&self, type_name: &str, field_name: &str) -> Option<u8> {
-        if !self.matches(type_name, field_name) {
-            return None;
-        }
-
-        if self.type_name == type_name {
-            Some(2)
-        } else {
-            Some(1)
-        }
+        route_match_score(&self.type_name, &self.field_name, type_name, field_name)
     }
 
     fn handle<'a>(&'a self, event: &'a AppSyncEvent) -> AppSyncResponseFuture<'a> {
@@ -181,23 +220,84 @@ impl fmt::Debug for AsyncAppSyncRoute {
     }
 }
 
+/// Registered asynchronous `AppSync` batch resolver route.
+pub struct AsyncAppSyncBatchRoute {
+    type_name: String,
+    field_name: String,
+    handler: Box<AsyncAppSyncBatchHandler>,
+}
+
+impl AsyncAppSyncBatchRoute {
+    /// Creates an asynchronous `AppSync` batch resolver route.
+    #[must_use]
+    pub fn new(
+        type_name: impl Into<String>,
+        field_name: impl Into<String>,
+        handler: impl for<'a> Fn(&'a [AppSyncEvent]) -> AppSyncBatchResponseFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        Self {
+            type_name: type_name.into(),
+            field_name: field_name.into(),
+            handler: Box::new(handler),
+        }
+    }
+
+    /// Returns the GraphQL parent type matched by this route.
+    #[must_use]
+    pub fn type_name(&self) -> &str {
+        &self.type_name
+    }
+
+    /// Returns the GraphQL field matched by this route.
+    #[must_use]
+    pub fn field_name(&self) -> &str {
+        &self.field_name
+    }
+
+    fn match_score(&self, type_name: &str, field_name: &str) -> Option<u8> {
+        route_match_score(&self.type_name, &self.field_name, type_name, field_name)
+    }
+
+    fn handle<'a>(&'a self, events: &'a [AppSyncEvent]) -> AppSyncBatchResponseFuture<'a> {
+        (self.handler)(events)
+    }
+}
+
+impl fmt::Debug for AsyncAppSyncBatchRoute {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("AsyncAppSyncBatchRoute")
+            .field("type_name", &self.type_name)
+            .field("field_name", &self.field_name)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Routes `AppSync` direct Lambda resolver events by GraphQL type and field.
 #[derive(Default, Debug)]
 pub struct AppSyncResolver {
     routes: Vec<AppSyncRoute>,
+    batch_routes: Vec<AppSyncBatchRoute>,
 }
 
 /// Routes `AppSync` direct Lambda resolver events with async handlers.
 #[derive(Default, Debug)]
 pub struct AsyncAppSyncResolver {
     routes: Vec<AsyncAppSyncRoute>,
+    batch_routes: Vec<AsyncAppSyncBatchRoute>,
 }
 
 impl AppSyncResolver {
     /// Creates an empty `AppSync` resolver.
     #[must_use]
     pub const fn new() -> Self {
-        Self { routes: Vec::new() }
+        Self {
+            routes: Vec::new(),
+            batch_routes: Vec::new(),
+        }
     }
 
     /// Registers a resolver handler for a GraphQL type and field.
@@ -239,10 +339,55 @@ impl AppSyncResolver {
         self.resolver("*", field_name, handler)
     }
 
+    /// Registers a batch resolver handler for a GraphQL type and field.
+    pub fn batch_resolver(
+        &mut self,
+        type_name: impl Into<String>,
+        field_name: impl Into<String>,
+        handler: impl Fn(&[AppSyncEvent]) -> Vec<Value> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.batch_routes
+            .push(AppSyncBatchRoute::new(type_name, field_name, handler));
+        self
+    }
+
+    /// Registers a batch resolver handler for a `Query` field.
+    pub fn query_batch(
+        &mut self,
+        field_name: impl Into<String>,
+        handler: impl Fn(&[AppSyncEvent]) -> Vec<Value> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.batch_resolver("Query", field_name, handler)
+    }
+
+    /// Registers a batch resolver handler for a `Mutation` field.
+    pub fn mutation_batch(
+        &mut self,
+        field_name: impl Into<String>,
+        handler: impl Fn(&[AppSyncEvent]) -> Vec<Value> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.batch_resolver("Mutation", field_name, handler)
+    }
+
+    /// Registers a batch resolver handler for any GraphQL parent type with this field.
+    pub fn field_batch(
+        &mut self,
+        field_name: impl Into<String>,
+        handler: impl Fn(&[AppSyncEvent]) -> Vec<Value> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.batch_resolver("*", field_name, handler)
+    }
+
     /// Returns registered resolver routes in insertion order.
     #[must_use]
     pub fn routes(&self) -> &[AppSyncRoute] {
         &self.routes
+    }
+
+    /// Returns registered batch resolver routes in insertion order.
+    #[must_use]
+    pub fn batch_routes(&self) -> &[AppSyncBatchRoute] {
+        &self.batch_routes
     }
 
     /// Dispatches an `AppSync` direct resolver event to a registered route.
@@ -267,10 +412,15 @@ impl AppSyncResolver {
         &self,
         events: impl IntoIterator<Item = AppSyncEvent>,
     ) -> AppSyncResolverResult<Vec<Value>> {
-        events
-            .into_iter()
-            .map(|event| self.handle(&event))
-            .collect()
+        let events = events.into_iter().collect::<Vec<_>>();
+
+        if let Some(first_event) = events.first() {
+            if let Some(route) = self.batch_route_for(first_event) {
+                return Ok(route.handle(&events));
+            }
+        }
+
+        events.iter().map(|event| self.handle(event)).collect()
     }
 
     fn route_for(&self, event: &AppSyncEvent) -> AppSyncResolverResult<&AppSyncRoute> {
@@ -291,13 +441,31 @@ impl AppSyncResolver {
                 field_name: field_name.to_owned(),
             })
     }
+
+    fn batch_route_for(&self, event: &AppSyncEvent) -> Option<&AppSyncBatchRoute> {
+        let type_name = event.info.parent_type_name.as_str();
+        let field_name = event.info.field_name.as_str();
+
+        self.batch_routes
+            .iter()
+            .filter_map(|route| {
+                route
+                    .match_score(type_name, field_name)
+                    .map(|score| (score, route))
+            })
+            .max_by_key(|(score, _)| *score)
+            .map(|(_, route)| route)
+    }
 }
 
 impl AsyncAppSyncResolver {
     /// Creates an empty asynchronous `AppSync` resolver.
     #[must_use]
     pub const fn new() -> Self {
-        Self { routes: Vec::new() }
+        Self {
+            routes: Vec::new(),
+            batch_routes: Vec::new(),
+        }
     }
 
     /// Registers an asynchronous resolver handler for a GraphQL type and field.
@@ -339,10 +507,67 @@ impl AsyncAppSyncResolver {
         self.resolver("*", field_name, handler)
     }
 
+    /// Registers an asynchronous batch resolver handler for a GraphQL type and field.
+    pub fn batch_resolver(
+        &mut self,
+        type_name: impl Into<String>,
+        field_name: impl Into<String>,
+        handler: impl for<'a> Fn(&'a [AppSyncEvent]) -> AppSyncBatchResponseFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.batch_routes
+            .push(AsyncAppSyncBatchRoute::new(type_name, field_name, handler));
+        self
+    }
+
+    /// Registers an asynchronous batch resolver handler for a `Query` field.
+    pub fn query_batch(
+        &mut self,
+        field_name: impl Into<String>,
+        handler: impl for<'a> Fn(&'a [AppSyncEvent]) -> AppSyncBatchResponseFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.batch_resolver("Query", field_name, handler)
+    }
+
+    /// Registers an asynchronous batch resolver handler for a `Mutation` field.
+    pub fn mutation_batch(
+        &mut self,
+        field_name: impl Into<String>,
+        handler: impl for<'a> Fn(&'a [AppSyncEvent]) -> AppSyncBatchResponseFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.batch_resolver("Mutation", field_name, handler)
+    }
+
+    /// Registers an asynchronous batch resolver handler for any GraphQL parent type with this field.
+    pub fn field_batch(
+        &mut self,
+        field_name: impl Into<String>,
+        handler: impl for<'a> Fn(&'a [AppSyncEvent]) -> AppSyncBatchResponseFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.batch_resolver("*", field_name, handler)
+    }
+
     /// Returns registered asynchronous resolver routes in insertion order.
     #[must_use]
     pub fn routes(&self) -> &[AsyncAppSyncRoute] {
         &self.routes
+    }
+
+    /// Returns registered asynchronous batch resolver routes in insertion order.
+    #[must_use]
+    pub fn batch_routes(&self) -> &[AsyncAppSyncBatchRoute] {
+        &self.batch_routes
     }
 
     /// Dispatches an `AppSync` direct resolver event to a registered async route.
@@ -367,10 +592,18 @@ impl AsyncAppSyncResolver {
         &self,
         events: impl IntoIterator<Item = AppSyncEvent>,
     ) -> AppSyncResolverResult<Vec<Value>> {
+        let events = events.into_iter().collect::<Vec<_>>();
+
+        if let Some(first_event) = events.first() {
+            if let Some(route) = self.batch_route_for(first_event) {
+                return Ok(route.handle(&events).await);
+            }
+        }
+
         let mut responses = Vec::new();
 
-        for event in events {
-            responses.push(self.handle(&event).await?);
+        for event in &events {
+            responses.push(self.handle(event).await?);
         }
 
         Ok(responses)
@@ -393,6 +626,40 @@ impl AsyncAppSyncResolver {
                 type_name: type_name.to_owned(),
                 field_name: field_name.to_owned(),
             })
+    }
+
+    fn batch_route_for(&self, event: &AppSyncEvent) -> Option<&AsyncAppSyncBatchRoute> {
+        let type_name = event.info.parent_type_name.as_str();
+        let field_name = event.info.field_name.as_str();
+
+        self.batch_routes
+            .iter()
+            .filter_map(|route| {
+                route
+                    .match_score(type_name, field_name)
+                    .map(|score| (score, route))
+            })
+            .max_by_key(|(score, _)| *score)
+            .map(|(_, route)| route)
+    }
+}
+
+fn route_match_score(
+    route_type_name: &str,
+    route_field_name: &str,
+    type_name: &str,
+    field_name: &str,
+) -> Option<u8> {
+    if route_field_name != field_name {
+        return None;
+    }
+
+    if route_type_name == type_name {
+        Some(2)
+    } else if route_type_name == "*" {
+        Some(1)
+    } else {
+        None
     }
 }
 
@@ -460,6 +727,50 @@ mod tests {
             .expect("routes should match in order");
 
         assert_eq!(response, vec![json!("first"), json!("second")]);
+    }
+
+    #[test]
+    fn batch_route_processes_events_together() {
+        let mut resolver = AppSyncResolver::new();
+        resolver.query_batch("relatedPosts", |events| {
+            events
+                .iter()
+                .map(|event| {
+                    event
+                        .arguments
+                        .as_ref()
+                        .and_then(|value| value.get("id"))
+                        .cloned()
+                        .unwrap_or(Value::Null)
+                })
+                .collect()
+        });
+
+        let events = [
+            event("Query", "relatedPosts", &json!({ "id": "post-1" })),
+            event("Query", "relatedPosts", &json!({ "id": "post-2" })),
+        ];
+
+        let response = resolver
+            .handle_batch(events)
+            .expect("batch route should match");
+
+        assert_eq!(response, vec![json!("post-1"), json!("post-2")]);
+        assert_eq!(resolver.batch_routes()[0].type_name(), "Query");
+        assert_eq!(resolver.batch_routes()[0].field_name(), "relatedPosts");
+    }
+
+    #[test]
+    fn batch_route_precedes_single_event_routes() {
+        let mut resolver = AppSyncResolver::new();
+        resolver.query("relatedPosts", |_| json!("single"));
+        resolver.query_batch("relatedPosts", |_| vec![json!("batch")]);
+
+        let response = resolver
+            .handle_batch([event("Query", "relatedPosts", &Value::Null)])
+            .expect("batch route should match");
+
+        assert_eq!(response, vec![json!("batch")]);
     }
 
     #[test]
@@ -540,6 +851,54 @@ mod tests {
             .expect("routes should match in order");
 
         assert_eq!(response, vec![json!("first"), json!("second")]);
+    }
+
+    #[test]
+    fn async_batch_route_processes_events_together() {
+        let mut resolver = AsyncAppSyncResolver::new();
+        resolver.query_batch("relatedPosts", |events| {
+            Box::pin(async move {
+                events
+                    .iter()
+                    .map(|event| {
+                        event
+                            .arguments
+                            .as_ref()
+                            .and_then(|value| value.get("id"))
+                            .cloned()
+                            .unwrap_or(Value::Null)
+                    })
+                    .collect()
+            })
+        });
+
+        let events = [
+            event("Query", "relatedPosts", &json!({ "id": "post-1" })),
+            event("Query", "relatedPosts", &json!({ "id": "post-2" })),
+        ];
+
+        let response = futures_executor::block_on(resolver.handle_batch(events))
+            .expect("batch route should match");
+
+        assert_eq!(response, vec![json!("post-1"), json!("post-2")]);
+        assert_eq!(resolver.batch_routes()[0].type_name(), "Query");
+        assert_eq!(resolver.batch_routes()[0].field_name(), "relatedPosts");
+    }
+
+    #[test]
+    fn async_batch_route_precedes_single_event_routes() {
+        let mut resolver = AsyncAppSyncResolver::new();
+        resolver.query("relatedPosts", |_| Box::pin(async { json!("single") }));
+        resolver.query_batch("relatedPosts", |_| Box::pin(async { vec![json!("batch")] }));
+
+        let response = futures_executor::block_on(resolver.handle_batch([event(
+            "Query",
+            "relatedPosts",
+            &Value::Null,
+        )]))
+        .expect("batch route should match");
+
+        assert_eq!(response, vec![json!("batch")]);
     }
 
     #[test]

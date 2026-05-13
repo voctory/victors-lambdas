@@ -37,9 +37,10 @@ pub use apigateway::{
 };
 #[cfg(feature = "aws-lambda-events")]
 pub use appsync::{
-    AppSyncEvent, AppSyncHandler, AppSyncResolver, AppSyncResolverError, AppSyncResolverResult,
-    AppSyncResponseFuture, AppSyncRoute, AsyncAppSyncHandler, AsyncAppSyncResolver,
-    AsyncAppSyncRoute,
+    AppSyncBatchHandler, AppSyncBatchResponseFuture, AppSyncBatchRoute, AppSyncEvent,
+    AppSyncHandler, AppSyncResolver, AppSyncResolverError, AppSyncResolverResult,
+    AppSyncResponseFuture, AppSyncRoute, AsyncAppSyncBatchHandler, AsyncAppSyncBatchRoute,
+    AsyncAppSyncHandler, AsyncAppSyncResolver, AsyncAppSyncRoute,
 };
 #[cfg(feature = "appsync-events")]
 pub use appsync_events::{

@@ -78,14 +78,15 @@ pub mod prelude {
     #[cfg(feature = "event-handler-aws-lambda-events")]
     pub use aws_lambda_powertools_event_handler::{
         AlbAdapterError, AlbAdapterResult, ApiGatewayAdapterError, ApiGatewayAdapterResult,
-        AppSyncEvent, AppSyncHandler, AppSyncResolver, AppSyncResolverError, AppSyncResolverResult,
-        AppSyncResponseFuture, AppSyncRoute, AsyncAppSyncHandler, AsyncAppSyncResolver,
-        AsyncAppSyncRoute, BedrockAgentAdapterError, BedrockAgentAdapterResult,
-        LambdaFunctionUrlAdapterError, LambdaFunctionUrlAdapterResult, VpcLatticeAdapterError,
-        VpcLatticeAdapterResult, request_from_alb, request_from_apigw_v1, request_from_apigw_v2,
-        request_from_apigw_websocket, request_from_bedrock_agent, request_from_lambda_function_url,
-        request_from_vpc_lattice, request_from_vpc_lattice_v2, response_to_alb,
-        response_to_apigw_v1, response_to_apigw_v2, response_to_apigw_websocket,
+        AppSyncBatchHandler, AppSyncBatchResponseFuture, AppSyncBatchRoute, AppSyncEvent,
+        AppSyncHandler, AppSyncResolver, AppSyncResolverError, AppSyncResolverResult,
+        AppSyncResponseFuture, AppSyncRoute, AsyncAppSyncBatchHandler, AsyncAppSyncBatchRoute,
+        AsyncAppSyncHandler, AsyncAppSyncResolver, AsyncAppSyncRoute, BedrockAgentAdapterError,
+        BedrockAgentAdapterResult, LambdaFunctionUrlAdapterError, LambdaFunctionUrlAdapterResult,
+        VpcLatticeAdapterError, VpcLatticeAdapterResult, request_from_alb, request_from_apigw_v1,
+        request_from_apigw_v2, request_from_apigw_websocket, request_from_bedrock_agent,
+        request_from_lambda_function_url, request_from_vpc_lattice, request_from_vpc_lattice_v2,
+        response_to_alb, response_to_apigw_v1, response_to_apigw_v2, response_to_apigw_websocket,
         response_to_bedrock_agent, response_to_lambda_function_url, response_to_vpc_lattice,
     };
 
