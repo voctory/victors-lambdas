@@ -18,6 +18,8 @@ mod request;
 mod response;
 mod route;
 mod router;
+#[cfg(feature = "validation")]
+mod validation;
 #[cfg(feature = "aws-lambda-events")]
 mod vpc_lattice;
 
@@ -57,6 +59,8 @@ pub use route::{AsyncHandler, AsyncRoute, Handler, PathParams, ResponseFuture, R
 pub use router::{
     AsyncRouteMatch, AsyncRouter, RequestMiddleware, ResponseMiddleware, RouteMatch, Router,
 };
+#[cfg(feature = "validation")]
+pub use validation::{RequestValidator, ResponseValidator, ValidationConfig};
 #[cfg(feature = "aws-lambda-events")]
 pub use vpc_lattice::{
     VpcLatticeAdapterError, VpcLatticeAdapterResult, request_from_vpc_lattice,

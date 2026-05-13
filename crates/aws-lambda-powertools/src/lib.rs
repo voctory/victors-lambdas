@@ -64,6 +64,11 @@ pub mod prelude {
         ResponseMiddleware, Route, RouteMatch, Router,
     };
 
+    #[cfg(feature = "event-handler-validation")]
+    pub use aws_lambda_powertools_event_handler::{
+        RequestValidator, ResponseValidator, ValidationConfig as EventHandlerValidationConfig,
+    };
+
     #[cfg(feature = "event-handler-aws-lambda-events")]
     pub use aws_lambda_powertools_event_handler::{
         AlbAdapterError, AlbAdapterResult, ApiGatewayAdapterError, ApiGatewayAdapterResult,

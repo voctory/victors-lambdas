@@ -13,6 +13,7 @@ categories.workspace = true
 [features]
 default = []
 compression = ["dep:flate2"]
+validation = ["dep:aws-lambda-powertools-validation"]
 aws-lambda-events = [
     "dep:aws_lambda_events",
     "dep:base64",
@@ -28,6 +29,7 @@ aws-lambda-events = [
 
 [dependencies]
 aws-lambda-powertools-core.workspace = true
+aws-lambda-powertools-validation = { workspace = true, optional = true }
 aws_lambda_events = { version = "1.2.0", default-features = false, optional = true }
 base64 = { version = "0.22", optional = true }
 flate2 = { version = "1.1", optional = true }

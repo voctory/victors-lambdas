@@ -17,6 +17,7 @@ all = [
     "batch",
     "event-handler",
     "event-handler-compression",
+    "event-handler-validation",
     "idempotency",
     "logger",
     "metrics",
@@ -35,6 +36,11 @@ event-handler-aws-lambda-events = [
 event-handler-compression = [
     "event-handler",
     "aws-lambda-powertools-event-handler/compression",
+]
+event-handler-validation = [
+    "event-handler",
+    "validation",
+    "aws-lambda-powertools-event-handler/validation",
 ]
 idempotency = ["dep:aws-lambda-powertools-idempotency"]
 idempotency-dynamodb = ["idempotency", "aws-lambda-powertools-idempotency/dynamodb"]

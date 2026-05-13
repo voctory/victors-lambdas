@@ -2,6 +2,10 @@
 
 use std::{cmp::Ordering, fmt};
 
+#[cfg(feature = "validation")]
+use crate::validation::{
+    ValidationConfig, request_validation_response, response_validation_response,
+};
 use crate::{AsyncRoute, CorsConfig, Method, Request, Response, ResponseFuture, Route};
 
 /// Function signature used by request middleware.
@@ -21,6 +25,8 @@ pub struct Router {
     cors: Option<CorsConfig>,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
+    #[cfg(feature = "validation")]
+    validation: Option<ValidationConfig>,
 }
 
 /// Stores asynchronous HTTP route handlers and selects the most specific matching route.
@@ -34,6 +40,8 @@ pub struct AsyncRouter {
     cors: Option<CorsConfig>,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
+    #[cfg(feature = "validation")]
+    validation: Option<ValidationConfig>,
 }
 
 impl Router {
@@ -45,6 +53,8 @@ impl Router {
             cors: None,
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
+            #[cfg(feature = "validation")]
+            validation: None,
         }
     }
 
@@ -95,6 +105,58 @@ impl Router {
     #[must_use]
     pub fn response_middleware_len(&self) -> usize {
         self.response_middleware.len()
+    }
+
+    /// Enables validation with the provided configuration.
+    #[cfg(feature = "validation")]
+    pub fn enable_validation(&mut self, validation: ValidationConfig) -> &mut Self {
+        self.validation = Some(validation);
+        self
+    }
+
+    /// Returns a copy of this router with validation enabled.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub fn with_validation(mut self, validation: ValidationConfig) -> Self {
+        self.validation = Some(validation);
+        self
+    }
+
+    /// Returns the validation configuration when enabled.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub const fn validation(&self) -> Option<&ValidationConfig> {
+        self.validation.as_ref()
+    }
+
+    /// Adds a request validator, enabling validation when needed.
+    #[cfg(feature = "validation")]
+    pub fn add_request_validator(
+        &mut self,
+        validator: impl Fn(&Request) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.validation
+            .get_or_insert_with(ValidationConfig::new)
+            .add_request_validator(validator);
+        self
+    }
+
+    /// Adds a response validator, enabling validation when needed.
+    #[cfg(feature = "validation")]
+    pub fn add_response_validator(
+        &mut self,
+        validator: impl Fn(&Request, &Response) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.validation
+            .get_or_insert_with(ValidationConfig::new)
+            .add_response_validator(validator);
+        self
     }
 
     /// Adds a route handler.
@@ -225,7 +287,17 @@ impl Router {
         let route = route_match.route;
 
         request.set_path_params(&route_match.path_params);
+        #[cfg(feature = "validation")]
+        if let Some(response) = self.validate_request(&request) {
+            return self.apply_cors(response);
+        }
+
         let response = self.apply_response_middleware(&request, route.handle(&request));
+        #[cfg(feature = "validation")]
+        if let Some(validation_response) = self.validate_response(&request, &response) {
+            return self.apply_cors(validation_response);
+        }
+
         self.apply_cors(response)
     }
 
@@ -268,6 +340,24 @@ impl Router {
         }
         response
     }
+
+    #[cfg(feature = "validation")]
+    fn validate_request(&self, request: &Request) -> Option<Response> {
+        self.validation
+            .as_ref()?
+            .validate_request(request)
+            .err()
+            .map(|error| request_validation_response(&error))
+    }
+
+    #[cfg(feature = "validation")]
+    fn validate_response(&self, request: &Request, response: &Response) -> Option<Response> {
+        self.validation
+            .as_ref()?
+            .validate_response(request, response)
+            .err()
+            .map(|error| response_validation_response(&error))
+    }
 }
 
 impl AsyncRouter {
@@ -279,6 +369,8 @@ impl AsyncRouter {
             cors: None,
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
+            #[cfg(feature = "validation")]
+            validation: None,
         }
     }
 
@@ -329,6 +421,58 @@ impl AsyncRouter {
     #[must_use]
     pub fn response_middleware_len(&self) -> usize {
         self.response_middleware.len()
+    }
+
+    /// Enables validation with the provided configuration.
+    #[cfg(feature = "validation")]
+    pub fn enable_validation(&mut self, validation: ValidationConfig) -> &mut Self {
+        self.validation = Some(validation);
+        self
+    }
+
+    /// Returns a copy of this router with validation enabled.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub fn with_validation(mut self, validation: ValidationConfig) -> Self {
+        self.validation = Some(validation);
+        self
+    }
+
+    /// Returns the validation configuration when enabled.
+    #[cfg(feature = "validation")]
+    #[must_use]
+    pub const fn validation(&self) -> Option<&ValidationConfig> {
+        self.validation.as_ref()
+    }
+
+    /// Adds a request validator, enabling validation when needed.
+    #[cfg(feature = "validation")]
+    pub fn add_request_validator(
+        &mut self,
+        validator: impl Fn(&Request) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.validation
+            .get_or_insert_with(ValidationConfig::new)
+            .add_request_validator(validator);
+        self
+    }
+
+    /// Adds a response validator, enabling validation when needed.
+    #[cfg(feature = "validation")]
+    pub fn add_response_validator(
+        &mut self,
+        validator: impl Fn(&Request, &Response) -> aws_lambda_powertools_validation::ValidationResult
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.validation
+            .get_or_insert_with(ValidationConfig::new)
+            .add_response_validator(validator);
+        self
     }
 
     /// Adds an asynchronous route handler.
@@ -458,7 +602,17 @@ impl AsyncRouter {
         let route = route_match.route;
 
         request.set_path_params(&route_match.path_params);
+        #[cfg(feature = "validation")]
+        if let Some(response) = self.validate_request(&request) {
+            return self.apply_cors(response);
+        }
+
         let response = self.apply_response_middleware(&request, route.handle(&request).await);
+        #[cfg(feature = "validation")]
+        if let Some(validation_response) = self.validate_response(&request, &response) {
+            return self.apply_cors(validation_response);
+        }
+
         self.apply_cors(response)
     }
 
@@ -501,29 +655,51 @@ impl AsyncRouter {
         }
         response
     }
+
+    #[cfg(feature = "validation")]
+    fn validate_request(&self, request: &Request) -> Option<Response> {
+        self.validation
+            .as_ref()?
+            .validate_request(request)
+            .err()
+            .map(|error| request_validation_response(&error))
+    }
+
+    #[cfg(feature = "validation")]
+    fn validate_response(&self, request: &Request, response: &Response) -> Option<Response> {
+        self.validation
+            .as_ref()?
+            .validate_response(request, response)
+            .err()
+            .map(|error| response_validation_response(&error))
+    }
 }
 
 impl fmt::Debug for Router {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("Router")
+        let mut debug = formatter.debug_struct("Router");
+        debug
             .field("routes", &self.routes)
             .field("cors", &self.cors)
             .field("request_middleware_len", &self.request_middleware.len())
-            .field("response_middleware_len", &self.response_middleware.len())
-            .finish()
+            .field("response_middleware_len", &self.response_middleware.len());
+        #[cfg(feature = "validation")]
+        debug.field("validation_enabled", &self.validation.is_some());
+        debug.finish()
     }
 }
 
 impl fmt::Debug for AsyncRouter {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("AsyncRouter")
+        let mut debug = formatter.debug_struct("AsyncRouter");
+        debug
             .field("routes", &self.routes)
             .field("cors", &self.cors)
             .field("request_middleware_len", &self.request_middleware.len())
-            .field("response_middleware_len", &self.response_middleware.len())
-            .finish()
+            .field("response_middleware_len", &self.response_middleware.len());
+        #[cfg(feature = "validation")]
+        debug.field("validation_enabled", &self.validation.is_some());
+        debug.finish()
     }
 }
 
@@ -639,8 +815,12 @@ fn async_route_takes_precedence(
 mod tests {
     use std::future::Future;
 
+    #[cfg(feature = "validation")]
+    use aws_lambda_powertools_validation::Validator;
     use futures_executor::block_on;
 
+    #[cfg(feature = "validation")]
+    use crate::ValidationConfig;
     use crate::{AsyncRouter, CorsConfig, Method, Request, Response, ResponseFuture, Router};
 
     fn async_response<'a>(
@@ -798,6 +978,79 @@ mod tests {
         assert_eq!(router.response_middleware_len(), 1);
         assert_eq!(response.header("x-path"), Some("/orders"));
         assert_eq!(response.header("access-control-allow-origin"), Some("*"));
+    }
+
+    #[cfg(feature = "validation")]
+    #[test]
+    fn request_validation_runs_after_route_matching_and_before_handler() {
+        let mut router = Router::new();
+        router.add_request_validator(|request| {
+            Validator::new().ensure(
+                "order_id",
+                request.path_param("order_id") == Some("order-1"),
+                "order_id must be order-1",
+            )
+        });
+        router.get("/orders/{order_id}", |_| Response::ok("should not run"));
+
+        let response = router.handle(Request::new(Method::Get, "/orders/order-2"));
+
+        assert_eq!(response.status_code(), 422);
+        assert_eq!(response.header("content-type"), Some("text/plain"));
+        assert_eq!(
+            response.body(),
+            b"Request validation failed: order_id must be order-1"
+        );
+    }
+
+    #[cfg(feature = "validation")]
+    #[test]
+    fn response_validation_runs_after_response_middleware() {
+        let mut router = Router::new().with_validation(
+            ValidationConfig::new().with_response_validator(|_, response| {
+                Validator::new().ensure("body", response.body() == b"ok", "body must be ok")
+            }),
+        );
+        router.add_response_middleware(|_, response| response.with_body("not-ok"));
+        router.get("/orders", |_| Response::ok("ok"));
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(response.status_code(), 500);
+        assert_eq!(
+            response.body(),
+            b"Response validation failed: body must be ok"
+        );
+    }
+
+    #[cfg(feature = "validation")]
+    #[test]
+    fn async_router_runs_request_validation_before_handler() {
+        let mut router = AsyncRouter::new();
+        router.add_request_validator(|request| {
+            Validator::new().required_text_field(
+                "body",
+                std::str::from_utf8(request.body()).unwrap_or_default(),
+            )
+        });
+        router.post("/orders", |_| {
+            async_response(async { Response::ok("created") })
+        });
+
+        let response =
+            block_on(router.handle(Request::new(Method::Post, "/orders").with_body("  ")));
+
+        assert_eq!(response.status_code(), 422);
+        assert_eq!(
+            response.body(),
+            b"Request validation failed: body is required"
+        );
+        assert_eq!(
+            router
+                .validation()
+                .map(ValidationConfig::request_validators_len),
+            Some(1)
+        );
     }
 
     #[test]
