@@ -19,8 +19,10 @@ pub use appsync_events::{
     AppSyncEventsOidcIdentity, AppSyncEventsOperation, AppSyncEventsRequest,
 };
 pub use bedrock_agent::{
-    BedrockAgentFunctionAgent, BedrockAgentFunctionEvent, BedrockAgentFunctionEventModel,
-    BedrockAgentFunctionParameter,
+    BedrockAgentEvent, BedrockAgentEventModel, BedrockAgentFunctionAgent,
+    BedrockAgentFunctionEvent, BedrockAgentFunctionEventModel, BedrockAgentFunctionParameter,
+    BedrockAgentModel, BedrockAgentPropertyModel, BedrockAgentRequestBody,
+    BedrockAgentRequestBodyModel, BedrockAgentRequestMedia, BedrockAgentRequestMediaModel,
 };
 pub use cognito::{
     CognitoCustomEmailSenderTriggerEvent, CognitoCustomEmailSenderTriggerModel,
