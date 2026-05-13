@@ -73,6 +73,36 @@ impl Metrics {
         self.try_add_metric_with_resolution(name, value, unit, MetricResolution::Standard)
     }
 
+    /// Adds a metric data point, flushing existing metrics first when full.
+    ///
+    /// This is an opt-in convenience for handlers that may emit more than the
+    /// `CloudWatch` EMF limit of 100 metric values in one invocation. The new
+    /// metric is validated before any flush occurs. When the collector is full,
+    /// pending metrics are written to `writer`, request-scoped state is cleared,
+    /// and the new metric is added to the fresh request state.
+    ///
+    /// Returns whether a flush wrote a metric line before the new metric was
+    /// added.
+    ///
+    /// # Errors
+    ///
+    /// Returns any metric validation, rendering, or writer error.
+    pub fn try_add_metric_with_overflow_flush(
+        &mut self,
+        writer: &mut impl Write,
+        name: impl Into<String>,
+        value: f64,
+        unit: MetricUnit,
+    ) -> io::Result<bool> {
+        self.try_add_metric_with_resolution_overflow_flush(
+            writer,
+            name,
+            value,
+            unit,
+            MetricResolution::Standard,
+        )
+    }
+
     /// Adds a metric data point with a storage resolution.
     ///
     /// # Panics
@@ -109,6 +139,34 @@ impl Metrics {
         self.ensure_metric_capacity(1)?;
         self.metrics.push(metric);
         Ok(self)
+    }
+
+    /// Adds a metric data point with a resolution, flushing existing metrics first when full.
+    ///
+    /// Returns whether a flush wrote a metric line before the new metric was
+    /// added.
+    ///
+    /// # Errors
+    ///
+    /// Returns any metric validation, rendering, or writer error.
+    pub fn try_add_metric_with_resolution_overflow_flush(
+        &mut self,
+        writer: &mut impl Write,
+        name: impl Into<String>,
+        value: f64,
+        unit: MetricUnit,
+        resolution: MetricResolution,
+    ) -> io::Result<bool> {
+        let metric = Metric::try_new_with_resolution(name, value, unit, resolution)
+            .map_err(io::Error::other)?;
+        let flushed = if self.metrics.len() >= MAX_METRICS_PER_EVENT {
+            self.write_to(writer)?
+        } else {
+            false
+        };
+        self.ensure_metric_capacity(1).map_err(io::Error::other)?;
+        self.metrics.push(metric);
+        Ok(flushed)
     }
 
     /// Adds or replaces a dimension.
@@ -241,6 +299,21 @@ impl Metrics {
         self.to_emf_json_at(current_time_millis()?)
     }
 
+    /// Renders the pending metric set as JSON EMF with an explicit timestamp.
+    ///
+    /// The timestamp is milliseconds since the Unix epoch.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`MetricsError`] when pending metric data cannot be represented
+    /// as a valid EMF event.
+    pub fn to_emf_json_with_timestamp(
+        &self,
+        timestamp_millis: u64,
+    ) -> Result<Option<String>, MetricsError> {
+        self.to_emf_json_at(timestamp_millis)
+    }
+
     /// Writes the pending metric set to stdout as one EMF JSON line.
     ///
     /// Request-scoped metrics, dimensions, and metadata are cleared after a
@@ -270,7 +343,30 @@ impl Metrics {
     ///
     /// Returns any validation, rendering, or writer error.
     pub fn write_to(&mut self, writer: &mut impl Write) -> io::Result<bool> {
-        let line = self.to_emf_json().map_err(io::Error::other)?;
+        self.write_to_with_timestamp(writer, current_time_millis().map_err(io::Error::other)?)
+    }
+
+    /// Writes the pending metric set to a stream with an explicit timestamp.
+    ///
+    /// The timestamp is milliseconds since the Unix epoch. Request-scoped
+    /// metrics, dimensions, and metadata are cleared after a successful render,
+    /// even when metrics are disabled. Default dimensions are preserved for
+    /// subsequent invocations.
+    ///
+    /// Returns whether a line was written. The written line includes a trailing
+    /// newline.
+    ///
+    /// # Errors
+    ///
+    /// Returns any validation, rendering, or writer error.
+    pub fn write_to_with_timestamp(
+        &mut self,
+        writer: &mut impl Write,
+        timestamp_millis: u64,
+    ) -> io::Result<bool> {
+        let line = self
+            .to_emf_json_with_timestamp(timestamp_millis)
+            .map_err(io::Error::other)?;
         let written = if let Some(line) = line {
             writeln!(writer, "{line}")?;
             true
@@ -779,6 +875,21 @@ mod tests {
     }
 
     #[test]
+    fn to_emf_json_with_timestamp_uses_explicit_timestamp() {
+        let mut metrics = configured_metrics();
+        metrics
+            .try_add_metric("Processed", 1.0, MetricUnit::Count)
+            .expect("metric should be valid");
+
+        let output = metrics
+            .to_emf_json_with_timestamp(42)
+            .expect("rendering should succeed")
+            .expect("metrics should render");
+
+        assert!(output.contains("\"Timestamp\":42"));
+    }
+
+    #[test]
     fn to_emf_json_returns_none_when_empty_or_disabled() {
         let empty = configured_metrics();
         assert_eq!(
@@ -1139,6 +1250,51 @@ mod tests {
                 .expect("buffer writes should succeed")
         );
         assert!(empty_output.is_empty());
+    }
+
+    #[test]
+    fn write_to_with_timestamp_uses_explicit_timestamp() {
+        let mut metrics = configured_metrics();
+        metrics
+            .try_add_metric("Processed", 1.0, MetricUnit::Count)
+            .expect("metric should be valid");
+
+        let mut output = Vec::new();
+        assert!(
+            metrics
+                .write_to_with_timestamp(&mut output, 42)
+                .expect("buffer writes should succeed")
+        );
+        let output = String::from_utf8(output).expect("metrics output should be utf-8");
+
+        assert!(output.contains("\"Timestamp\":42"));
+        assert!(metrics.metrics().is_empty());
+    }
+
+    #[test]
+    fn overflow_flush_writes_full_batch_before_adding_next_metric() {
+        let mut metrics = configured_metrics();
+        metrics
+            .add_dimension("Operation", "CreateOrder")
+            .expect("dimension should be valid");
+        for index in 0..MAX_METRICS_PER_EVENT {
+            metrics
+                .try_add_metric(format!("Metric{index}"), 1.0, MetricUnit::Count)
+                .expect("metric should fit");
+        }
+
+        let mut output = Vec::new();
+        let flushed = metrics
+            .try_add_metric_with_overflow_flush(&mut output, "Overflow", 1.0, MetricUnit::Count)
+            .expect("overflow flush should succeed");
+        let output = String::from_utf8(output).expect("metrics output should be utf-8");
+
+        assert!(flushed);
+        assert!(output.contains("\"Metric99\":1"));
+        assert!(output.contains("\"Operation\":\"CreateOrder\""));
+        assert_eq!(metrics.metrics().len(), 1);
+        assert_eq!(metrics.metrics()[0].name(), "Overflow");
+        assert!(metrics.dimensions().is_empty());
     }
 
     #[test]
