@@ -152,12 +152,20 @@ impl Router {
     ///
     /// # Errors
     ///
-    /// Returns an error when request or response adapter conversion fails.
+    /// Returns an error when request adapter conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an error when response adapter conversion fails.
     pub fn handle_lambda_function_url(
         &self,
         event: &LambdaFunctionUrlRequest,
     ) -> LambdaFunctionUrlAdapterResult<LambdaFunctionUrlResponse> {
-        let request = request_from_lambda_function_url(event)?;
+        let request = match request_from_lambda_function_url(event) {
+            Ok(request) => request,
+            Err(LambdaFunctionUrlAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_lambda_function_url(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_lambda_function_url(&self.handle(request))
     }
 }
@@ -167,12 +175,20 @@ impl AsyncRouter {
     ///
     /// # Errors
     ///
-    /// Returns an adapter error when request conversion or response conversion fails.
+    /// Returns an adapter error when request conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an adapter error when response conversion fails.
     pub async fn handle_lambda_function_url(
         &self,
         event: &LambdaFunctionUrlRequest,
     ) -> LambdaFunctionUrlAdapterResult<LambdaFunctionUrlResponse> {
-        let request = request_from_lambda_function_url(event)?;
+        let request = match request_from_lambda_function_url(event) {
+            Ok(request) => request,
+            Err(LambdaFunctionUrlAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_lambda_function_url(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_lambda_function_url(&self.handle(request).await)
     }
 }
@@ -375,5 +391,19 @@ mod tests {
 
         assert_eq!(response.status_code, 200);
         assert_eq!(response.body, Some("123".to_owned()));
+    }
+
+    #[test]
+    fn router_returns_method_not_allowed_for_unsupported_lambda_function_url_methods() {
+        let router = Router::new();
+        let mut event = LambdaFunctionUrlRequest::default();
+        event.request_context.http.method = Some("TRACE".to_owned());
+
+        let response = router
+            .handle_lambda_function_url(&event)
+            .expect("unsupported method returns a response");
+
+        assert_eq!(response.status_code, 405);
+        assert_eq!(response.body, None);
     }
 }

@@ -151,12 +151,20 @@ impl Router {
     ///
     /// # Errors
     ///
-    /// Returns an error when request or response adapter conversion fails.
+    /// Returns an error when request adapter conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an error when response adapter conversion fails.
     pub fn handle_vpc_lattice(
         &self,
         event: &VpcLatticeRequestV1,
     ) -> VpcLatticeAdapterResult<VpcLatticeResponse> {
-        let request = request_from_vpc_lattice(event)?;
+        let request = match request_from_vpc_lattice(event) {
+            Ok(request) => request,
+            Err(VpcLatticeAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_vpc_lattice(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_vpc_lattice(&self.handle(request))
     }
 
@@ -164,12 +172,20 @@ impl Router {
     ///
     /// # Errors
     ///
-    /// Returns an error when request or response adapter conversion fails.
+    /// Returns an error when request adapter conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an error when response adapter conversion fails.
     pub fn handle_vpc_lattice_v2(
         &self,
         event: &VpcLatticeRequestV2,
     ) -> VpcLatticeAdapterResult<VpcLatticeResponse> {
-        let request = request_from_vpc_lattice_v2(event)?;
+        let request = match request_from_vpc_lattice_v2(event) {
+            Ok(request) => request,
+            Err(VpcLatticeAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_vpc_lattice(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_vpc_lattice(&self.handle(request))
     }
 }
@@ -179,12 +195,20 @@ impl AsyncRouter {
     ///
     /// # Errors
     ///
-    /// Returns an adapter error when request conversion or response conversion fails.
+    /// Returns an adapter error when request conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an adapter error when response conversion fails.
     pub async fn handle_vpc_lattice(
         &self,
         event: &VpcLatticeRequestV1,
     ) -> VpcLatticeAdapterResult<VpcLatticeResponse> {
-        let request = request_from_vpc_lattice(event)?;
+        let request = match request_from_vpc_lattice(event) {
+            Ok(request) => request,
+            Err(VpcLatticeAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_vpc_lattice(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_vpc_lattice(&self.handle(request).await)
     }
 
@@ -192,12 +216,20 @@ impl AsyncRouter {
     ///
     /// # Errors
     ///
-    /// Returns an adapter error when request conversion or response conversion fails.
+    /// Returns an adapter error when request conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an adapter error when response conversion fails.
     pub async fn handle_vpc_lattice_v2(
         &self,
         event: &VpcLatticeRequestV2,
     ) -> VpcLatticeAdapterResult<VpcLatticeResponse> {
-        let request = request_from_vpc_lattice_v2(event)?;
+        let request = match request_from_vpc_lattice_v2(event) {
+            Ok(request) => request,
+            Err(VpcLatticeAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_vpc_lattice(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_vpc_lattice(&self.handle(request).await)
     }
 }
@@ -437,5 +469,26 @@ mod tests {
 
         assert_eq!(response.status_code, 200);
         assert_eq!(response.body, Some(Body::Text("123".to_owned())));
+    }
+
+    #[test]
+    fn router_returns_method_not_allowed_for_unsupported_vpc_lattice_methods() {
+        let router = Router::new();
+        let mut v1_event = VpcLatticeRequestV1::default();
+        v1_event.method = Some(HttpMethod::TRACE);
+        let mut v2_event = VpcLatticeRequestV2::default();
+        v2_event.method = Some(HttpMethod::CONNECT);
+
+        let v1_response = router
+            .handle_vpc_lattice(&v1_event)
+            .expect("unsupported method returns a response");
+        let v2_response = router
+            .handle_vpc_lattice_v2(&v2_event)
+            .expect("unsupported method returns a response");
+
+        assert_eq!(v1_response.status_code, 405);
+        assert_eq!(v1_response.body, None);
+        assert_eq!(v2_response.status_code, 405);
+        assert_eq!(v2_response.body, None);
     }
 }

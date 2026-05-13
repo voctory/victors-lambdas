@@ -230,12 +230,20 @@ impl Router {
     ///
     /// # Errors
     ///
-    /// Returns an error when request or response adapter conversion fails.
+    /// Returns an error when request adapter conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an error when response adapter conversion fails.
     pub fn handle_apigw_v1(
         &self,
         event: &ApiGatewayProxyRequest,
     ) -> ApiGatewayAdapterResult<ApiGatewayProxyResponse> {
-        let request = request_from_apigw_v1(event)?;
+        let request = match request_from_apigw_v1(event) {
+            Ok(request) => request,
+            Err(ApiGatewayAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_apigw_v1(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_apigw_v1(&self.handle(request))
     }
 
@@ -243,12 +251,20 @@ impl Router {
     ///
     /// # Errors
     ///
-    /// Returns an error when request or response adapter conversion fails.
+    /// Returns an error when request adapter conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an error when response adapter conversion fails.
     pub fn handle_apigw_v2(
         &self,
         event: &ApiGatewayV2httpRequest,
     ) -> ApiGatewayAdapterResult<ApiGatewayV2httpResponse> {
-        let request = request_from_apigw_v2(event)?;
+        let request = match request_from_apigw_v2(event) {
+            Ok(request) => request,
+            Err(ApiGatewayAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_apigw_v2(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_apigw_v2(&self.handle(request))
     }
 
@@ -256,12 +272,20 @@ impl Router {
     ///
     /// # Errors
     ///
-    /// Returns an error when request or response adapter conversion fails.
+    /// Returns an error when request adapter conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an error when response adapter conversion fails.
     pub fn handle_apigw_websocket(
         &self,
         event: &ApiGatewayWebsocketProxyRequest,
     ) -> ApiGatewayAdapterResult<ApiGatewayProxyResponse> {
-        let request = request_from_apigw_websocket(event)?;
+        let request = match request_from_apigw_websocket(event) {
+            Ok(request) => request,
+            Err(ApiGatewayAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_apigw_websocket(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_apigw_websocket(&self.handle(request))
     }
 }
@@ -271,12 +295,20 @@ impl AsyncRouter {
     ///
     /// # Errors
     ///
-    /// Returns an adapter error when request conversion or response conversion fails.
+    /// Returns an adapter error when request conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an adapter error when response conversion fails.
     pub async fn handle_apigw_v1(
         &self,
         event: &ApiGatewayProxyRequest,
     ) -> ApiGatewayAdapterResult<ApiGatewayProxyResponse> {
-        let request = request_from_apigw_v1(event)?;
+        let request = match request_from_apigw_v1(event) {
+            Ok(request) => request,
+            Err(ApiGatewayAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_apigw_v1(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_apigw_v1(&self.handle(request).await)
     }
 
@@ -284,12 +316,20 @@ impl AsyncRouter {
     ///
     /// # Errors
     ///
-    /// Returns an adapter error when request conversion or response conversion fails.
+    /// Returns an adapter error when request conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an adapter error when response conversion fails.
     pub async fn handle_apigw_v2(
         &self,
         event: &ApiGatewayV2httpRequest,
     ) -> ApiGatewayAdapterResult<ApiGatewayV2httpResponse> {
-        let request = request_from_apigw_v2(event)?;
+        let request = match request_from_apigw_v2(event) {
+            Ok(request) => request,
+            Err(ApiGatewayAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_apigw_v2(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_apigw_v2(&self.handle(request).await)
     }
 
@@ -297,12 +337,20 @@ impl AsyncRouter {
     ///
     /// # Errors
     ///
-    /// Returns an adapter error when request conversion or response conversion fails.
+    /// Returns an adapter error when request conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an adapter error when response conversion fails.
     pub async fn handle_apigw_websocket(
         &self,
         event: &ApiGatewayWebsocketProxyRequest,
     ) -> ApiGatewayAdapterResult<ApiGatewayProxyResponse> {
-        let request = request_from_apigw_websocket(event)?;
+        let request = match request_from_apigw_websocket(event) {
+            Ok(request) => request,
+            Err(ApiGatewayAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_apigw_websocket(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_apigw_websocket(&self.handle(request).await)
     }
 }
@@ -590,6 +638,34 @@ mod tests {
 
         assert_eq!(response.status_code, 200);
         assert_eq!(response.body, Some(Body::Text("123".to_owned())));
+    }
+
+    #[test]
+    fn router_returns_method_not_allowed_for_unsupported_api_gateway_methods() {
+        let router = Router::new();
+        let mut v1_event = ApiGatewayProxyRequest::default();
+        v1_event.http_method = HttpMethod::TRACE;
+        let mut v2_event = ApiGatewayV2httpRequest::default();
+        v2_event.request_context.http.method = HttpMethod::CONNECT;
+        let mut websocket_event = ApiGatewayWebsocketProxyRequest::default();
+        websocket_event.http_method = Some(HttpMethod::TRACE);
+
+        let v1_response = router
+            .handle_apigw_v1(&v1_event)
+            .expect("unsupported method returns a response");
+        let v2_response = router
+            .handle_apigw_v2(&v2_event)
+            .expect("unsupported method returns a response");
+        let websocket_response = router
+            .handle_apigw_websocket(&websocket_event)
+            .expect("unsupported method returns a response");
+
+        assert_eq!(v1_response.status_code, 405);
+        assert_eq!(v1_response.body, None);
+        assert_eq!(v2_response.status_code, 405);
+        assert_eq!(v2_response.body, None);
+        assert_eq!(websocket_response.status_code, 405);
+        assert_eq!(websocket_response.body, None);
     }
 
     #[test]

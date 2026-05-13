@@ -126,12 +126,20 @@ impl Router {
     ///
     /// # Errors
     ///
-    /// Returns an error when request or response adapter conversion fails.
+    /// Returns an error when request adapter conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an error when response adapter conversion fails.
     pub fn handle_alb(
         &self,
         event: &AlbTargetGroupRequest,
     ) -> AlbAdapterResult<AlbTargetGroupResponse> {
-        let request = request_from_alb(event)?;
+        let request = match request_from_alb(event) {
+            Ok(request) => request,
+            Err(AlbAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_alb(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_alb(&self.handle(request))
     }
 }
@@ -141,12 +149,20 @@ impl AsyncRouter {
     ///
     /// # Errors
     ///
-    /// Returns an adapter error when request conversion or response conversion fails.
+    /// Returns an adapter error when request conversion fails, except
+    /// unsupported HTTP methods which are returned as `405 Method Not Allowed`.
+    /// Also returns an adapter error when response conversion fails.
     pub async fn handle_alb(
         &self,
         event: &AlbTargetGroupRequest,
     ) -> AlbAdapterResult<AlbTargetGroupResponse> {
-        let request = request_from_alb(event)?;
+        let request = match request_from_alb(event) {
+            Ok(request) => request,
+            Err(AlbAdapterError::UnsupportedMethod { .. }) => {
+                return response_to_alb(&Response::new(405));
+            }
+            Err(error) => return Err(error),
+        };
         response_to_alb(&self.handle(request).await)
     }
 }
@@ -303,5 +319,19 @@ mod tests {
 
         assert_eq!(response.status_code, 200);
         assert_eq!(response.body, Some(Body::Text("123".to_owned())));
+    }
+
+    #[test]
+    fn router_returns_method_not_allowed_for_unsupported_alb_methods() {
+        let router = Router::new();
+        let mut event = AlbTargetGroupRequest::default();
+        event.http_method = HttpMethod::TRACE;
+
+        let response = router
+            .handle_alb(&event)
+            .expect("unsupported method returns a response");
+
+        assert_eq!(response.status_code, 405);
+        assert_eq!(response.body, None);
     }
 }
