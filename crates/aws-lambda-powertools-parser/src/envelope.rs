@@ -1,6 +1,7 @@
 //! Event envelope adapters.
 
 use aws_lambda_events::event::{
+    alb::AlbTargetGroupRequest,
     apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
     cloudwatch_logs::LogsEvent,
     eventbridge::EventBridgeEvent,
@@ -47,6 +48,23 @@ impl EventParser {
         T: DeserializeOwned,
     {
         let body = gateway_body("API Gateway v2", event.body, event.is_base64_encoded)?;
+        self.parse_json_slice(&body)
+    }
+
+    /// Parses an Application Load Balancer target group JSON body.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the body is missing, cannot be base64
+    /// decoded, or cannot be decoded into `T`.
+    pub fn parse_alb_body<T>(
+        &self,
+        event: AlbTargetGroupRequest,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let body = gateway_body("ALB", event.body, event.is_base64_encoded)?;
         self.parse_json_slice(&body)
     }
 
@@ -216,6 +234,7 @@ fn gateway_body(
 #[cfg(test)]
 mod tests {
     use aws_lambda_events::event::{
+        alb::AlbTargetGroupRequest,
         apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
         cloudwatch_logs::{LogEntry, LogsEvent},
         eventbridge::EventBridgeEvent,
@@ -258,6 +277,28 @@ mod tests {
             .expect("valid body should parse");
 
         assert_eq!(parsed.payload().quantity, 2);
+    }
+
+    #[test]
+    fn parses_alb_body() {
+        let mut event = AlbTargetGroupRequest::default();
+        event.body = Some(r#"{"order_id":"order-1","quantity":2}"#.to_owned());
+
+        let parsed = EventParser::new()
+            .parse_alb_body::<OrderEvent>(event)
+            .expect("valid body should parse");
+
+        assert_eq!(parsed.payload().order_id, "order-1");
+
+        let mut event = AlbTargetGroupRequest::default();
+        event.body = Some("eyJvcmRlcl9pZCI6Im9yZGVyLTIiLCJxdWFudGl0eSI6M30=".to_owned());
+        event.is_base64_encoded = true;
+
+        let parsed = EventParser::new()
+            .parse_alb_body::<OrderEvent>(event)
+            .expect("valid base64 body should parse");
+
+        assert_eq!(parsed.payload().quantity, 3);
     }
 
     #[test]
