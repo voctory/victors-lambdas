@@ -14,9 +14,9 @@ This first Rust implementation includes:
 - enabled-feature listing for boolean flags
 - common context comparators, including equality, ordering, string prefix/suffix, collection membership, and modulo
   ranges
+- time-window rules for time-of-day, date-time ranges, and day-of-week matching
 
-Time-window rules are still planned. Use the Parameters utility for simple static values that do not need rule
-evaluation.
+Use the Parameters utility for simple static values that do not need rule evaluation.
 
 ## AppConfig
 

@@ -28,7 +28,7 @@ first implementation tranche has landed:
 - idempotency keys, payload hashing, JSON Pointer key extraction, sync and async handler workflows, replay behavior,
   sync and async store traits, an in-memory store, and an optional DynamoDB store
 - feature flag schema parsing, sync/async store traits, in-memory and optional AppConfig stores, boolean and JSON-valued
-  evaluation, enabled-feature listing, and common context comparators
+  evaluation, enabled-feature listing, common context comparators, modulo range matching, and time-window rules
 - tracer configuration, X-Ray header context parsing, trace segment records, JSON-compatible trace values, and optional
   `tracing` span integration
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
@@ -38,7 +38,7 @@ first implementation tranche has landed:
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
 Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, Lambda-context idempotency timeout handling,
-feature flag time-window rules, OpenTelemetry or X-Ray tracing integration, additional event-handler adapters,
+feature flag cache policy support, OpenTelemetry or X-Ray tracing integration, additional event-handler adapters,
 crates.io publishing, and remaining feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the current
 backlog.
 

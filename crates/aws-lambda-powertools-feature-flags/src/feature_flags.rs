@@ -2,6 +2,8 @@
 
 use std::cmp::Ordering;
 
+use chrono::{Datelike, NaiveDateTime, NaiveTime, Timelike, Utc, Weekday};
+use chrono_tz::Tz;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Map, Value};
 
@@ -153,14 +155,18 @@ pub(crate) fn evaluate_feature(feature: &FeatureFlag, context: &FeatureFlagConte
 
 fn evaluate_rule(rule: &FeatureRule, context: &FeatureFlagContext) -> bool {
     !rule.is_empty()
-        && rule
-            .conditions()
-            .all(|condition| match context.get(condition.key()) {
+        && rule.conditions().all(|condition| {
+            if !condition.action().reads_context() {
+                return matches_condition(condition.action(), &Value::Null, condition.value());
+            }
+
+            match context.get(condition.key()) {
                 Some(context_value) => {
                     matches_condition(condition.action(), context_value, condition.value())
                 }
                 None => false,
-            })
+            }
+        })
 }
 
 fn matches_condition(action: RuleAction, context_value: &Value, condition_value: &Value) -> bool {
@@ -194,6 +200,9 @@ fn matches_condition(action: RuleAction, context_value: &Value, condition_value:
         RuleAction::NoneInValue => {
             compare_collection(context_value, condition_value, CollectionMatch::None)
         }
+        RuleAction::ScheduleBetweenTimeRange => compare_time_range(condition_value),
+        RuleAction::ScheduleBetweenDateTimeRange => compare_datetime_range(condition_value),
+        RuleAction::ScheduleBetweenDaysOfWeek => compare_days_of_week(condition_value),
         RuleAction::ModuloRange => compare_modulo_range(context_value, condition_value),
     }
 }
@@ -281,6 +290,91 @@ fn integer_value(value: &Value) -> Option<i128> {
         .as_i64()
         .map(i128::from)
         .or_else(|| value.as_u64().map(i128::from))
+}
+
+fn compare_time_range(condition_value: &Value) -> bool {
+    let Some(condition) = condition_value.as_object() else {
+        return false;
+    };
+    let (Some(start), Some(end), Some(now)) = (
+        condition_time(condition, "START").map(minutes_since_midnight),
+        condition_time(condition, "END").map(minutes_since_midnight),
+        now_in_timezone(condition).map(|now| minutes_since_midnight(now.time())),
+    ) else {
+        return false;
+    };
+
+    if end < start {
+        start <= now || now <= end
+    } else {
+        start <= now && now <= end
+    }
+}
+
+fn compare_datetime_range(condition_value: &Value) -> bool {
+    let Some(condition) = condition_value.as_object() else {
+        return false;
+    };
+    let (Some(start), Some(end), Some(now)) = (
+        condition_datetime(condition, "START"),
+        condition_datetime(condition, "END"),
+        now_in_timezone(condition).map(|now| now.naive_local()),
+    ) else {
+        return false;
+    };
+
+    start <= now && now <= end
+}
+
+fn compare_days_of_week(condition_value: &Value) -> bool {
+    let Some(condition) = condition_value.as_object() else {
+        return false;
+    };
+    let Some(now) = now_in_timezone(condition) else {
+        return false;
+    };
+    let Some(days) = condition.get("DAYS").and_then(Value::as_array) else {
+        return false;
+    };
+    let current_day = weekday_name(now.weekday());
+
+    days.iter()
+        .any(|day| day.as_str().is_some_and(|day| day == current_day))
+}
+
+fn condition_time(condition: &Map<String, Value>, key: &str) -> Option<NaiveTime> {
+    NaiveTime::parse_from_str(condition.get(key)?.as_str()?, "%H:%M").ok()
+}
+
+fn minutes_since_midnight(time: NaiveTime) -> u32 {
+    (time.hour() * 60) + time.minute()
+}
+
+fn condition_datetime(condition: &Map<String, Value>, key: &str) -> Option<NaiveDateTime> {
+    NaiveDateTime::parse_from_str(condition.get(key)?.as_str()?, "%Y-%m-%dT%H:%M:%S%.f").ok()
+}
+
+fn now_in_timezone(condition: &Map<String, Value>) -> Option<chrono::DateTime<Tz>> {
+    let timezone = condition
+        .get("TIMEZONE")
+        .and_then(Value::as_str)
+        .unwrap_or("UTC")
+        .parse::<Tz>()
+        .ok()?;
+
+    Some(Utc::now().with_timezone(&timezone))
+}
+
+fn weekday_name(weekday: Weekday) -> &'static str {
+    match weekday {
+        Weekday::Mon => "MONDAY",
+        Weekday::Tue => "TUESDAY",
+        Weekday::Wed => "WEDNESDAY",
+        Weekday::Thu => "THURSDAY",
+        Weekday::Fri => "FRIDAY",
+        Weekday::Sat => "SATURDAY",
+        Weekday::Sun => "SUNDAY",
+    }
 }
 
 #[cfg(test)]
@@ -504,6 +598,97 @@ mod tests {
         assert!(
             flags
                 .evaluate_bool("sale_experiment", &context, false)
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn supports_time_window_rules() {
+        let every_day = json!({
+            "DAYS": [
+                "SUNDAY",
+                "MONDAY",
+                "TUESDAY",
+                "WEDNESDAY",
+                "THURSDAY",
+                "FRIDAY",
+                "SATURDAY"
+            ],
+            "TIMEZONE": "UTC"
+        });
+        let feature = FeatureFlag::boolean(false)
+            .with_rule(
+                "all day",
+                FeatureRule::new(
+                    true,
+                    [FeatureCondition::new(
+                        RuleAction::ScheduleBetweenTimeRange,
+                        "CURRENT_TIME",
+                        json!({"START": "00:00", "END": "23:59", "TIMEZONE": "UTC"}),
+                    )],
+                ),
+            )
+            .with_rule(
+                "current century",
+                FeatureRule::new(
+                    true,
+                    [FeatureCondition::new(
+                        RuleAction::ScheduleBetweenDateTimeRange,
+                        "CURRENT_DATETIME",
+                        json!({
+                            "START": "2000-01-01T00:00:00",
+                            "END": "2999-12-31T23:59:59",
+                            "TIMEZONE": "UTC"
+                        }),
+                    )],
+                ),
+            )
+            .with_rule(
+                "every day",
+                FeatureRule::new(
+                    true,
+                    [FeatureCondition::new(
+                        RuleAction::ScheduleBetweenDaysOfWeek,
+                        "CURRENT_DAY_OF_WEEK",
+                        every_day,
+                    )],
+                ),
+            );
+        let flags = FeatureFlags::new(InMemoryFeatureFlagStore::from_config(
+            FeatureFlagConfig::new().with_feature("scheduled_feature", feature),
+        ));
+
+        assert!(
+            flags
+                .evaluate_bool("scheduled_feature", &FeatureFlagContext::new(), false)
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn expired_time_window_rule_does_not_match() {
+        let feature = FeatureFlag::boolean(false).with_rule(
+            "expired launch",
+            FeatureRule::new(
+                true,
+                [FeatureCondition::new(
+                    RuleAction::ScheduleBetweenDateTimeRange,
+                    "CURRENT_DATETIME",
+                    json!({
+                        "START": "2000-01-01T00:00:00",
+                        "END": "2001-01-01T00:00:00",
+                        "TIMEZONE": "UTC"
+                    }),
+                )],
+            ),
+        );
+        let flags = FeatureFlags::new(InMemoryFeatureFlagStore::from_config(
+            FeatureFlagConfig::new().with_feature("scheduled_feature", feature),
+        ));
+
+        assert!(
+            !flags
+                .evaluate_bool("scheduled_feature", &FeatureFlagContext::new(), true)
                 .unwrap()
         );
     }

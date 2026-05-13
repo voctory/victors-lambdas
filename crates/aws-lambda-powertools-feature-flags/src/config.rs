@@ -316,7 +316,29 @@ pub enum RuleAction {
     /// Match when no items in the context array are in the condition array.
     #[serde(rename = "NONE_IN_VALUE")]
     NoneInValue,
+    /// Match when the current time is within an inclusive `START` and `END` range.
+    #[serde(rename = "SCHEDULE_BETWEEN_TIME_RANGE")]
+    ScheduleBetweenTimeRange,
+    /// Match when the current date-time is within an inclusive `START` and `END` range.
+    #[serde(rename = "SCHEDULE_BETWEEN_DATETIME_RANGE")]
+    ScheduleBetweenDateTimeRange,
+    /// Match when the current day of week is included in `DAYS`.
+    #[serde(rename = "SCHEDULE_BETWEEN_DAYS_OF_WEEK")]
+    ScheduleBetweenDaysOfWeek,
     /// Match when `context % BASE` is within inclusive `START` and `END` bounds.
     #[serde(rename = "MODULO_RANGE")]
     ModuloRange,
+}
+
+impl RuleAction {
+    /// Returns whether this action reads its value from the evaluation context.
+    #[must_use]
+    pub const fn reads_context(self) -> bool {
+        !matches!(
+            self,
+            Self::ScheduleBetweenTimeRange
+                | Self::ScheduleBetweenDateTimeRange
+                | Self::ScheduleBetweenDaysOfWeek
+        )
+    }
 }
