@@ -18,6 +18,8 @@ mod request;
 mod response;
 mod route;
 mod router;
+#[cfg(feature = "aws-lambda-events")]
+mod vpc_lattice;
 
 #[cfg(feature = "aws-lambda-events")]
 pub use alb::{AlbAdapterError, AlbAdapterResult, request_from_alb, response_to_alb};
@@ -53,4 +55,9 @@ pub use response::Response;
 pub use route::{AsyncHandler, AsyncRoute, Handler, PathParams, ResponseFuture, Route};
 pub use router::{
     AsyncRouteMatch, AsyncRouter, RequestMiddleware, ResponseMiddleware, RouteMatch, Router,
+};
+#[cfg(feature = "aws-lambda-events")]
+pub use vpc_lattice::{
+    VpcLatticeAdapterError, VpcLatticeAdapterResult, request_from_vpc_lattice,
+    request_from_vpc_lattice_v2, response_to_vpc_lattice,
 };

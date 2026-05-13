@@ -69,10 +69,11 @@ pub mod prelude {
         AlbAdapterError, AlbAdapterResult, ApiGatewayAdapterError, ApiGatewayAdapterResult,
         AppSyncEvent, AppSyncHandler, AppSyncResolver, AppSyncResolverError, AppSyncResolverResult,
         AppSyncRoute, BedrockAgentAdapterError, BedrockAgentAdapterResult,
-        LambdaFunctionUrlAdapterError, LambdaFunctionUrlAdapterResult, request_from_alb,
-        request_from_apigw_v1, request_from_apigw_v2, request_from_bedrock_agent,
-        request_from_lambda_function_url, response_to_alb, response_to_apigw_v1,
-        response_to_apigw_v2, response_to_bedrock_agent, response_to_lambda_function_url,
+        LambdaFunctionUrlAdapterError, LambdaFunctionUrlAdapterResult, VpcLatticeAdapterError,
+        VpcLatticeAdapterResult, request_from_alb, request_from_apigw_v1, request_from_apigw_v2,
+        request_from_bedrock_agent, request_from_lambda_function_url, request_from_vpc_lattice,
+        request_from_vpc_lattice_v2, response_to_alb, response_to_apigw_v1, response_to_apigw_v2,
+        response_to_bedrock_agent, response_to_lambda_function_url, response_to_vpc_lattice,
     };
 
     #[cfg(feature = "idempotency")]
