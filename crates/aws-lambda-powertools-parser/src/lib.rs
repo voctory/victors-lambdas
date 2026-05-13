@@ -1,5 +1,6 @@
 //! Event parsing utility.
 
+mod appsync_events;
 mod cognito;
 mod dynamodb;
 #[cfg(feature = "aws-lambda-events")]
@@ -9,6 +10,12 @@ mod iot_registry;
 mod parser;
 mod transfer_family;
 
+pub use appsync_events::{
+    AppSyncEventsChannel, AppSyncEventsChannelNamespace, AppSyncEventsCognitoIdentity,
+    AppSyncEventsEvent, AppSyncEventsIamIdentity, AppSyncEventsIdentity,
+    AppSyncEventsIncomingEvent, AppSyncEventsInfo, AppSyncEventsLambdaIdentity, AppSyncEventsModel,
+    AppSyncEventsOidcIdentity, AppSyncEventsOperation, AppSyncEventsRequest,
+};
 pub use cognito::{
     CognitoCustomEmailSenderTriggerEvent, CognitoCustomEmailSenderTriggerModel,
     CognitoCustomEmailSenderTriggerSource, CognitoCustomSMSSenderTriggerModel,

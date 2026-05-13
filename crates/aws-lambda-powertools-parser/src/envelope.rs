@@ -35,7 +35,7 @@ use base64::Engine;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
-use crate::{EventParser, ParseError, ParseErrorKind, ParsedEvent};
+use crate::{AppSyncEventsEvent, EventParser, ParseError, ParseErrorKind, ParsedEvent};
 
 impl EventParser {
     /// Parses an API Gateway REST API v1 JSON body.
@@ -125,6 +125,35 @@ impl EventParser {
             ParseError::new(ParseErrorKind::Data, "AppSync event is missing source")
         })?;
         self.parse_json_value(source)
+    }
+
+    /// Parses AWS `AppSync` Events publish payloads.
+    ///
+    /// Each incoming published event payload is decoded into `T` and returned
+    /// in event order.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the `events` collection is missing or any
+    /// payload cannot be decoded into `T`.
+    pub fn parse_appsync_events_payloads<T>(
+        &self,
+        event: AppSyncEventsEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let events = event.events.ok_or_else(|| {
+            ParseError::new(
+                ParseErrorKind::Data,
+                "AppSync Events event is missing events",
+            )
+        })?;
+
+        events
+            .into_iter()
+            .map(|event| self.parse_json_value(event.payload))
+            .collect()
     }
 
     /// Parses the JSON `inputText` payload from a Bedrock Agent event.
@@ -1153,7 +1182,7 @@ mod tests {
     use serde::Deserialize;
     use serde_json::{Value, json};
 
-    use crate::{EventParser, ParseErrorKind};
+    use crate::{AppSyncEventsEvent, EventParser, ParseErrorKind};
 
     #[derive(Debug, Deserialize, Eq, PartialEq)]
     struct OrderEvent {
@@ -1354,6 +1383,55 @@ mod tests {
     }
 
     #[test]
+    fn parses_appsync_events_payloads() {
+        let event = serde_json::from_value::<AppSyncEventsEvent>(json!({
+            "identity": null,
+            "request": {
+                "headers": {
+                    "header1": "value1"
+                },
+                "domainName": "events.example.com"
+            },
+            "info": {
+                "channel": {
+                    "path": "/default/orders",
+                    "segments": ["default", "orders"]
+                },
+                "channelNamespace": {
+                    "name": "default"
+                },
+                "operation": "PUBLISH"
+            },
+            "stash": {},
+            "events": [
+                {
+                    "payload": {
+                        "order_id": "order-1",
+                        "quantity": 2
+                    },
+                    "id": "event-1"
+                },
+                {
+                    "payload": {
+                        "order_id": "order-2",
+                        "quantity": 3
+                    },
+                    "id": "event-2"
+                }
+            ]
+        }))
+        .expect("AppSync Events event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_appsync_events_payloads::<OrderEvent>(event)
+            .expect("valid payloads should parse");
+
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[1].payload().quantity, 3);
+    }
+
+    #[test]
     fn parses_bedrock_agent_input() {
         let mut event = AgentEvent::default();
         event.input_text = r#"{"order_id":"order-1","quantity":2}"#.to_owned();
@@ -1475,6 +1553,37 @@ mod tests {
 
         assert_eq!(error.kind(), ParseErrorKind::Data);
         assert_eq!(error.message(), "AppSync event is missing arguments");
+    }
+
+    #[test]
+    fn rejects_appsync_events_without_publish_payloads() {
+        let event = serde_json::from_value::<AppSyncEventsEvent>(json!({
+            "identity": null,
+            "request": {
+                "headers": {},
+                "domainName": null
+            },
+            "info": {
+                "channel": {
+                    "path": "/default/orders",
+                    "segments": ["default", "orders"]
+                },
+                "channelNamespace": {
+                    "name": "default"
+                },
+                "operation": "SUBSCRIBE"
+            },
+            "stash": {},
+            "events": null
+        }))
+        .expect("AppSync Events event should deserialize");
+
+        let error = EventParser::new()
+            .parse_appsync_events_payloads::<OrderEvent>(event)
+            .expect_err("missing publish events should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert_eq!(error.message(), "AppSync Events event is missing events");
     }
 
     #[test]
