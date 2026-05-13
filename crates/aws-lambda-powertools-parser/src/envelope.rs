@@ -11,6 +11,13 @@ use aws_lambda_events::{
         bedrock_agent_runtime::AgentEvent,
         cloudformation::CloudFormationCustomResourceRequest,
         cloudwatch_logs::LogsEvent,
+        cognito::{
+            CognitoEventUserPoolsCreateAuthChallenge, CognitoEventUserPoolsCustomMessage,
+            CognitoEventUserPoolsDefineAuthChallenge, CognitoEventUserPoolsPostAuthentication,
+            CognitoEventUserPoolsPostConfirmation, CognitoEventUserPoolsPreAuthentication,
+            CognitoEventUserPoolsPreSignup, CognitoEventUserPoolsPreTokenGen,
+            CognitoEventUserPoolsPreTokenGenV2, CognitoEventUserPoolsVerifyAuthChallenge,
+        },
         dynamodb::Event as DynamoDbEvent,
         eventbridge::EventBridgeEvent,
         firehose::KinesisFirehoseEvent,
@@ -271,6 +278,206 @@ impl EventParser {
         };
 
         self.parse_json_value(request.old_resource_properties)
+    }
+
+    /// Parses Amazon Cognito User Pool Pre sign-up user attributes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the user attributes cannot be decoded into
+    /// `T`.
+    pub fn parse_cognito_pre_signup_user_attributes<T>(
+        &self,
+        event: CognitoEventUserPoolsPreSignup,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        parse_serialized_value(
+            self,
+            "Cognito Pre sign-up user attributes",
+            event.request.user_attributes,
+        )
+    }
+
+    /// Parses Amazon Cognito User Pool Pre authentication user attributes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the user attributes cannot be decoded into
+    /// `T`.
+    pub fn parse_cognito_pre_authentication_user_attributes<T>(
+        &self,
+        event: CognitoEventUserPoolsPreAuthentication,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        parse_serialized_value(
+            self,
+            "Cognito Pre authentication user attributes",
+            event.request.user_attributes,
+        )
+    }
+
+    /// Parses Amazon Cognito User Pool Post confirmation user attributes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the user attributes cannot be decoded into
+    /// `T`.
+    pub fn parse_cognito_post_confirmation_user_attributes<T>(
+        &self,
+        event: CognitoEventUserPoolsPostConfirmation,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        parse_serialized_value(
+            self,
+            "Cognito Post confirmation user attributes",
+            event.request.user_attributes,
+        )
+    }
+
+    /// Parses Amazon Cognito User Pool Pre token generation user attributes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the user attributes cannot be decoded into
+    /// `T`.
+    pub fn parse_cognito_pre_token_generation_user_attributes<T>(
+        &self,
+        event: CognitoEventUserPoolsPreTokenGen,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        parse_serialized_value(
+            self,
+            "Cognito Pre token generation user attributes",
+            event.request.user_attributes,
+        )
+    }
+
+    /// Parses Amazon Cognito User Pool Pre token generation v2/v3 user attributes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the user attributes cannot be decoded into
+    /// `T`.
+    pub fn parse_cognito_pre_token_generation_v2_user_attributes<T>(
+        &self,
+        event: CognitoEventUserPoolsPreTokenGenV2,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        parse_serialized_value(
+            self,
+            "Cognito Pre token generation v2 user attributes",
+            event.request.user_attributes,
+        )
+    }
+
+    /// Parses Amazon Cognito User Pool Post authentication user attributes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the user attributes cannot be decoded into
+    /// `T`.
+    pub fn parse_cognito_post_authentication_user_attributes<T>(
+        &self,
+        event: CognitoEventUserPoolsPostAuthentication,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        parse_serialized_value(
+            self,
+            "Cognito Post authentication user attributes",
+            event.request.user_attributes,
+        )
+    }
+
+    /// Parses Amazon Cognito User Pool Define auth challenge user attributes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the user attributes cannot be decoded into
+    /// `T`.
+    pub fn parse_cognito_define_auth_challenge_user_attributes<T>(
+        &self,
+        event: CognitoEventUserPoolsDefineAuthChallenge,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        parse_serialized_value(
+            self,
+            "Cognito Define auth challenge user attributes",
+            event.request.user_attributes,
+        )
+    }
+
+    /// Parses Amazon Cognito User Pool Create auth challenge user attributes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the user attributes cannot be decoded into
+    /// `T`.
+    pub fn parse_cognito_create_auth_challenge_user_attributes<T>(
+        &self,
+        event: CognitoEventUserPoolsCreateAuthChallenge,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        parse_serialized_value(
+            self,
+            "Cognito Create auth challenge user attributes",
+            event.request.user_attributes,
+        )
+    }
+
+    /// Parses Amazon Cognito User Pool Verify auth challenge user attributes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the user attributes cannot be decoded into
+    /// `T`.
+    pub fn parse_cognito_verify_auth_challenge_user_attributes<T>(
+        &self,
+        event: CognitoEventUserPoolsVerifyAuthChallenge,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        parse_serialized_value(
+            self,
+            "Cognito Verify auth challenge user attributes",
+            event.request.user_attributes,
+        )
+    }
+
+    /// Parses Amazon Cognito User Pool Custom message user attributes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the user attributes cannot be decoded into
+    /// `T`.
+    pub fn parse_cognito_custom_message_user_attributes<T>(
+        &self,
+        event: CognitoEventUserPoolsCustomMessage,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        parse_serialized_value(
+            self,
+            "Cognito Custom message user attributes",
+            event.request.user_attributes,
+        )
     }
 
     /// Parses JSON `CloudWatch Logs` event messages.
@@ -638,6 +845,25 @@ where
     parser.parse_json_value(value)
 }
 
+fn parse_serialized_value<T, U>(
+    parser: &EventParser,
+    source: &str,
+    value: U,
+) -> Result<ParsedEvent<T>, ParseError>
+where
+    T: DeserializeOwned,
+    U: Serialize,
+{
+    let value = serde_json::to_value(value).map_err(|error| {
+        ParseError::new(
+            ParseErrorKind::Data,
+            format!("failed to serialize {source}: {error}"),
+        )
+    })?;
+
+    parser.parse_json_value(value)
+}
+
 fn parse_sqs_nested_json<T>(source: &str, index: usize, body: &str) -> Result<T, ParseError>
 where
     T: DeserializeOwned,
@@ -786,6 +1012,13 @@ mod tests {
             bedrock_agent_runtime::AgentEvent,
             cloudformation::CloudFormationCustomResourceRequest,
             cloudwatch_logs::{LogEntry, LogsEvent},
+            cognito::{
+                CognitoEventUserPoolsCreateAuthChallenge, CognitoEventUserPoolsCustomMessage,
+                CognitoEventUserPoolsDefineAuthChallenge, CognitoEventUserPoolsPostAuthentication,
+                CognitoEventUserPoolsPostConfirmation, CognitoEventUserPoolsPreAuthentication,
+                CognitoEventUserPoolsPreSignup, CognitoEventUserPoolsPreTokenGen,
+                CognitoEventUserPoolsPreTokenGenV2, CognitoEventUserPoolsVerifyAuthChallenge,
+            },
             dynamodb::Event as DynamoDbEvent,
             eventbridge::EventBridgeEvent,
             firehose::KinesisFirehoseEvent,
@@ -816,6 +1049,12 @@ mod tests {
     struct CustomResourceProperties {
         bucket_name: String,
         retention_days: u32,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    struct CognitoUserAttributes {
+        email: String,
+        name: String,
     }
 
     #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -894,6 +1133,40 @@ mod tests {
     struct SesRecordAction {
         #[serde(rename = "type")]
         type_: Option<String>,
+    }
+
+    fn cognito_event(trigger_source: &str, request: Value, response: Value) -> Value {
+        let mut event = json!({
+            "version": "1",
+            "triggerSource": trigger_source,
+            "region": "us-east-1",
+            "userPoolId": "us-east-1_ABC123",
+            "userName": "test-user",
+            "callerContext": {
+                "awsSdkVersion": "2.814.0",
+                "clientId": "client123"
+            },
+            "request": {},
+            "response": {}
+        });
+        event["request"] = request;
+        event["response"] = response;
+        event
+    }
+
+    fn cognito_user_attributes() -> Value {
+        json!({
+            "email": "user@example.com",
+            "name": "Test User"
+        })
+    }
+
+    fn cognito_group_configuration() -> Value {
+        json!({
+            "groupsToOverride": ["users"],
+            "iamRolesToOverride": [],
+            "preferredRole": null
+        })
     }
 
     #[test]
@@ -1205,6 +1478,240 @@ mod tests {
 
         assert_eq!(error.kind(), ParseErrorKind::Data);
         assert!(error.message().contains("not an Update request"));
+    }
+
+    #[test]
+    fn parses_cognito_pre_signup_user_attributes() {
+        let event: CognitoEventUserPoolsPreSignup = serde_json::from_value(cognito_event(
+            "PreSignUp_SignUp",
+            json!({
+                "userAttributes": cognito_user_attributes(),
+                "validationData": null,
+                "clientMetadata": {
+                    "source": "test"
+                }
+            }),
+            json!({
+                "autoConfirmUser": false,
+                "autoVerifyEmail": false,
+                "autoVerifyPhone": false
+            }),
+        ))
+        .expect("Cognito Pre sign-up event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cognito_pre_signup_user_attributes::<CognitoUserAttributes>(event)
+            .expect("Cognito user attributes should parse");
+
+        assert_eq!(parsed.payload().email, "user@example.com");
+    }
+
+    #[test]
+    fn parses_cognito_pre_authentication_user_attributes() {
+        let event: CognitoEventUserPoolsPreAuthentication = serde_json::from_value(cognito_event(
+            "PreAuthentication_Authentication",
+            json!({
+                "userAttributes": cognito_user_attributes(),
+                "validationData": {
+                    "source": "test"
+                }
+            }),
+            json!({}),
+        ))
+        .expect("Cognito Pre authentication event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cognito_pre_authentication_user_attributes::<CognitoUserAttributes>(event)
+            .expect("Cognito user attributes should parse");
+
+        assert_eq!(parsed.payload().name, "Test User");
+    }
+
+    #[test]
+    fn parses_cognito_post_confirmation_user_attributes() {
+        let event: CognitoEventUserPoolsPostConfirmation = serde_json::from_value(cognito_event(
+            "PostConfirmation_ConfirmSignUp",
+            json!({
+                "userAttributes": cognito_user_attributes(),
+                "clientMetadata": {
+                    "source": "test"
+                }
+            }),
+            json!({}),
+        ))
+        .expect("Cognito Post confirmation event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cognito_post_confirmation_user_attributes::<CognitoUserAttributes>(event)
+            .expect("Cognito user attributes should parse");
+
+        assert_eq!(parsed.payload().email, "user@example.com");
+    }
+
+    #[test]
+    fn parses_cognito_pre_token_generation_user_attributes() {
+        let event: CognitoEventUserPoolsPreTokenGen = serde_json::from_value(cognito_event(
+            "TokenGeneration_Authentication",
+            json!({
+                "userAttributes": cognito_user_attributes(),
+                "groupConfiguration": cognito_group_configuration(),
+                "clientMetadata": {
+                    "source": "test"
+                }
+            }),
+            json!({}),
+        ))
+        .expect("Cognito Pre token generation event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cognito_pre_token_generation_user_attributes::<CognitoUserAttributes>(event)
+            .expect("Cognito user attributes should parse");
+
+        assert_eq!(parsed.payload().name, "Test User");
+    }
+
+    #[test]
+    fn parses_cognito_pre_token_generation_v2_user_attributes() {
+        let event: CognitoEventUserPoolsPreTokenGenV2 = serde_json::from_value(cognito_event(
+            "TokenGeneration_Authentication",
+            json!({
+                "userAttributes": cognito_user_attributes(),
+                "groupConfiguration": cognito_group_configuration(),
+                "scopes": ["openid", "email"],
+                "clientMetadata": {
+                    "source": "test"
+                }
+            }),
+            json!({}),
+        ))
+        .expect("Cognito Pre token generation v2 event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cognito_pre_token_generation_v2_user_attributes::<CognitoUserAttributes>(event)
+            .expect("Cognito user attributes should parse");
+
+        assert_eq!(parsed.payload().email, "user@example.com");
+    }
+
+    #[test]
+    fn parses_cognito_post_authentication_user_attributes() {
+        let event: CognitoEventUserPoolsPostAuthentication = serde_json::from_value(cognito_event(
+            "PostAuthentication_Authentication",
+            json!({
+                "userAttributes": cognito_user_attributes(),
+                "newDeviceUsed": true,
+                "clientMetadata": {
+                    "source": "test"
+                }
+            }),
+            json!({}),
+        ))
+        .expect("Cognito Post authentication event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cognito_post_authentication_user_attributes::<CognitoUserAttributes>(event)
+            .expect("Cognito user attributes should parse");
+
+        assert_eq!(parsed.payload().name, "Test User");
+    }
+
+    #[test]
+    fn parses_cognito_define_auth_challenge_user_attributes() {
+        let event: CognitoEventUserPoolsDefineAuthChallenge =
+            serde_json::from_value(cognito_event(
+                "DefineAuthChallenge_Authentication",
+                json!({
+                    "userAttributes": cognito_user_attributes(),
+                    "session": [],
+                    "clientMetadata": {
+                        "source": "test"
+                    },
+                    "userNotFound": false
+                }),
+                json!({}),
+            ))
+            .expect("Cognito Define auth challenge event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cognito_define_auth_challenge_user_attributes::<CognitoUserAttributes>(event)
+            .expect("Cognito user attributes should parse");
+
+        assert_eq!(parsed.payload().email, "user@example.com");
+    }
+
+    #[test]
+    fn parses_cognito_create_auth_challenge_user_attributes() {
+        let event: CognitoEventUserPoolsCreateAuthChallenge =
+            serde_json::from_value(cognito_event(
+                "CreateAuthChallenge_Authentication",
+                json!({
+                    "userAttributes": cognito_user_attributes(),
+                    "challengeName": "CUSTOM_CHALLENGE",
+                    "session": [],
+                    "clientMetadata": {
+                        "source": "test"
+                    },
+                    "userNotFound": false
+                }),
+                json!({}),
+            ))
+            .expect("Cognito Create auth challenge event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cognito_create_auth_challenge_user_attributes::<CognitoUserAttributes>(event)
+            .expect("Cognito user attributes should parse");
+
+        assert_eq!(parsed.payload().name, "Test User");
+    }
+
+    #[test]
+    fn parses_cognito_verify_auth_challenge_user_attributes() {
+        let event: CognitoEventUserPoolsVerifyAuthChallenge =
+            serde_json::from_value(cognito_event(
+                "VerifyAuthChallengeResponse_Authentication",
+                json!({
+                    "userAttributes": cognito_user_attributes(),
+                    "privateChallengeParameters": {
+                        "answer": "expected"
+                    },
+                    "challengeAnswer": "actual",
+                    "clientMetadata": {
+                        "source": "test"
+                    },
+                    "userNotFound": false
+                }),
+                json!({}),
+            ))
+            .expect("Cognito Verify auth challenge event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cognito_verify_auth_challenge_user_attributes::<CognitoUserAttributes>(event)
+            .expect("Cognito user attributes should parse");
+
+        assert_eq!(parsed.payload().email, "user@example.com");
+    }
+
+    #[test]
+    fn parses_cognito_custom_message_user_attributes() {
+        let event: CognitoEventUserPoolsCustomMessage = serde_json::from_value(cognito_event(
+            "CustomMessage_SignUp",
+            json!({
+                "userAttributes": cognito_user_attributes(),
+                "codeParameter": "{####}",
+                "usernameParameter": "test-user",
+                "clientMetadata": {
+                    "source": "test"
+                }
+            }),
+            json!({}),
+        ))
+        .expect("Cognito Custom message event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_cognito_custom_message_user_attributes::<CognitoUserAttributes>(event)
+            .expect("Cognito user attributes should parse");
+
+        assert_eq!(parsed.payload().name, "Test User");
     }
 
     #[test]
