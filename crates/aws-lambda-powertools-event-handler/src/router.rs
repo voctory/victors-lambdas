@@ -6,7 +6,9 @@ use std::{cmp::Ordering, fmt};
 use crate::validation::{
     ValidationConfig, request_validation_response, response_validation_response,
 };
-use crate::{AsyncRoute, CorsConfig, Method, Request, Response, ResponseFuture, Route};
+use crate::{
+    AsyncHandler, AsyncRoute, CorsConfig, Handler, Method, Request, Response, ResponseFuture, Route,
+};
 
 /// Function signature used by request middleware.
 pub type RequestMiddleware = dyn Fn(Request) -> Request + Send + Sync + 'static;
@@ -25,6 +27,7 @@ pub struct Router {
     cors: Option<CorsConfig>,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
+    not_found_handler: Option<Box<Handler>>,
     #[cfg(feature = "validation")]
     validation: Option<ValidationConfig>,
 }
@@ -40,6 +43,7 @@ pub struct AsyncRouter {
     cors: Option<CorsConfig>,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
+    not_found_handler: Option<Box<AsyncHandler>>,
     #[cfg(feature = "validation")]
     validation: Option<ValidationConfig>,
 }
@@ -53,6 +57,7 @@ impl Router {
             cors: None,
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
+            not_found_handler: None,
             #[cfg(feature = "validation")]
             validation: None,
         }
@@ -105,6 +110,28 @@ impl Router {
     #[must_use]
     pub fn response_middleware_len(&self) -> usize {
         self.response_middleware.len()
+    }
+
+    /// Sets the handler used when no route matches a request.
+    ///
+    /// Response middleware and CORS handling still run for custom not-found
+    /// responses.
+    pub fn set_not_found_handler(
+        &mut self,
+        handler: impl Fn(&Request) -> Response + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.not_found_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Returns a copy of this router with a custom not-found handler.
+    #[must_use]
+    pub fn with_not_found_handler(
+        mut self,
+        handler: impl Fn(&Request) -> Response + Send + Sync + 'static,
+    ) -> Self {
+        self.set_not_found_handler(handler);
+        self
     }
 
     /// Enables validation with the provided configuration.
@@ -242,10 +269,12 @@ impl Router {
         self.add_route(Method::Any, path, handler)
     }
 
-    /// Includes routes, middleware, and validation hooks from another router.
+    /// Includes routes, middleware, validation hooks, and not-found handling from another router.
     ///
     /// Included routes behave as if they were registered after this router's
     /// existing routes. The included router's CORS configuration is not merged.
+    /// If the included router has a not-found handler, it replaces this
+    /// router's not-found handler.
     pub fn include_router(&mut self, router: Router) -> &mut Self {
         self.include_router_with_prefix("", router)
     }
@@ -266,6 +295,7 @@ impl Router {
             cors: _,
             request_middleware,
             response_middleware,
+            not_found_handler,
             #[cfg(feature = "validation")]
             validation,
         } = router;
@@ -278,6 +308,9 @@ impl Router {
         );
         self.request_middleware.extend(request_middleware);
         self.response_middleware.extend(response_middleware);
+        if let Some(not_found_handler) = not_found_handler {
+            self.not_found_handler = Some(not_found_handler);
+        }
         #[cfg(feature = "validation")]
         if let Some(validation) = validation {
             self.validation
@@ -327,7 +360,8 @@ impl Router {
         }
 
         let Some(route_match) = self.find(&request) else {
-            let response = self.apply_response_middleware(&request, Response::not_found());
+            let response = self.not_found_response(&request);
+            let response = self.apply_response_middleware(&request, response);
             return self.apply_cors(response);
         };
         let route = route_match.route;
@@ -387,6 +421,12 @@ impl Router {
         response
     }
 
+    fn not_found_response(&self, request: &Request) -> Response {
+        self.not_found_handler
+            .as_ref()
+            .map_or_else(Response::not_found, |handler| handler(request))
+    }
+
     #[cfg(feature = "validation")]
     fn validate_request(&self, request: &Request) -> Option<Response> {
         self.validation
@@ -415,6 +455,7 @@ impl AsyncRouter {
             cors: None,
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
+            not_found_handler: None,
             #[cfg(feature = "validation")]
             validation: None,
         }
@@ -467,6 +508,28 @@ impl AsyncRouter {
     #[must_use]
     pub fn response_middleware_len(&self) -> usize {
         self.response_middleware.len()
+    }
+
+    /// Sets the asynchronous handler used when no route matches a request.
+    ///
+    /// Response middleware and CORS handling still run for custom not-found
+    /// responses.
+    pub fn set_not_found_handler(
+        &mut self,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.not_found_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Returns a copy of this asynchronous router with a custom not-found handler.
+    #[must_use]
+    pub fn with_not_found_handler(
+        mut self,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> Self {
+        self.set_not_found_handler(handler);
+        self
     }
 
     /// Enables validation with the provided configuration.
@@ -604,10 +667,12 @@ impl AsyncRouter {
         self.add_route(Method::Any, path, handler)
     }
 
-    /// Includes routes, middleware, and validation hooks from another asynchronous router.
+    /// Includes routes, middleware, validation hooks, and not-found handling from another asynchronous router.
     ///
     /// Included routes behave as if they were registered after this router's
     /// existing routes. The included router's CORS configuration is not merged.
+    /// If the included router has a not-found handler, it replaces this
+    /// router's not-found handler.
     pub fn include_router(&mut self, router: AsyncRouter) -> &mut Self {
         self.include_router_with_prefix("", router)
     }
@@ -628,6 +693,7 @@ impl AsyncRouter {
             cors: _,
             request_middleware,
             response_middleware,
+            not_found_handler,
             #[cfg(feature = "validation")]
             validation,
         } = router;
@@ -640,6 +706,9 @@ impl AsyncRouter {
         );
         self.request_middleware.extend(request_middleware);
         self.response_middleware.extend(response_middleware);
+        if let Some(not_found_handler) = not_found_handler {
+            self.not_found_handler = Some(not_found_handler);
+        }
         #[cfg(feature = "validation")]
         if let Some(validation) = validation {
             self.validation
@@ -688,7 +757,8 @@ impl AsyncRouter {
         }
 
         let Some(route_match) = self.find(&request) else {
-            let response = self.apply_response_middleware(&request, Response::not_found());
+            let response = self.not_found_response(&request).await;
+            let response = self.apply_response_middleware(&request, response);
             return self.apply_cors(response);
         };
         let route = route_match.route;
@@ -748,6 +818,14 @@ impl AsyncRouter {
         response
     }
 
+    fn not_found_response<'a>(&'a self, request: &'a Request) -> ResponseFuture<'a> {
+        if let Some(handler) = &self.not_found_handler {
+            handler(request)
+        } else {
+            Box::pin(async { Response::not_found() })
+        }
+    }
+
     #[cfg(feature = "validation")]
     fn validate_request(&self, request: &Request) -> Option<Response> {
         self.validation
@@ -774,7 +852,8 @@ impl fmt::Debug for Router {
             .field("routes", &self.routes)
             .field("cors", &self.cors)
             .field("request_middleware_len", &self.request_middleware.len())
-            .field("response_middleware_len", &self.response_middleware.len());
+            .field("response_middleware_len", &self.response_middleware.len())
+            .field("has_not_found_handler", &self.not_found_handler.is_some());
         #[cfg(feature = "validation")]
         debug.field("validation_enabled", &self.validation.is_some());
         debug.finish()
@@ -788,7 +867,8 @@ impl fmt::Debug for AsyncRouter {
             .field("routes", &self.routes)
             .field("cors", &self.cors)
             .field("request_middleware_len", &self.request_middleware.len())
-            .field("response_middleware_len", &self.response_middleware.len());
+            .field("response_middleware_len", &self.response_middleware.len())
+            .field("has_not_found_handler", &self.not_found_handler.is_some());
         #[cfg(feature = "validation")]
         debug.field("validation_enabled", &self.validation.is_some());
         debug.finish()
@@ -994,6 +1074,21 @@ mod tests {
     }
 
     #[test]
+    fn custom_not_found_handler_runs_response_middleware() {
+        let mut router = Router::new();
+        router.set_not_found_handler(|request| {
+            Response::new(410).with_body(format!("missing:{}", request.path()))
+        });
+        router.add_response_middleware(|_, response| response.with_header("x-middleware", "1"));
+
+        let response = router.handle(Request::new(Method::Get, "/missing"));
+
+        assert_eq!(response.status_code(), 410);
+        assert_eq!(response.body(), b"missing:/missing");
+        assert_eq!(response.header("x-middleware"), Some("1"));
+    }
+
+    #[test]
     fn cors_headers_are_added_to_routed_and_not_found_responses() {
         let mut router = Router::new().with_cors(CorsConfig::new("https://example.com"));
         router.get("/orders", |_| Response::ok("orders"));
@@ -1107,6 +1202,20 @@ mod tests {
         assert_eq!(router.response_middleware_len(), 2);
         assert_eq!(response.header("x-parent"), Some("1"));
         assert_eq!(response.header("x-child"), Some("1"));
+    }
+
+    #[test]
+    fn include_router_merges_not_found_handler() {
+        let mut child = Router::new();
+        child.set_not_found_handler(|_| Response::new(410).with_body("child missing"));
+
+        let mut router = Router::new().with_not_found_handler(|_| Response::not_found());
+        router.include_router(child);
+
+        let response = router.handle(Request::new(Method::Get, "/missing"));
+
+        assert_eq!(response.status_code(), 410);
+        assert_eq!(response.body(), b"child missing");
     }
 
     #[cfg(feature = "validation")]
@@ -1234,6 +1343,23 @@ mod tests {
     }
 
     #[test]
+    fn async_custom_not_found_handler_runs_response_middleware() {
+        let mut router = AsyncRouter::new();
+        router.set_not_found_handler(|request| {
+            async_response(async move {
+                Response::new(410).with_body(format!("missing:{}", request.path()))
+            })
+        });
+        router.add_response_middleware(|_, response| response.with_header("x-middleware", "1"));
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/missing")));
+
+        assert_eq!(response.status_code(), 410);
+        assert_eq!(response.body(), b"missing:/missing");
+        assert_eq!(response.header("x-middleware"), Some("1"));
+    }
+
+    #[test]
     fn async_router_runs_middleware_and_cors() {
         let mut router = AsyncRouter::new().with_cors(CorsConfig::default());
         router.add_request_middleware(|request| {
@@ -1279,5 +1405,19 @@ mod tests {
         assert_eq!(router.len(), 1);
         assert_eq!(router.routes()[0].path(), "/api/orders/{id}");
         assert_eq!(response.body(), b"order:order-1");
+    }
+
+    #[test]
+    fn async_include_router_merges_not_found_handler() {
+        let mut child = AsyncRouter::new();
+        child.set_not_found_handler(|_| async_response(async { Response::new(410) }));
+
+        let mut router = AsyncRouter::new()
+            .with_not_found_handler(|_| async_response(async { Response::not_found() }));
+        router.include_router(child);
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/missing")));
+
+        assert_eq!(response.status_code(), 410);
     }
 }
