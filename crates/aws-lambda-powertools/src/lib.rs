@@ -66,8 +66,11 @@ pub mod prelude {
 
     #[cfg(feature = "event-handler-aws-lambda-events")]
     pub use aws_lambda_powertools_event_handler::{
-        ApiGatewayAdapterError, ApiGatewayAdapterResult, request_from_apigw_v1,
-        request_from_apigw_v2, response_to_apigw_v1, response_to_apigw_v2,
+        ApiGatewayAdapterError, ApiGatewayAdapterResult, AppSyncEvent, AppSyncHandler,
+        AppSyncResolver, AppSyncResolverError, AppSyncResolverResult, AppSyncRoute,
+        BedrockAgentAdapterError, BedrockAgentAdapterResult, request_from_apigw_v1,
+        request_from_apigw_v2, request_from_bedrock_agent, response_to_apigw_v1,
+        response_to_apigw_v2, response_to_bedrock_agent,
     };
 
     #[cfg(feature = "idempotency")]
