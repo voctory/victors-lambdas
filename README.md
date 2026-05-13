@@ -16,7 +16,7 @@ tranche has landed:
   cold-start metric support
 - parameter provider/cache traits with an in-memory provider, force-fetch support, and JSON/base64 transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway body, SQS, SNS,
-  EventBridge, Kinesis, and Firehose envelopes
+  EventBridge, CloudWatch Logs, Kinesis, and Firehose envelopes
 - sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and
   optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior
 - validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,

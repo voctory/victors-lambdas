@@ -2,6 +2,7 @@
 
 use aws_lambda_events::event::{
     apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
+    cloudwatch_logs::LogsEvent,
     eventbridge::EventBridgeEvent,
     firehose::KinesisFirehoseEvent,
     kinesis::KinesisEvent,
@@ -62,6 +63,32 @@ impl EventParser {
         T: DeserializeOwned,
     {
         self.parse_json_value(event.detail)
+    }
+
+    /// Parses JSON `CloudWatch Logs` event messages.
+    ///
+    /// Each decoded log event message is decoded into `T` and returned in log
+    /// event order. The `aws_lambda_events` model base64-decodes and
+    /// decompresses `CloudWatch Logs` data during event deserialization.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any log event message cannot be decoded into
+    /// `T`.
+    pub fn parse_cloudwatch_log_messages<T>(
+        &self,
+        event: LogsEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .aws_logs
+            .data
+            .log_events
+            .into_iter()
+            .map(|entry| self.parse_json_str(&entry.message))
+            .collect()
     }
 
     /// Parses JSON Kinesis record data.
@@ -190,6 +217,7 @@ fn gateway_body(
 mod tests {
     use aws_lambda_events::event::{
         apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
+        cloudwatch_logs::{LogEntry, LogsEvent},
         eventbridge::EventBridgeEvent,
         firehose::KinesisFirehoseEvent,
         kinesis::KinesisEvent,
@@ -381,5 +409,23 @@ mod tests {
             .expect("valid messages should parse");
 
         assert_eq!(parsed[0].payload().order_id, "order-1");
+    }
+
+    #[test]
+    fn parses_cloudwatch_log_messages() {
+        let mut first = LogEntry::default();
+        first.message = r#"{"order_id":"order-1","quantity":2}"#.to_owned();
+        let mut second = LogEntry::default();
+        second.message = r#"{"order_id":"order-2","quantity":3}"#.to_owned();
+        let mut event = LogsEvent::default();
+        event.aws_logs.data.log_events = vec![first, second];
+
+        let parsed = EventParser::new()
+            .parse_cloudwatch_log_messages::<OrderEvent>(event)
+            .expect("valid log messages should parse");
+
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[1].payload().quantity, 3);
     }
 }
