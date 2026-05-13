@@ -10,9 +10,9 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 - Crates: one umbrella crate, `aws-lambda-powertools`, plus utility crates under `crates/`.
 - Feature flags: the umbrella crate exposes `logger`, `logger-tracing`, `metrics`, `tracer`, `parameters`,
   `parameters-appconfig`, `parameters-dynamodb`, `parameters-secrets`, `parameters-ssm`, `parser`,
-  `parser-aws-lambda-events`, `batch`, `batch-aws-lambda-events`, `idempotency`, `validation`,
-  `validation-jsonschema`, `event-handler`, `event-handler-compression`, `event-handler-aws-lambda-events`, and
-  `all`.
+  `parser-aws-lambda-events`, `batch`, `batch-aws-lambda-events`, `idempotency`, `idempotency-dynamodb`,
+  `validation`, `validation-jsonschema`, `event-handler`, `event-handler-compression`,
+  `event-handler-aws-lambda-events`, and `all`.
 - Examples: `examples/basic-lambda` builds against the umbrella crate with all current utility features enabled, and
   `examples/snippets/logger` plus `examples/snippets/metrics` provide buildable docs snippets.
 - Publishing: no crates.io release is documented yet. Local examples use path dependencies.
@@ -106,6 +106,7 @@ Implemented umbrella features:
 - `batch`
 - `batch-aws-lambda-events`
 - `idempotency`
+- `idempotency-dynamodb`
 - `validation`
 - `validation-jsonschema`
 - `event-handler`
@@ -115,7 +116,6 @@ Implemented umbrella features:
 
 Likely future provider and integration features:
 
-- `idempotency-dynamodb`
 - `idempotency-redis`
 - `parser-serde`
 - `parser-schemars`
