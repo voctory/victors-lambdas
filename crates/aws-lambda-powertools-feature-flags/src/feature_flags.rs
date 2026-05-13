@@ -140,7 +140,7 @@ where
     }
 }
 
-fn evaluate_feature(feature: &FeatureFlag, context: &FeatureFlagContext) -> Value {
+pub(crate) fn evaluate_feature(feature: &FeatureFlag, context: &FeatureFlagContext) -> Value {
     if !feature.has_rules() {
         return feature.default_value().clone();
     }

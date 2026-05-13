@@ -8,7 +8,7 @@ This first Rust implementation includes:
 
 - typed feature flag configuration parsing from JSON
 - boolean and JSON-valued features
-- an in-memory store and a `FeatureFlagStore` trait for custom stores
+- an in-memory store plus `FeatureFlagStore` and `AsyncFeatureFlagStore` traits for custom stores
 - single-feature evaluation with caller-provided defaults
 - enabled-feature listing for boolean flags
 - common context comparators, including equality, ordering, string prefix/suffix, collection membership, and modulo

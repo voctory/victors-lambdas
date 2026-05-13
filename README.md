@@ -27,8 +27,8 @@ first implementation tranche has landed:
   and optional local JSON Schema validation with a compiled schema cache
 - idempotency keys, payload hashing, JSON Pointer key extraction, sync and async handler workflows, replay behavior,
   sync and async store traits, an in-memory store, and an optional DynamoDB store
-- feature flag schema parsing, sync store trait, in-memory store, boolean and JSON-valued evaluation, enabled-feature
-  listing, and common context comparators
+- feature flag schema parsing, sync/async store traits, in-memory store, boolean and JSON-valued evaluation,
+  enabled-feature listing, and common context comparators
 - tracer configuration, X-Ray header context parsing, trace segment records, JSON-compatible trace values, and optional
   `tracing` span integration
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
