@@ -151,8 +151,13 @@ pub mod prelude {
     #[cfg(feature = "parser")]
     pub use aws_lambda_powertools_parser::{
         DynamoDbStreamBatchInfo, DynamoDbStreamOnFailureDestination, DynamoDbStreamRequestContext,
-        DynamoDbStreamResponseContext, EventParser, ParseError, ParseErrorKind, ParsedEvent,
-        TransferFamilyAuthorizerEvent, TransferFamilyAuthorizerResponse,
+        DynamoDbStreamResponseContext, EventParser, IoTCoreAddOrDeleteFromThingGroupEvent,
+        IoTCoreAddOrRemoveFromThingGroupEvent, IoTCorePropagatingAttribute,
+        IoTCoreRegistryCrudOperation, IoTCoreRegistryEventType, IoTCoreRegistryMembershipOperation,
+        IoTCoreThingEvent, IoTCoreThingGroupEvent, IoTCoreThingGroupHierarchyEvent,
+        IoTCoreThingGroupMembershipEvent, IoTCoreThingGroupReference,
+        IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent, ParseError, ParseErrorKind,
+        ParsedEvent, TransferFamilyAuthorizerEvent, TransferFamilyAuthorizerResponse,
         TransferFamilyHomeDirectoryEntry, TransferFamilyHomeDirectoryType,
         TransferFamilyPosixProfile, TransferFamilyProtocol, TransferFamilyResponseError,
         TransferFamilyResponseResult,

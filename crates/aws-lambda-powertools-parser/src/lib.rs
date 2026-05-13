@@ -4,6 +4,7 @@ mod dynamodb;
 #[cfg(feature = "aws-lambda-events")]
 mod envelope;
 mod error;
+mod iot_registry;
 mod parser;
 mod transfer_family;
 
@@ -12,6 +13,13 @@ pub use dynamodb::{
     DynamoDbStreamResponseContext,
 };
 pub use error::{ParseError, ParseErrorKind};
+pub use iot_registry::{
+    IoTCoreAddOrDeleteFromThingGroupEvent, IoTCoreAddOrRemoveFromThingGroupEvent,
+    IoTCorePropagatingAttribute, IoTCoreRegistryCrudOperation, IoTCoreRegistryEventType,
+    IoTCoreRegistryMembershipOperation, IoTCoreThingEvent, IoTCoreThingGroupEvent,
+    IoTCoreThingGroupHierarchyEvent, IoTCoreThingGroupMembershipEvent, IoTCoreThingGroupReference,
+    IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent,
+};
 pub use parser::{EventParser, ParsedEvent};
 pub use transfer_family::{
     TransferFamilyAuthorizerEvent, TransferFamilyAuthorizerResponse,
