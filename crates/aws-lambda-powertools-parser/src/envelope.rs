@@ -7,6 +7,7 @@ use aws_lambda_events::{
     event::{
         alb::AlbTargetGroupRequest,
         apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
+        appsync::AppSyncDirectResolverEvent,
         cloudwatch_logs::LogsEvent,
         dynamodb::Event as DynamoDbEvent,
         eventbridge::EventBridgeEvent,
@@ -75,6 +76,44 @@ impl EventParser {
     {
         let body = gateway_body("API Gateway WebSocket", event.body, event.is_base64_encoded)?;
         self.parse_json_slice(&body)
+    }
+
+    /// Parses `AppSync` direct resolver arguments.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when arguments are missing or cannot be decoded
+    /// into `T`.
+    pub fn parse_appsync_arguments<T>(
+        &self,
+        event: AppSyncDirectResolverEvent<Value, Value, Value>,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let arguments = event.arguments.ok_or_else(|| {
+            ParseError::new(ParseErrorKind::Data, "AppSync event is missing arguments")
+        })?;
+        self.parse_json_value(arguments)
+    }
+
+    /// Parses an `AppSync` direct resolver source object.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the source is missing or cannot be decoded
+    /// into `T`.
+    pub fn parse_appsync_source<T>(
+        &self,
+        event: AppSyncDirectResolverEvent<Value, Value, Value>,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let source = event.source.ok_or_else(|| {
+            ParseError::new(ParseErrorKind::Data, "AppSync event is missing source")
+        })?;
+        self.parse_json_value(source)
     }
 
     /// Parses an Application Load Balancer target group JSON body.
@@ -484,6 +523,7 @@ mod tests {
             apigw::{
                 ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest,
             },
+            appsync::AppSyncDirectResolverEvent,
             cloudwatch_logs::{LogEntry, LogsEvent},
             dynamodb::Event as DynamoDbEvent,
             eventbridge::EventBridgeEvent,
@@ -541,6 +581,36 @@ mod tests {
         let parsed = EventParser::new()
             .parse_apigw_websocket_body::<OrderEvent>(event)
             .expect("valid body should parse");
+
+        assert_eq!(parsed.payload().order_id, "order-1");
+    }
+
+    #[test]
+    fn parses_appsync_arguments() {
+        let mut event = AppSyncDirectResolverEvent::<Value, Value, Value>::default();
+        event.arguments = Some(json!({
+            "order_id": "order-1",
+            "quantity": 2,
+        }));
+
+        let parsed = EventParser::new()
+            .parse_appsync_arguments::<OrderEvent>(event)
+            .expect("valid arguments should parse");
+
+        assert_eq!(parsed.payload().quantity, 2);
+    }
+
+    #[test]
+    fn parses_appsync_source() {
+        let mut event = AppSyncDirectResolverEvent::<Value, Value, Value>::default();
+        event.source = Some(json!({
+            "order_id": "order-1",
+            "quantity": 2,
+        }));
+
+        let parsed = EventParser::new()
+            .parse_appsync_source::<OrderEvent>(event)
+            .expect("valid source should parse");
 
         assert_eq!(parsed.payload().order_id, "order-1");
     }
@@ -643,6 +713,18 @@ mod tests {
 
         assert_eq!(error.kind(), ParseErrorKind::Data);
         assert_eq!(error.message(), "API Gateway v1 event is missing body");
+    }
+
+    #[test]
+    fn rejects_appsync_events_without_arguments() {
+        let event = AppSyncDirectResolverEvent::<Value, Value, Value>::default();
+
+        let error = EventParser::new()
+            .parse_appsync_arguments::<OrderEvent>(event)
+            .expect_err("missing arguments should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert_eq!(error.message(), "AppSync event is missing arguments");
     }
 
     #[test]
