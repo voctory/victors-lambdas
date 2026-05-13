@@ -1,6 +1,6 @@
 //! Route definitions.
 
-use std::{fmt, future::Future, pin::Pin};
+use std::{error::Error, fmt, future::Future, pin::Pin};
 
 #[cfg(feature = "validation")]
 use crate::ValidationConfig;
@@ -9,11 +9,27 @@ use crate::{Method, Request, RequestMiddleware, Response, ResponseMiddleware};
 /// Function signature used by HTTP routes.
 pub type Handler = dyn Fn(&Request) -> Response + Send + Sync + 'static;
 
+/// Error type returned by fallible HTTP route handlers.
+pub type RouteError = dyn Error + Send + Sync + 'static;
+
+/// Result type returned by fallible HTTP route handlers.
+pub type RouteResult<T = Response> = Result<T, Box<RouteError>>;
+
+/// Function signature used by fallible HTTP routes.
+pub type FallibleHandler = dyn Fn(&Request) -> RouteResult + Send + Sync + 'static;
+
 /// Boxed future returned by asynchronous HTTP route handlers.
 pub type ResponseFuture<'a> = Pin<Box<dyn Future<Output = Response> + Send + 'a>>;
 
+/// Boxed future returned by asynchronous fallible HTTP route handlers.
+pub type FallibleResponseFuture<'a> = Pin<Box<dyn Future<Output = RouteResult> + Send + 'a>>;
+
 /// Function signature used by asynchronous HTTP routes.
 pub type AsyncHandler = dyn for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static;
+
+/// Function signature used by asynchronous fallible HTTP routes.
+pub type AsyncFallibleHandler =
+    dyn for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static;
 
 /// Captured dynamic path parameters for a matched route.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -83,7 +99,7 @@ pub struct Route {
     method: Method,
     path: String,
     pattern: PathPattern,
-    handler: Box<Handler>,
+    handler: RouteHandler,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
     #[cfg(feature = "validation")]
@@ -104,7 +120,38 @@ impl Route {
             method,
             pattern: PathPattern::parse(&path),
             path,
-            handler: Box::new(handler),
+            handler: RouteHandler::Infallible(Box::new(handler)),
+            request_middleware: Vec::new(),
+            response_middleware: Vec::new(),
+            #[cfg(feature = "validation")]
+            validation: None,
+        }
+    }
+
+    /// Creates a route with a method, path pattern, and fallible handler.
+    ///
+    /// Errors returned by fallible handlers are handled by the owning
+    /// [`Router`](crate::Router) when one is used for dispatch. Calling
+    /// [`Route::handle`] directly maps errors to `500 Internal Server Error`;
+    /// use [`Route::try_handle`] to observe the original error.
+    #[must_use]
+    pub fn new_fallible<E>(
+        method: Method,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> Self
+    where
+        E: Error + Send + Sync + 'static,
+    {
+        let path = path.into();
+
+        Self {
+            method,
+            pattern: PathPattern::parse(&path),
+            path,
+            handler: RouteHandler::Fallible(Box::new(move |request| {
+                handler(request).map_err(|error| Box::new(error) as Box<RouteError>)
+            })),
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
             #[cfg(feature = "validation")]
@@ -134,7 +181,19 @@ impl Route {
     /// Runs this route's handler.
     #[must_use]
     pub fn handle(&self, request: &Request) -> Response {
-        (self.handler)(request)
+        self.try_handle(request)
+            .unwrap_or_else(|_| Response::internal_server_error())
+    }
+
+    /// Runs this route's handler, preserving fallible route errors.
+    ///
+    /// Infallible routes return `Ok(Response)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns the error from a fallible route handler.
+    pub fn try_handle(&self, request: &Request) -> RouteResult {
+        self.handler.try_handle(request)
     }
 
     /// Returns the number of route-specific request middleware functions.
@@ -353,7 +412,7 @@ pub struct AsyncRoute {
     method: Method,
     path: String,
     pattern: PathPattern,
-    handler: Box<AsyncHandler>,
+    handler: AsyncRouteHandler,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
     #[cfg(feature = "validation")]
@@ -374,7 +433,34 @@ impl AsyncRoute {
             method,
             pattern: PathPattern::parse(&path),
             path,
-            handler: Box::new(handler),
+            handler: AsyncRouteHandler::Infallible(Box::new(handler)),
+            request_middleware: Vec::new(),
+            response_middleware: Vec::new(),
+            #[cfg(feature = "validation")]
+            validation: None,
+        }
+    }
+
+    /// Creates an asynchronous route with a method, path pattern, and fallible handler.
+    ///
+    /// Errors returned by fallible handlers are handled by the owning
+    /// [`AsyncRouter`](crate::AsyncRouter) when one is used for dispatch.
+    /// Calling [`AsyncRoute::handle`] directly maps errors to
+    /// `500 Internal Server Error`; use [`AsyncRoute::try_handle`] to observe
+    /// the original error.
+    #[must_use]
+    pub fn new_fallible(
+        method: Method,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> Self {
+        let path = path.into();
+
+        Self {
+            method,
+            pattern: PathPattern::parse(&path),
+            path,
+            handler: AsyncRouteHandler::Fallible(Box::new(handler)),
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
             #[cfg(feature = "validation")]
@@ -403,7 +489,22 @@ impl AsyncRoute {
 
     /// Runs this route's asynchronous handler.
     pub fn handle<'a>(&'a self, request: &'a Request) -> ResponseFuture<'a> {
-        (self.handler)(request)
+        Box::pin(async move {
+            self.try_handle(request)
+                .await
+                .unwrap_or_else(|_| Response::internal_server_error())
+        })
+    }
+
+    /// Runs this asynchronous route's handler, preserving fallible route errors.
+    ///
+    /// Infallible routes return `Ok(Response)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns the error from a fallible route handler.
+    pub fn try_handle<'a>(&'a self, request: &'a Request) -> FallibleResponseFuture<'a> {
+        self.handler.try_handle(request)
     }
 
     /// Returns the number of route-specific request middleware functions.
@@ -617,6 +718,37 @@ impl fmt::Debug for AsyncRoute {
 pub(crate) struct RouteMatchData {
     pub(crate) path_params: PathParams,
     pub(crate) method_score: u8,
+}
+
+enum RouteHandler {
+    Infallible(Box<Handler>),
+    Fallible(Box<FallibleHandler>),
+}
+
+impl RouteHandler {
+    fn try_handle(&self, request: &Request) -> RouteResult {
+        match self {
+            Self::Infallible(handler) => Ok(handler(request)),
+            Self::Fallible(handler) => handler(request),
+        }
+    }
+}
+
+enum AsyncRouteHandler {
+    Infallible(Box<AsyncHandler>),
+    Fallible(Box<AsyncFallibleHandler>),
+}
+
+impl AsyncRouteHandler {
+    fn try_handle<'a>(&'a self, request: &'a Request) -> FallibleResponseFuture<'a> {
+        match self {
+            Self::Infallible(handler) => {
+                let response = handler(request);
+                Box::pin(async move { Ok(response.await) })
+            }
+            Self::Fallible(handler) => handler(request),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -7,7 +7,8 @@ use crate::validation::{
     ValidationConfig, request_validation_response, response_validation_response,
 };
 use crate::{
-    AsyncHandler, AsyncRoute, CorsConfig, Handler, Method, Request, Response, ResponseFuture, Route,
+    AsyncHandler, AsyncRoute, CorsConfig, FallibleResponseFuture, Handler, Method, Request,
+    Response, ResponseFuture, Route, RouteError,
 };
 
 /// Function signature used by request middleware.
@@ -15,6 +16,13 @@ pub type RequestMiddleware = dyn Fn(Request) -> Request + Send + Sync + 'static;
 
 /// Function signature used by response middleware.
 pub type ResponseMiddleware = dyn Fn(&Request, Response) -> Response + Send + Sync + 'static;
+
+/// Function signature used by fallible route error handlers.
+pub type ErrorHandler = dyn Fn(&Request, &RouteError) -> Response + Send + Sync + 'static;
+
+/// Function signature used by asynchronous fallible route error handlers.
+pub type AsyncErrorHandler =
+    dyn for<'a> Fn(&'a Request, &'a RouteError) -> ResponseFuture<'a> + Send + Sync + 'static;
 
 /// Stores HTTP route handlers and selects the most specific matching route.
 ///
@@ -28,6 +36,7 @@ pub struct Router {
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
     not_found_handler: Option<Box<Handler>>,
+    error_handler: Option<Box<ErrorHandler>>,
     #[cfg(feature = "validation")]
     validation: Option<ValidationConfig>,
 }
@@ -44,6 +53,7 @@ pub struct AsyncRouter {
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
     not_found_handler: Option<Box<AsyncHandler>>,
+    error_handler: Option<Box<AsyncErrorHandler>>,
     #[cfg(feature = "validation")]
     validation: Option<ValidationConfig>,
 }
@@ -58,6 +68,7 @@ impl Router {
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
             not_found_handler: None,
+            error_handler: None,
             #[cfg(feature = "validation")]
             validation: None,
         }
@@ -134,6 +145,30 @@ impl Router {
         self
     }
 
+    /// Sets the handler used when a fallible route returns an error.
+    ///
+    /// This handler is only used for routes registered with
+    /// [`Router::add_fallible_route`] or the `*_fallible` route helpers. It
+    /// does not catch panics. Response middleware and CORS handling still run
+    /// for custom error responses.
+    pub fn set_error_handler(
+        &mut self,
+        handler: impl Fn(&Request, &RouteError) -> Response + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.error_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Returns a copy of this router with a fallible route error handler.
+    #[must_use]
+    pub fn with_error_handler(
+        mut self,
+        handler: impl Fn(&Request, &RouteError) -> Response + Send + Sync + 'static,
+    ) -> Self {
+        self.set_error_handler(handler);
+        self
+    }
+
     /// Enables validation with the provided configuration.
     #[cfg(feature = "validation")]
     pub fn enable_validation(&mut self, validation: ValidationConfig) -> &mut Self {
@@ -197,6 +232,23 @@ impl Router {
         self
     }
 
+    /// Adds a fallible route handler.
+    ///
+    /// Returned errors are mapped through this router's error handler when one
+    /// is configured, otherwise they produce `500 Internal Server Error`.
+    pub fn add_fallible_route<E>(
+        &mut self,
+        method: Method,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.routes.push(Route::new_fallible(method, path, handler));
+        self
+    }
+
     /// Registers a prebuilt route.
     ///
     /// Use this when the route owns route-specific middleware.
@@ -214,6 +266,18 @@ impl Router {
         self.add_route(Method::Get, path, handler)
     }
 
+    /// Adds a fallible `GET` route handler.
+    pub fn get_fallible<E>(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.add_fallible_route(Method::Get, path, handler)
+    }
+
     /// Adds a `HEAD` route handler.
     pub fn head(
         &mut self,
@@ -221,6 +285,18 @@ impl Router {
         handler: impl Fn(&Request) -> Response + Send + Sync + 'static,
     ) -> &mut Self {
         self.add_route(Method::Head, path, handler)
+    }
+
+    /// Adds a fallible `HEAD` route handler.
+    pub fn head_fallible<E>(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.add_fallible_route(Method::Head, path, handler)
     }
 
     /// Adds a `POST` route handler.
@@ -232,6 +308,18 @@ impl Router {
         self.add_route(Method::Post, path, handler)
     }
 
+    /// Adds a fallible `POST` route handler.
+    pub fn post_fallible<E>(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.add_fallible_route(Method::Post, path, handler)
+    }
+
     /// Adds a `PUT` route handler.
     pub fn put(
         &mut self,
@@ -239,6 +327,18 @@ impl Router {
         handler: impl Fn(&Request) -> Response + Send + Sync + 'static,
     ) -> &mut Self {
         self.add_route(Method::Put, path, handler)
+    }
+
+    /// Adds a fallible `PUT` route handler.
+    pub fn put_fallible<E>(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.add_fallible_route(Method::Put, path, handler)
     }
 
     /// Adds a `PATCH` route handler.
@@ -250,6 +350,18 @@ impl Router {
         self.add_route(Method::Patch, path, handler)
     }
 
+    /// Adds a fallible `PATCH` route handler.
+    pub fn patch_fallible<E>(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.add_fallible_route(Method::Patch, path, handler)
+    }
+
     /// Adds a `DELETE` route handler.
     pub fn delete(
         &mut self,
@@ -257,6 +369,18 @@ impl Router {
         handler: impl Fn(&Request) -> Response + Send + Sync + 'static,
     ) -> &mut Self {
         self.add_route(Method::Delete, path, handler)
+    }
+
+    /// Adds a fallible `DELETE` route handler.
+    pub fn delete_fallible<E>(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.add_fallible_route(Method::Delete, path, handler)
     }
 
     /// Adds an `OPTIONS` route handler.
@@ -268,6 +392,18 @@ impl Router {
         self.add_route(Method::Options, path, handler)
     }
 
+    /// Adds a fallible `OPTIONS` route handler.
+    pub fn options_fallible<E>(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.add_fallible_route(Method::Options, path, handler)
+    }
+
     /// Adds a route handler that accepts any request method.
     pub fn any(
         &mut self,
@@ -277,12 +413,24 @@ impl Router {
         self.add_route(Method::Any, path, handler)
     }
 
-    /// Includes routes, middleware, validation hooks, and not-found handling from another router.
+    /// Adds a fallible route handler that accepts any request method.
+    pub fn any_fallible<E>(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.add_fallible_route(Method::Any, path, handler)
+    }
+
+    /// Includes routes, middleware, validation hooks, and error handling from another router.
     ///
     /// Included routes behave as if they were registered after this router's
     /// existing routes. The included router's CORS configuration is not merged.
-    /// If the included router has a not-found handler, it replaces this
-    /// router's not-found handler.
+    /// If the included router has a not-found or fallible route error handler,
+    /// it replaces this router's matching handler.
     pub fn include_router(&mut self, router: Router) -> &mut Self {
         self.include_router_with_prefix("", router)
     }
@@ -304,6 +452,7 @@ impl Router {
             request_middleware,
             response_middleware,
             not_found_handler,
+            error_handler,
             #[cfg(feature = "validation")]
             validation,
         } = router;
@@ -318,6 +467,9 @@ impl Router {
         self.response_middleware.extend(response_middleware);
         if let Some(not_found_handler) = not_found_handler {
             self.not_found_handler = Some(not_found_handler);
+        }
+        if let Some(error_handler) = error_handler {
+            self.error_handler = Some(error_handler);
         }
         #[cfg(feature = "validation")]
         if let Some(validation) = validation {
@@ -385,7 +537,15 @@ impl Router {
             return self.apply_cors(response);
         }
 
-        let response = route.apply_response_middleware(&request, route.handle(&request));
+        let response = match route.try_handle(&request) {
+            Ok(response) => response,
+            Err(error) => {
+                let response = self.error_response(&request, error.as_ref());
+                let response = self.apply_response_middleware(&request, response);
+                return self.apply_cors(response);
+            }
+        };
+        let response = route.apply_response_middleware(&request, response);
         let response = self.apply_response_middleware(&request, response);
         #[cfg(feature = "validation")]
         if let Err(error) = route.validate_response(&request, &response) {
@@ -445,6 +605,14 @@ impl Router {
             .map_or_else(Response::not_found, |handler| handler(request))
     }
 
+    fn error_response(&self, request: &Request, error: &RouteError) -> Response {
+        self.error_handler
+            .as_ref()
+            .map_or_else(Response::internal_server_error, |handler| {
+                handler(request, error)
+            })
+    }
+
     #[cfg(feature = "validation")]
     fn validate_request(&self, request: &Request) -> Option<Response> {
         self.validation
@@ -474,6 +642,7 @@ impl AsyncRouter {
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
             not_found_handler: None,
+            error_handler: None,
             #[cfg(feature = "validation")]
             validation: None,
         }
@@ -550,6 +719,36 @@ impl AsyncRouter {
         self
     }
 
+    /// Sets the asynchronous handler used when a fallible route returns an error.
+    ///
+    /// This handler is only used for routes registered with
+    /// [`AsyncRouter::add_fallible_route`] or the `*_fallible` route helpers.
+    /// It does not catch panics. Response middleware and CORS handling still
+    /// run for custom error responses.
+    pub fn set_error_handler(
+        &mut self,
+        handler: impl for<'a> Fn(&'a Request, &'a RouteError) -> ResponseFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.error_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Returns a copy of this asynchronous router with a fallible route error handler.
+    #[must_use]
+    pub fn with_error_handler(
+        mut self,
+        handler: impl for<'a> Fn(&'a Request, &'a RouteError) -> ResponseFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.set_error_handler(handler);
+        self
+    }
+
     /// Enables validation with the provided configuration.
     #[cfg(feature = "validation")]
     pub fn enable_validation(&mut self, validation: ValidationConfig) -> &mut Self {
@@ -613,6 +812,21 @@ impl AsyncRouter {
         self
     }
 
+    /// Adds an asynchronous fallible route handler.
+    ///
+    /// Returned errors are mapped through this router's error handler when one
+    /// is configured, otherwise they produce `500 Internal Server Error`.
+    pub fn add_fallible_route(
+        &mut self,
+        method: Method,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.routes
+            .push(AsyncRoute::new_fallible(method, path, handler));
+        self
+    }
+
     /// Registers a prebuilt asynchronous route.
     ///
     /// Use this when the route owns route-specific middleware.
@@ -630,6 +844,15 @@ impl AsyncRouter {
         self.add_route(Method::Get, path, handler)
     }
 
+    /// Adds an asynchronous fallible `GET` route handler.
+    pub fn get_fallible(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_fallible_route(Method::Get, path, handler)
+    }
+
     /// Adds an asynchronous `HEAD` route handler.
     pub fn head(
         &mut self,
@@ -637,6 +860,15 @@ impl AsyncRouter {
         handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
     ) -> &mut Self {
         self.add_route(Method::Head, path, handler)
+    }
+
+    /// Adds an asynchronous fallible `HEAD` route handler.
+    pub fn head_fallible(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_fallible_route(Method::Head, path, handler)
     }
 
     /// Adds an asynchronous `POST` route handler.
@@ -648,6 +880,15 @@ impl AsyncRouter {
         self.add_route(Method::Post, path, handler)
     }
 
+    /// Adds an asynchronous fallible `POST` route handler.
+    pub fn post_fallible(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_fallible_route(Method::Post, path, handler)
+    }
+
     /// Adds an asynchronous `PUT` route handler.
     pub fn put(
         &mut self,
@@ -655,6 +896,15 @@ impl AsyncRouter {
         handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
     ) -> &mut Self {
         self.add_route(Method::Put, path, handler)
+    }
+
+    /// Adds an asynchronous fallible `PUT` route handler.
+    pub fn put_fallible(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_fallible_route(Method::Put, path, handler)
     }
 
     /// Adds an asynchronous `PATCH` route handler.
@@ -666,6 +916,15 @@ impl AsyncRouter {
         self.add_route(Method::Patch, path, handler)
     }
 
+    /// Adds an asynchronous fallible `PATCH` route handler.
+    pub fn patch_fallible(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_fallible_route(Method::Patch, path, handler)
+    }
+
     /// Adds an asynchronous `DELETE` route handler.
     pub fn delete(
         &mut self,
@@ -673,6 +932,15 @@ impl AsyncRouter {
         handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
     ) -> &mut Self {
         self.add_route(Method::Delete, path, handler)
+    }
+
+    /// Adds an asynchronous fallible `DELETE` route handler.
+    pub fn delete_fallible(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_fallible_route(Method::Delete, path, handler)
     }
 
     /// Adds an asynchronous `OPTIONS` route handler.
@@ -684,6 +952,15 @@ impl AsyncRouter {
         self.add_route(Method::Options, path, handler)
     }
 
+    /// Adds an asynchronous fallible `OPTIONS` route handler.
+    pub fn options_fallible(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_fallible_route(Method::Options, path, handler)
+    }
+
     /// Adds an asynchronous route handler that accepts any request method.
     pub fn any(
         &mut self,
@@ -693,12 +970,21 @@ impl AsyncRouter {
         self.add_route(Method::Any, path, handler)
     }
 
-    /// Includes routes, middleware, validation hooks, and not-found handling from another asynchronous router.
+    /// Adds an asynchronous fallible route handler that accepts any request method.
+    pub fn any_fallible(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_fallible_route(Method::Any, path, handler)
+    }
+
+    /// Includes routes, middleware, validation hooks, and error handling from another asynchronous router.
     ///
     /// Included routes behave as if they were registered after this router's
     /// existing routes. The included router's CORS configuration is not merged.
-    /// If the included router has a not-found handler, it replaces this
-    /// router's not-found handler.
+    /// If the included router has a not-found or fallible route error handler,
+    /// it replaces this router's matching handler.
     pub fn include_router(&mut self, router: AsyncRouter) -> &mut Self {
         self.include_router_with_prefix("", router)
     }
@@ -720,6 +1006,7 @@ impl AsyncRouter {
             request_middleware,
             response_middleware,
             not_found_handler,
+            error_handler,
             #[cfg(feature = "validation")]
             validation,
         } = router;
@@ -734,6 +1021,9 @@ impl AsyncRouter {
         self.response_middleware.extend(response_middleware);
         if let Some(not_found_handler) = not_found_handler {
             self.not_found_handler = Some(not_found_handler);
+        }
+        if let Some(error_handler) = error_handler {
+            self.error_handler = Some(error_handler);
         }
         #[cfg(feature = "validation")]
         if let Some(validation) = validation {
@@ -800,7 +1090,15 @@ impl AsyncRouter {
             return self.apply_cors(response);
         }
 
-        let response = route.apply_response_middleware(&request, route.handle(&request).await);
+        let response = match route.try_handle(&request).await {
+            Ok(response) => response,
+            Err(error) => {
+                let response = self.error_response(&request, error.as_ref()).await;
+                let response = self.apply_response_middleware(&request, response);
+                return self.apply_cors(response);
+            }
+        };
+        let response = route.apply_response_middleware(&request, response);
         let response = self.apply_response_middleware(&request, response);
         #[cfg(feature = "validation")]
         if let Err(error) = route.validate_response(&request, &response) {
@@ -862,6 +1160,18 @@ impl AsyncRouter {
         }
     }
 
+    fn error_response<'a>(
+        &'a self,
+        request: &'a Request,
+        error: &'a RouteError,
+    ) -> ResponseFuture<'a> {
+        if let Some(handler) = &self.error_handler {
+            handler(request, error)
+        } else {
+            Box::pin(async { Response::internal_server_error() })
+        }
+    }
+
     #[cfg(feature = "validation")]
     fn validate_request(&self, request: &Request) -> Option<Response> {
         self.validation
@@ -889,7 +1199,8 @@ impl fmt::Debug for Router {
             .field("cors", &self.cors)
             .field("request_middleware_len", &self.request_middleware.len())
             .field("response_middleware_len", &self.response_middleware.len())
-            .field("has_not_found_handler", &self.not_found_handler.is_some());
+            .field("has_not_found_handler", &self.not_found_handler.is_some())
+            .field("has_error_handler", &self.error_handler.is_some());
         #[cfg(feature = "validation")]
         debug.field("validation_enabled", &self.validation.is_some());
         debug.finish()
@@ -904,7 +1215,8 @@ impl fmt::Debug for AsyncRouter {
             .field("cors", &self.cors)
             .field("request_middleware_len", &self.request_middleware.len())
             .field("response_middleware_len", &self.response_middleware.len())
-            .field("has_not_found_handler", &self.not_found_handler.is_some());
+            .field("has_not_found_handler", &self.not_found_handler.is_some())
+            .field("has_error_handler", &self.error_handler.is_some());
         #[cfg(feature = "validation")]
         debug.field("validation_enabled", &self.validation.is_some());
         debug.finish()
@@ -1021,7 +1333,7 @@ fn async_route_takes_precedence(
 
 #[cfg(test)]
 mod tests {
-    use std::future::Future;
+    use std::{fmt, future::Future};
 
     #[cfg(feature = "validation")]
     use aws_lambda_powertools_validation::Validator;
@@ -1030,13 +1342,30 @@ mod tests {
     #[cfg(feature = "validation")]
     use crate::ValidationConfig;
     use crate::{
-        AsyncRoute, AsyncRouter, CorsConfig, Method, Request, Response, ResponseFuture, Route,
-        Router,
+        AsyncRoute, AsyncRouter, CorsConfig, FallibleResponseFuture, Method, Request, Response,
+        ResponseFuture, Route, RouteResult, Router,
     };
+
+    #[derive(Debug)]
+    struct TestRouteError(&'static str);
+
+    impl fmt::Display for TestRouteError {
+        fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str(self.0)
+        }
+    }
+
+    impl std::error::Error for TestRouteError {}
 
     fn async_response<'a>(
         future: impl Future<Output = Response> + Send + 'a,
     ) -> ResponseFuture<'a> {
+        Box::pin(future)
+    }
+
+    fn async_fallible_response<'a>(
+        future: impl Future<Output = RouteResult> + Send + 'a,
+    ) -> FallibleResponseFuture<'a> {
         Box::pin(future)
     }
 
@@ -1125,6 +1454,34 @@ mod tests {
         assert_eq!(response.status_code(), 410);
         assert_eq!(response.body(), b"missing:/missing");
         assert_eq!(response.header("x-middleware"), Some("1"));
+    }
+
+    #[test]
+    fn fallible_route_errors_use_custom_error_handler_and_response_middleware() {
+        let mut router = Router::new().with_cors(CorsConfig::default());
+        router.set_error_handler(|request, error| {
+            Response::new(409).with_body(format!("{}:{}", request.path(), error))
+        });
+        router.add_response_middleware(|_, response| response.with_header("x-middleware", "1"));
+        router.get_fallible("/orders", |_| Err(TestRouteError("duplicate order")));
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(response.status_code(), 409);
+        assert_eq!(response.body(), b"/orders:duplicate order");
+        assert_eq!(response.header("x-middleware"), Some("1"));
+        assert_eq!(response.header("access-control-allow-origin"), Some("*"));
+    }
+
+    #[test]
+    fn fallible_route_errors_default_to_internal_server_error() {
+        let mut router = Router::new();
+        router.post_fallible("/orders", |_| Err(TestRouteError("hidden detail")));
+
+        let response = router.handle(Request::new(Method::Post, "/orders"));
+
+        assert_eq!(response.status_code(), 500);
+        assert_eq!(response.body(), b"Internal Server Error");
     }
 
     #[test]
@@ -1306,6 +1663,21 @@ mod tests {
 
         assert_eq!(response.status_code(), 410);
         assert_eq!(response.body(), b"child missing");
+    }
+
+    #[test]
+    fn include_router_merges_error_handler() {
+        let mut child = Router::new();
+        child.set_error_handler(|_, error| Response::new(422).with_body(error.to_string()));
+        child.get_fallible("/orders", |_| Err(TestRouteError("invalid order")));
+
+        let mut router = Router::new().with_error_handler(|_, _| Response::internal_server_error());
+        router.include_router(child);
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(response.status_code(), 422);
+        assert_eq!(response.body(), b"invalid order");
     }
 
     #[cfg(feature = "validation")]
@@ -1532,6 +1904,26 @@ mod tests {
         assert_eq!(response.status_code(), 410);
         assert_eq!(response.body(), b"missing:/missing");
         assert_eq!(response.header("x-middleware"), Some("1"));
+    }
+
+    #[test]
+    fn async_fallible_route_errors_use_custom_error_handler() {
+        let mut router = AsyncRouter::new();
+        router.set_error_handler(|request, error| {
+            async_response(async move {
+                Response::new(409).with_body(format!("{}:{}", request.path(), error))
+            })
+        });
+        router.get_fallible("/orders", |_| {
+            async_fallible_response(async {
+                Err(Box::new(TestRouteError("duplicate order")) as Box<crate::RouteError>)
+            })
+        });
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/orders")));
+
+        assert_eq!(response.status_code(), 409);
+        assert_eq!(response.body(), b"/orders:duplicate order");
     }
 
     #[test]

@@ -31,6 +31,12 @@ impl Response {
         Self::new(404).with_body("Not Found")
     }
 
+    /// Creates a `500 Internal Server Error` response.
+    #[must_use]
+    pub fn internal_server_error() -> Self {
+        Self::new(500).with_body("Internal Server Error")
+    }
+
     /// Returns the response status code.
     #[must_use]
     pub const fn status_code(&self) -> u16 {

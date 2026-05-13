@@ -78,9 +78,13 @@ pub use lambda_function_url::{
 pub use method::{Method, ParseMethodError};
 pub use request::Request;
 pub use response::Response;
-pub use route::{AsyncHandler, AsyncRoute, Handler, PathParams, ResponseFuture, Route};
+pub use route::{
+    AsyncFallibleHandler, AsyncHandler, AsyncRoute, FallibleHandler, FallibleResponseFuture,
+    Handler, PathParams, ResponseFuture, Route, RouteError, RouteResult,
+};
 pub use router::{
-    AsyncRouteMatch, AsyncRouter, RequestMiddleware, ResponseMiddleware, RouteMatch, Router,
+    AsyncErrorHandler, AsyncRouteMatch, AsyncRouter, ErrorHandler, RequestMiddleware,
+    ResponseMiddleware, RouteMatch, Router,
 };
 #[cfg(feature = "validation")]
 pub use validation::{RequestValidator, ResponseValidator, ValidationConfig};
