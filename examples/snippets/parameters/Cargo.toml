@@ -1,0 +1,15 @@
+[package]
+name = "parameters-snippet"
+description = "Buildable parameters snippet for Powertools Lambda Rust docs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["parameters"] }
+serde = { version = "1.0", features = ["derive"] }
+
+[lints]
+workspace = true
