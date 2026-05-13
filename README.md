@@ -38,12 +38,12 @@ first implementation tranche has landed:
 - tracer configuration, X-Ray header context parsing/rendering, trace segment records, JSON-compatible trace values, and
   optional `tracing` span integration
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
-  built-in HTTP errors, unsupported-method `405` adapter responses, custom not-found and fallible route error handlers,
-  router composition with path prefixes, router-level and route-specific request/response middleware, CORS handling,
-  optional router-level and route-specific validation hooks, optional gzip/deflate compression middleware, and optional
-  API Gateway REST/HTTP/WebSocket API, ALB, Lambda Function URL, VPC Lattice, sync/async AppSync direct and batch
-  resolver composition, AppSync Events routing and composition, Bedrock Agent OpenAPI adapter, and sync/async Bedrock
-  Agent function-details resolver
+  multi-method route registration, built-in HTTP errors, unsupported-method `405` adapter responses, custom not-found
+  and fallible route error handlers, router composition with path prefixes, router-level and route-specific
+  request/response middleware, CORS handling, optional router-level and route-specific validation hooks, optional
+  gzip/deflate compression middleware, and optional API Gateway REST/HTTP/WebSocket API, ALB, Lambda Function URL, VPC
+  Lattice, sync/async AppSync direct and batch resolver composition, AppSync Events routing and composition, Bedrock
+  Agent OpenAPI adapter, and sync/async Bedrock Agent function-details resolver
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
 Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, richer idempotency examples, OpenTelemetry or

@@ -1,14 +1,15 @@
 //! Router facade.
 
-use std::{cmp::Ordering, fmt};
+use std::{cmp::Ordering, fmt, sync::Arc};
 
 #[cfg(feature = "validation")]
 use crate::validation::{
     ValidationConfig, request_validation_response, response_validation_response,
 };
 use crate::{
-    AsyncHandler, AsyncRoute, CorsConfig, FallibleResponseFuture, Handler, HttpError, Method,
-    Request, Response, ResponseFuture, Route, RouteError,
+    AsyncFallibleHandler, AsyncHandler, AsyncRoute, CorsConfig, FallibleHandler,
+    FallibleResponseFuture, Handler, HttpError, Method, Request, Response, ResponseFuture, Route,
+    RouteError,
 };
 
 /// Function signature used by request middleware.
@@ -232,6 +233,30 @@ impl Router {
         self
     }
 
+    /// Adds the same route handler for multiple request methods.
+    ///
+    /// This is a convenience for registering methods such as `GET` and `POST`
+    /// on the same path while preserving normal route precedence.
+    pub fn add_routes(
+        &mut self,
+        methods: impl IntoIterator<Item = Method>,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Response + Send + Sync + 'static,
+    ) -> &mut Self {
+        let path = path.into();
+        let handler: Arc<Handler> = Arc::new(handler);
+
+        for method in methods {
+            self.routes.push(Route::new_with_handler(
+                method,
+                path.clone(),
+                Arc::clone(&handler),
+            ));
+        }
+
+        self
+    }
+
     /// Adds a fallible route handler.
     ///
     /// Returned errors are mapped through this router's error handler when one
@@ -246,6 +271,36 @@ impl Router {
         E: std::error::Error + Send + Sync + 'static,
     {
         self.routes.push(Route::new_fallible(method, path, handler));
+        self
+    }
+
+    /// Adds the same fallible route handler for multiple request methods.
+    ///
+    /// Returned errors are mapped through this router's error handler when one
+    /// is configured, otherwise built-in [`HttpError`] values produce their
+    /// status code and other errors produce `500 Internal Server Error`.
+    pub fn add_fallible_routes<E>(
+        &mut self,
+        methods: impl IntoIterator<Item = Method>,
+        path: impl Into<String>,
+        handler: impl Fn(&Request) -> Result<Response, E> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        let path = path.into();
+        let handler: Arc<FallibleHandler> = Arc::new(move |request| {
+            handler(request).map_err(|error| Box::new(error) as Box<RouteError>)
+        });
+
+        for method in methods {
+            self.routes.push(Route::new_with_fallible_handler(
+                method,
+                path.clone(),
+                Arc::clone(&handler),
+            ));
+        }
+
         self
     }
 
@@ -811,6 +866,30 @@ impl AsyncRouter {
         self
     }
 
+    /// Adds the same asynchronous route handler for multiple request methods.
+    ///
+    /// This is a convenience for registering methods such as `GET` and `POST`
+    /// on the same path while preserving normal route precedence.
+    pub fn add_routes(
+        &mut self,
+        methods: impl IntoIterator<Item = Method>,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        let path = path.into();
+        let handler: Arc<AsyncHandler> = Arc::new(handler);
+
+        for method in methods {
+            self.routes.push(AsyncRoute::new_with_handler(
+                method,
+                path.clone(),
+                Arc::clone(&handler),
+            ));
+        }
+
+        self
+    }
+
     /// Adds an asynchronous fallible route handler.
     ///
     /// Returned errors are mapped through this router's error handler when one
@@ -823,6 +902,31 @@ impl AsyncRouter {
     ) -> &mut Self {
         self.routes
             .push(AsyncRoute::new_fallible(method, path, handler));
+        self
+    }
+
+    /// Adds the same asynchronous fallible route handler for multiple request methods.
+    ///
+    /// Returned errors are mapped through this router's error handler when one
+    /// is configured, otherwise built-in [`HttpError`] values produce their
+    /// status code and other errors produce `500 Internal Server Error`.
+    pub fn add_fallible_routes(
+        &mut self,
+        methods: impl IntoIterator<Item = Method>,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        let path = path.into();
+        let handler: Arc<AsyncFallibleHandler> = Arc::new(handler);
+
+        for method in methods {
+            self.routes.push(AsyncRoute::new_with_fallible_handler(
+                method,
+                path.clone(),
+                Arc::clone(&handler),
+            ));
+        }
+
         self
     }
 
@@ -1348,7 +1452,7 @@ mod tests {
     use crate::ValidationConfig;
     use crate::{
         AsyncRoute, AsyncRouter, CorsConfig, FallibleResponseFuture, HttpError, Method, Request,
-        Response, ResponseFuture, Route, RouteResult, Router,
+        Response, ResponseFuture, Route, RouteError, RouteResult, Router,
     };
 
     #[derive(Debug)]
@@ -1412,6 +1516,45 @@ mod tests {
 
         assert_eq!(get_response.body(), b"get");
         assert_eq!(post_response.body(), b"any");
+    }
+
+    #[test]
+    fn add_routes_registers_same_handler_for_multiple_methods() {
+        let mut router = Router::new();
+        router.add_routes([Method::Get, Method::Post], "/orders", |request| {
+            Response::ok(request.method().as_str())
+        });
+
+        let get_response = router.handle(Request::new(Method::Get, "/orders"));
+        let post_response = router.handle(Request::new(Method::Post, "/orders"));
+        let delete_response = router.handle(Request::new(Method::Delete, "/orders"));
+
+        assert_eq!(router.routes().len(), 2);
+        assert_eq!(get_response.body(), b"GET");
+        assert_eq!(post_response.body(), b"POST");
+        assert_eq!(delete_response.status_code(), 404);
+    }
+
+    #[test]
+    fn add_fallible_routes_registers_same_handler_for_multiple_methods() {
+        let mut router = Router::new();
+        router.add_fallible_routes([Method::Post, Method::Put], "/orders", |request| {
+            Err(HttpError::bad_request(format!(
+                "invalid {}",
+                request.method()
+            )))
+        });
+
+        let post_response = router.handle(Request::new(Method::Post, "/orders"));
+        let put_response = router.handle(Request::new(Method::Put, "/orders"));
+        let get_response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(router.routes().len(), 2);
+        assert_eq!(post_response.status_code(), 400);
+        assert_eq!(post_response.body(), b"invalid POST");
+        assert_eq!(put_response.status_code(), 400);
+        assert_eq!(put_response.body(), b"invalid PUT");
+        assert_eq!(get_response.status_code(), 404);
     }
 
     #[test]
@@ -1908,6 +2051,49 @@ mod tests {
 
         assert_eq!(route_match.path_param("id"), Some("order-1"));
         assert_eq!(response.body(), b"order:order-1");
+    }
+
+    #[test]
+    fn async_add_routes_registers_same_handler_for_multiple_methods() {
+        let mut router = AsyncRouter::new();
+        router.add_routes([Method::Get, Method::Patch], "/jobs", |request| {
+            let method = request.method();
+            async_response(async move { Response::ok(method.as_str()) })
+        });
+
+        let get_response = block_on(router.handle(Request::new(Method::Get, "/jobs")));
+        let patch_response = block_on(router.handle(Request::new(Method::Patch, "/jobs")));
+        let delete_response = block_on(router.handle(Request::new(Method::Delete, "/jobs")));
+
+        assert_eq!(router.routes().len(), 2);
+        assert_eq!(get_response.body(), b"GET");
+        assert_eq!(patch_response.body(), b"PATCH");
+        assert_eq!(delete_response.status_code(), 404);
+    }
+
+    #[test]
+    fn async_add_fallible_routes_registers_same_handler_for_multiple_methods() {
+        let mut router = AsyncRouter::new();
+        router.add_fallible_routes([Method::Post, Method::Put], "/jobs", |request| {
+            let method = request.method();
+            async_fallible_response(async move {
+                Err(
+                    Box::new(HttpError::bad_request(format!("invalid {method}")))
+                        as Box<RouteError>,
+                )
+            })
+        });
+
+        let post_response = block_on(router.handle(Request::new(Method::Post, "/jobs")));
+        let put_response = block_on(router.handle(Request::new(Method::Put, "/jobs")));
+        let get_response = block_on(router.handle(Request::new(Method::Get, "/jobs")));
+
+        assert_eq!(router.routes().len(), 2);
+        assert_eq!(post_response.status_code(), 400);
+        assert_eq!(post_response.body(), b"invalid POST");
+        assert_eq!(put_response.status_code(), 400);
+        assert_eq!(put_response.body(), b"invalid PUT");
+        assert_eq!(get_response.status_code(), 404);
     }
 
     #[test]

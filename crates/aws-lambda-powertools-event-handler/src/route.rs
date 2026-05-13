@@ -1,6 +1,6 @@
 //! Route definitions.
 
-use std::{error::Error, fmt, future::Future, pin::Pin};
+use std::{error::Error, fmt, future::Future, pin::Pin, sync::Arc};
 
 #[cfg(feature = "validation")]
 use crate::ValidationConfig;
@@ -114,18 +114,7 @@ impl Route {
         path: impl Into<String>,
         handler: impl Fn(&Request) -> Response + Send + Sync + 'static,
     ) -> Self {
-        let path = path.into();
-
-        Self {
-            method,
-            pattern: PathPattern::parse(&path),
-            path,
-            handler: RouteHandler::Infallible(Box::new(handler)),
-            request_middleware: Vec::new(),
-            response_middleware: Vec::new(),
-            #[cfg(feature = "validation")]
-            validation: None,
-        }
+        Self::new_with_handler(method, path, Arc::new(handler))
     }
 
     /// Creates a route with a method, path pattern, and fallible handler.
@@ -143,15 +132,44 @@ impl Route {
     where
         E: Error + Send + Sync + 'static,
     {
-        let path = path.into();
+        Self::new_with_fallible_handler(
+            method,
+            path,
+            Arc::new(move |request| {
+                handler(request).map_err(|error| Box::new(error) as Box<RouteError>)
+            }),
+        )
+    }
 
+    pub(crate) fn new_with_handler(
+        method: Method,
+        path: impl Into<String>,
+        handler: Arc<Handler>,
+    ) -> Self {
+        let path = path.into();
         Self {
             method,
             pattern: PathPattern::parse(&path),
             path,
-            handler: RouteHandler::Fallible(Box::new(move |request| {
-                handler(request).map_err(|error| Box::new(error) as Box<RouteError>)
-            })),
+            handler: RouteHandler::Infallible(handler),
+            request_middleware: Vec::new(),
+            response_middleware: Vec::new(),
+            #[cfg(feature = "validation")]
+            validation: None,
+        }
+    }
+
+    pub(crate) fn new_with_fallible_handler(
+        method: Method,
+        path: impl Into<String>,
+        handler: Arc<FallibleHandler>,
+    ) -> Self {
+        let path = path.into();
+        Self {
+            method,
+            pattern: PathPattern::parse(&path),
+            path,
+            handler: RouteHandler::Fallible(handler),
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
             #[cfg(feature = "validation")]
@@ -427,18 +445,7 @@ impl AsyncRoute {
         path: impl Into<String>,
         handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
     ) -> Self {
-        let path = path.into();
-
-        Self {
-            method,
-            pattern: PathPattern::parse(&path),
-            path,
-            handler: AsyncRouteHandler::Infallible(Box::new(handler)),
-            request_middleware: Vec::new(),
-            response_middleware: Vec::new(),
-            #[cfg(feature = "validation")]
-            validation: None,
-        }
+        Self::new_with_handler(method, path, Arc::new(handler))
     }
 
     /// Creates an asynchronous route with a method, path pattern, and fallible handler.
@@ -454,13 +461,40 @@ impl AsyncRoute {
         path: impl Into<String>,
         handler: impl for<'a> Fn(&'a Request) -> FallibleResponseFuture<'a> + Send + Sync + 'static,
     ) -> Self {
+        Self::new_with_fallible_handler(method, path, Arc::new(handler))
+    }
+
+    pub(crate) fn new_with_handler(
+        method: Method,
+        path: impl Into<String>,
+        handler: Arc<AsyncHandler>,
+    ) -> Self {
         let path = path.into();
 
         Self {
             method,
             pattern: PathPattern::parse(&path),
             path,
-            handler: AsyncRouteHandler::Fallible(Box::new(handler)),
+            handler: AsyncRouteHandler::Infallible(handler),
+            request_middleware: Vec::new(),
+            response_middleware: Vec::new(),
+            #[cfg(feature = "validation")]
+            validation: None,
+        }
+    }
+
+    pub(crate) fn new_with_fallible_handler(
+        method: Method,
+        path: impl Into<String>,
+        handler: Arc<AsyncFallibleHandler>,
+    ) -> Self {
+        let path = path.into();
+
+        Self {
+            method,
+            pattern: PathPattern::parse(&path),
+            path,
+            handler: AsyncRouteHandler::Fallible(handler),
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
             #[cfg(feature = "validation")]
@@ -721,8 +755,8 @@ pub(crate) struct RouteMatchData {
 }
 
 enum RouteHandler {
-    Infallible(Box<Handler>),
-    Fallible(Box<FallibleHandler>),
+    Infallible(Arc<Handler>),
+    Fallible(Arc<FallibleHandler>),
 }
 
 impl RouteHandler {
@@ -735,8 +769,8 @@ impl RouteHandler {
 }
 
 enum AsyncRouteHandler {
-    Infallible(Box<AsyncHandler>),
-    Fallible(Box<AsyncFallibleHandler>),
+    Infallible(Arc<AsyncHandler>),
+    Fallible(Arc<AsyncFallibleHandler>),
 }
 
 impl AsyncRouteHandler {
