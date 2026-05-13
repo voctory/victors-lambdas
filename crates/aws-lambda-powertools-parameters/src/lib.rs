@@ -1,5 +1,7 @@
 //! Parameter retrieval utility.
 
+#[cfg(feature = "appconfig")]
+mod appconfig;
 mod async_parameter;
 mod cache;
 mod parameter;
@@ -10,6 +12,8 @@ mod secrets;
 mod ssm;
 mod transform;
 
+#[cfg(feature = "appconfig")]
+pub use appconfig::AppConfigProvider;
 pub use async_parameter::{
     AsyncParameterError, AsyncParameterProvider, AsyncParameterResult, AsyncParameters,
     ParameterFuture, ParameterProviderError, ParameterProviderResult,

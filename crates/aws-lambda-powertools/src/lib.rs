@@ -107,6 +107,9 @@ pub mod prelude {
         ParameterTransformErrorKind, Parameters,
     };
 
+    #[cfg(feature = "parameters-appconfig")]
+    pub use aws_lambda_powertools_parameters::AppConfigProvider;
+
     #[cfg(feature = "parameters-secrets")]
     pub use aws_lambda_powertools_parameters::SecretsManagerProvider;
 

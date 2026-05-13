@@ -143,6 +143,7 @@ dependencies = [
 name = "aws-lambda-powertools-parameters"
 version = "0.1.0"
 dependencies = [
+ "aws-sdk-appconfigdata",
  "aws-sdk-secretsmanager",
  "aws-sdk-ssm",
  "base64 0.22.1",
@@ -231,6 +232,28 @@ dependencies = [
  "pin-project-lite",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "aws-sdk-appconfigdata"
+version = "1.74.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23f4e19711ab6d1530fd6191fe5211d3cdac4474c116a3afa34ea2c6d578d143"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http 0.2.12",
+ "regex-lite",
+ "tracing",
 ]
 
 [[package]]
