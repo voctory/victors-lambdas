@@ -47,7 +47,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, optional `aws_lambda_events` EventBridge detail, SQS body, and SNS message envelopes | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior | Concurrent processing and richer stream checkpoint ergonomics |
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, optional local JSON Schema backend | Schema cache, inbound/outbound validation wrappers |
-| Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `IdempotencyStatus`, `IdempotencyRecord`, store trait/error/result, in-memory store | Handler wrapper, key extraction, payload hashing, result replay, DynamoDB store, concurrency semantics |
+| Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `Idempotency`, `IdempotencyOutcome`, typed workflow errors, SHA-256 JSON payload hashing, JSON Pointer key extraction, handler wrapper, payload hash validation, result replay, store trait/error/result, in-memory store | DynamoDB store and provider-level concurrency semantics |
 | Event handler | `Method`, method parsing/matching, `Request`, `Response`, `PathParams`, `Route`, `Router`, static/dynamic path precedence, `ANY` routes, and 404 dispatch | API Gateway/event adapters, async handlers, middleware, CORS, compression, AppSync, Bedrock Agent |
 | Testing | `LambdaContextStub` and parameter provider stub re-export | Fixture loaders, fake AWS providers, handler harnesses |
 
@@ -62,8 +62,8 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 3. Add parameter provider integrations behind feature flags. Confirm the AWS SDK MSRV impact before enabling those
    dependencies.
 4. Expand parser envelopes and fixtures using `aws_lambda_events` as the default event model source.
-5. Expand idempotency where AWS retry semantics overlap: key extraction, payload hashing, DynamoDB persistence, and
-   replay behavior.
+5. Expand idempotency where AWS retry semantics overlap: DynamoDB persistence, conditional writes, and concurrency
+   behavior.
 6. Add event adapters for HTTP routing after parser/event model choices are stable.
 
 ## Crate Strategy
@@ -78,7 +78,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-parameters` | Parameter retrieval | Trait, cache facade, and in-memory provider exist; AWS providers are next |
 | `aws-lambda-powertools-parser` | Event parsing | serde JSON facade and initial `aws_lambda_events` envelopes exist; broader envelope coverage and fixtures are next |
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential processing plus SQS, Kinesis, and DynamoDB stream adapters exist; concurrent processing and richer stream checkpoint ergonomics are next |
-| `aws-lambda-powertools-idempotency` | Deduplication | Records and stores exist; handler semantics and providers are next |
+| `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, handler workflow, replay, records, and stores exist; DynamoDB persistence is next |
 | `aws-lambda-powertools-validation` | Payload validation | Basic validators exist; JSON Schema remains optional future work |
 | `aws-lambda-powertools-event-handler` | Routing | Dependency-free routing exists; next work is event adapters and middleware |
 | `aws-lambda-powertools-testing` | Test helpers | Minimal stubs exist; expand only as real utilities need them |
@@ -173,7 +173,8 @@ Powertools conventions.
 - [x] Add SQS source-specific batch processing and FIFO retry semantics.
 - [x] Add Kinesis and DynamoDB stream batch processors and retry semantics.
 - [x] Add JSON Schema validation behind an optional feature.
-- [ ] Add idempotency handler workflow and DynamoDB persistence.
+- [x] Add idempotency handler workflow, key hashing, payload validation, and replay behavior.
+- [ ] Add DynamoDB idempotency persistence and provider-level concurrency semantics.
 - [ ] Add API Gateway/event adapters, middleware, CORS, and related HTTP routing integrations.
 - [ ] Add release notes, crates.io publishing checks, docs.rs coverage, and provenance/SBOM work after API boundaries
   settle.

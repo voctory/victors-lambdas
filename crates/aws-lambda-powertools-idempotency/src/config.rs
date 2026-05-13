@@ -15,6 +15,7 @@ pub const DEFAULT_IN_PROGRESS_TTL: Duration = Duration::from_secs(60);
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IdempotencyConfig {
     disabled: bool,
+    key_prefix: Option<String>,
     record_ttl: Duration,
     in_progress_ttl: Duration,
 }
@@ -25,6 +26,7 @@ impl IdempotencyConfig {
     pub const fn new(disabled: bool) -> Self {
         Self {
             disabled,
+            key_prefix: None,
             record_ttl: DEFAULT_RECORD_TTL,
             in_progress_ttl: DEFAULT_IN_PROGRESS_TTL,
         }
@@ -40,6 +42,12 @@ impl IdempotencyConfig {
     #[must_use]
     pub const fn disabled(&self) -> bool {
         self.disabled
+    }
+
+    /// Returns the optional prefix applied to generated idempotency keys.
+    #[must_use]
+    pub fn key_prefix(&self) -> Option<&str> {
+        self.key_prefix.as_deref()
     }
 
     /// Returns the completed record time-to-live duration.
@@ -65,6 +73,13 @@ impl IdempotencyConfig {
     #[must_use]
     pub const fn with_in_progress_ttl(mut self, in_progress_ttl: Duration) -> Self {
         self.in_progress_ttl = in_progress_ttl;
+        self
+    }
+
+    /// Returns a copy of this configuration with an idempotency key prefix.
+    #[must_use]
+    pub fn with_key_prefix(mut self, key_prefix: impl Into<String>) -> Self {
+        self.key_prefix = Some(key_prefix.into());
         self
     }
 }
@@ -107,9 +122,11 @@ mod tests {
     fn ttl_builders_replace_durations() {
         let config = IdempotencyConfig::new(true)
             .with_record_ttl(Duration::from_secs(10))
-            .with_in_progress_ttl(Duration::from_secs(2));
+            .with_in_progress_ttl(Duration::from_secs(2))
+            .with_key_prefix("orders");
 
         assert!(config.disabled());
+        assert_eq!(config.key_prefix(), Some("orders"));
         assert_eq!(config.record_ttl(), Duration::from_secs(10));
         assert_eq!(config.in_progress_ttl(), Duration::from_secs(2));
     }
