@@ -44,7 +44,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Metrics | `MetricsConfig`, `Metric`, `MetricUnit`, `MetricResolution`, `MetadataValue`, EMF JSON renderer, request dimensions, default dimensions, metadata, name/value validation, service dimension, cold-start metric, high-resolution metric definitions, stdout flush API, CloudWatch limits | Async handler ergonomics, overflow auto-flush convenience, timestamp customization |
 | Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing, `TraceSegment`, `TraceValue` | Real `tracing` spans, OpenTelemetry, X-Ray propagation/export |
 | Parameters | `ParameterProvider`, `Parameters`, `Parameter`, `CachePolicy`, in-memory provider | SSM, Secrets Manager, AppConfig, DynamoDB providers, decrypt options, forced fetch, transforms |
-| Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, optional `aws_lambda_events` EventBridge detail, SQS body, and SNS message envelopes | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
+| Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, optional `aws_lambda_events` API Gateway REST/HTTP API body, EventBridge detail, SQS body, and SNS message envelopes | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior | Concurrent processing and richer stream checkpoint ergonomics |
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, optional local JSON Schema backend | Schema cache, inbound/outbound validation wrappers |
 | Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `Idempotency`, `IdempotencyOutcome`, typed workflow errors, SHA-256 JSON payload hashing, JSON Pointer key extraction, handler wrapper, payload hash validation, result replay, store trait/error/result, in-memory store | DynamoDB store and provider-level concurrency semantics |
@@ -76,7 +76,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-metrics` | CloudWatch EMF metrics | Renderer, flush API, high-resolution metrics, and default dimensions exist; next work is async handler ergonomics and feature completeness |
 | `aws-lambda-powertools-tracer` | Tracing facade | Segment records exist; next work is integration with Rust tracing/export pipelines |
 | `aws-lambda-powertools-parameters` | Parameter retrieval | Trait, cache facade, and in-memory provider exist; AWS providers are next |
-| `aws-lambda-powertools-parser` | Event parsing | serde JSON facade and initial `aws_lambda_events` envelopes exist; broader envelope coverage and fixtures are next |
+| `aws-lambda-powertools-parser` | Event parsing | serde JSON facade plus API Gateway, SQS, SNS, and EventBridge `aws_lambda_events` envelopes exist; broader envelope coverage and fixtures are next |
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential processing plus SQS, Kinesis, and DynamoDB stream adapters exist; concurrent processing and richer stream checkpoint ergonomics are next |
 | `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, handler workflow, replay, records, and stores exist; DynamoDB persistence is next |
 | `aws-lambda-powertools-validation` | Payload validation | Basic validators exist; JSON Schema remains optional future work |
@@ -169,6 +169,7 @@ Powertools conventions.
 - [ ] Implement `tracing` span integration and optional OpenTelemetry/X-Ray features.
 - [ ] Implement AWS-backed parameter providers behind feature flags.
 - [x] Add initial SQS, SNS, and EventBridge parser envelopes based on `aws_lambda_events`.
+- [x] Add API Gateway REST API and HTTP API parser body envelopes based on `aws_lambda_events`.
 - [ ] Expand parser envelopes and fixtures based on `aws_lambda_events`.
 - [x] Add SQS source-specific batch processing and FIFO retry semantics.
 - [x] Add Kinesis and DynamoDB stream batch processors and retry semantics.

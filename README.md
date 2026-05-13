@@ -13,8 +13,8 @@ tranche has landed:
 - CloudWatch EMF JSON rendering with metrics, dimensions, default dimensions, metadata, validation, limits,
   high-resolution metrics, stdout flushing, and cold-start metric support
 - parameter provider/cache traits with an in-memory provider
-- serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` SQS, SNS, and EventBridge
-  envelopes
+- serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway body, SQS, SNS,
+  and EventBridge envelopes
 - batch record processing, partial batch response builders, and optional `aws_lambda_events` SQS, Kinesis, and DynamoDB
   stream adapters with FIFO SQS early-stop behavior
 - validation helpers for required text, text length, numeric ranges, custom predicates, and optional local JSON Schema

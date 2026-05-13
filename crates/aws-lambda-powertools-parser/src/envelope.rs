@@ -1,12 +1,52 @@
 //! Event envelope adapters.
 
-use aws_lambda_events::event::{eventbridge::EventBridgeEvent, sns::SnsEvent, sqs::SqsEvent};
+use aws_lambda_events::event::{
+    apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
+    eventbridge::EventBridgeEvent,
+    sns::SnsEvent,
+    sqs::SqsEvent,
+};
+use base64::Engine;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 use crate::{EventParser, ParseError, ParseErrorKind, ParsedEvent};
 
 impl EventParser {
+    /// Parses an API Gateway REST API v1 JSON body.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the body is missing, cannot be base64
+    /// decoded, or cannot be decoded into `T`.
+    pub fn parse_apigw_v1_body<T>(
+        &self,
+        event: ApiGatewayProxyRequest,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let body = gateway_body("API Gateway v1", event.body, event.is_base64_encoded)?;
+        self.parse_json_slice(&body)
+    }
+
+    /// Parses an API Gateway HTTP API v2 JSON body.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the body is missing, cannot be base64
+    /// decoded, or cannot be decoded into `T`.
+    pub fn parse_apigw_v2_body<T>(
+        &self,
+        event: ApiGatewayV2httpRequest,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let body = gateway_body("API Gateway v2", event.body, event.is_base64_encoded)?;
+        self.parse_json_slice(&body)
+    }
+
     /// Parses an `EventBridge` `detail` payload.
     ///
     /// # Errors
@@ -72,9 +112,36 @@ impl EventParser {
     }
 }
 
+fn gateway_body(
+    source: &str,
+    body: Option<String>,
+    is_base64_encoded: bool,
+) -> Result<Vec<u8>, ParseError> {
+    let body = body.ok_or_else(|| {
+        ParseError::new(
+            ParseErrorKind::Data,
+            format!("{source} event is missing body"),
+        )
+    })?;
+
+    if is_base64_encoded {
+        base64::engine::general_purpose::STANDARD
+            .decode(body)
+            .map_err(|error| {
+                ParseError::new(
+                    ParseErrorKind::Data,
+                    format!("{source} body is not valid base64: {error}"),
+                )
+            })
+    } else {
+        Ok(body.into_bytes())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use aws_lambda_events::event::{
+        apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
         eventbridge::EventBridgeEvent,
         sns::{SnsEvent, SnsMessage, SnsRecord},
         sqs::{SqsEvent, SqsMessage},
@@ -88,6 +155,55 @@ mod tests {
     struct OrderEvent {
         order_id: String,
         quantity: u32,
+    }
+
+    #[test]
+    fn parses_api_gateway_v1_body() {
+        let mut event = ApiGatewayProxyRequest::default();
+        event.body = Some(r#"{"order_id":"order-1","quantity":2}"#.to_owned());
+
+        let parsed = EventParser::new()
+            .parse_apigw_v1_body::<OrderEvent>(event)
+            .expect("valid body should parse");
+
+        assert_eq!(parsed.payload().order_id, "order-1");
+    }
+
+    #[test]
+    fn parses_base64_api_gateway_v2_body() {
+        let mut event = ApiGatewayV2httpRequest::default();
+        event.body = Some("eyJvcmRlcl9pZCI6Im9yZGVyLTEiLCJxdWFudGl0eSI6Mn0=".to_owned());
+        event.is_base64_encoded = true;
+
+        let parsed = EventParser::new()
+            .parse_apigw_v2_body::<OrderEvent>(event)
+            .expect("valid body should parse");
+
+        assert_eq!(parsed.payload().quantity, 2);
+    }
+
+    #[test]
+    fn rejects_api_gateway_events_without_bodies() {
+        let error = EventParser::new()
+            .parse_apigw_v1_body::<OrderEvent>(ApiGatewayProxyRequest::default())
+            .expect_err("missing body should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert_eq!(error.message(), "API Gateway v1 event is missing body");
+    }
+
+    #[test]
+    fn rejects_invalid_base64_api_gateway_body() {
+        let mut event = ApiGatewayV2httpRequest::default();
+        event.body = Some("not-base64!".to_owned());
+        event.is_base64_encoded = true;
+
+        let error = EventParser::new()
+            .parse_apigw_v2_body::<OrderEvent>(event)
+            .expect_err("invalid base64 should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert!(error.message().contains("not valid base64"));
     }
 
     #[test]
