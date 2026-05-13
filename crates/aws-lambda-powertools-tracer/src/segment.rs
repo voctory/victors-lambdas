@@ -6,6 +6,7 @@ use crate::{TraceContext, TraceFields, TraceValue, TracerConfig, normalize_key};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraceSegment {
     context: TraceContext,
+    service_name: Option<String>,
     annotations: TraceFields,
     metadata: TraceFields,
     response: Option<TraceValue>,
@@ -21,6 +22,7 @@ impl TraceSegment {
     pub fn new(context: TraceContext) -> Self {
         Self {
             context,
+            service_name: None,
             annotations: TraceFields::new(),
             metadata: TraceFields::new(),
             response: None,
@@ -34,6 +36,7 @@ impl TraceSegment {
     pub(crate) fn from_config(context: TraceContext, config: &TracerConfig) -> Self {
         Self {
             context,
+            service_name: Some(config.service().service_name().to_owned()),
             annotations: TraceFields::new(),
             metadata: TraceFields::new(),
             response: None,
@@ -176,6 +179,13 @@ impl TraceSegment {
     #[must_use]
     pub fn name(&self) -> &str {
         self.context.name()
+    }
+
+    /// Returns the configured service name when the segment was created by a
+    /// [`Tracer`](crate::Tracer).
+    #[must_use]
+    pub fn service_name(&self) -> Option<&str> {
+        self.service_name.as_deref()
     }
 
     /// Returns configured annotations.

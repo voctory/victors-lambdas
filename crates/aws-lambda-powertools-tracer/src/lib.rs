@@ -4,6 +4,8 @@ mod config;
 mod context;
 mod segment;
 mod tracer;
+#[cfg(feature = "tracing")]
+mod tracing_span;
 mod value;
 
 pub use config::TracerConfig;

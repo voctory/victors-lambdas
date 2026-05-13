@@ -181,6 +181,8 @@ name = "aws-lambda-powertools-tracer"
 version = "0.1.0"
 dependencies = [
  "aws-lambda-powertools-core",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

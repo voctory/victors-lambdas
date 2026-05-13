@@ -47,6 +47,26 @@ impl Tracer {
         TraceSegment::from_config(context, &self.config)
     }
 
+    /// Creates a `tracing` span for a segment name.
+    ///
+    /// When tracing is disabled in the tracer configuration, this returns
+    /// [`tracing::Span::none`].
+    #[cfg(feature = "tracing")]
+    #[must_use]
+    pub fn span(&self, name: impl Into<String>) -> tracing::Span {
+        self.segment(name).to_span()
+    }
+
+    /// Creates a `tracing` span from an existing trace context.
+    ///
+    /// When tracing is disabled in the tracer configuration, this returns
+    /// [`tracing::Span::none`].
+    #[cfg(feature = "tracing")]
+    #[must_use]
+    pub fn span_with_context(&self, context: TraceContext) -> tracing::Span {
+        self.segment_with_context(context).to_span()
+    }
+
     /// Returns tracer configuration.
     #[must_use]
     pub fn config(&self) -> &TracerConfig {
@@ -137,5 +157,13 @@ mod tests {
         );
         assert_eq!(segment.context().parent_id(), Some("53995c3f42cd8ad8"));
         assert_eq!(segment.context().sampled(), Some(false));
+    }
+
+    #[cfg(feature = "tracing")]
+    #[test]
+    fn disabled_tracer_returns_disabled_tracing_span() {
+        let tracer = Tracer::with_config(TracerConfig::new("orders").with_enabled(false));
+
+        assert!(tracer.span("handler").is_disabled());
     }
 }

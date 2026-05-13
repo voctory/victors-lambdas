@@ -27,7 +27,8 @@ first implementation tranche has landed:
   and optional local JSON Schema validation with a compiled schema cache
 - idempotency keys, payload hashing, JSON Pointer key extraction, sync and async handler workflows, replay behavior,
   sync and async store traits, an in-memory store, and an optional DynamoDB store
-- tracer configuration, X-Ray header context parsing, trace segment records, and JSON-compatible trace values
+- tracer configuration, X-Ray header context parsing, trace segment records, JSON-compatible trace values, and optional
+  `tracing` span integration
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
   request/response middleware, CORS handling, optional gzip/deflate compression middleware, and optional API Gateway
   REST/HTTP/WebSocket API, ALB, Lambda Function URL, VPC Lattice, AppSync direct resolver, and Bedrock Agent adapters

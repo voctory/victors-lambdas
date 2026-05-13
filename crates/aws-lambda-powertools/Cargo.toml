@@ -49,6 +49,7 @@ parameters-ssm = ["parameters", "aws-lambda-powertools-parameters/ssm"]
 parser = ["dep:aws-lambda-powertools-parser"]
 parser-aws-lambda-events = ["parser", "aws-lambda-powertools-parser/aws-lambda-events"]
 tracer = ["dep:aws-lambda-powertools-tracer"]
+tracer-tracing = ["tracer", "aws-lambda-powertools-tracer/tracing"]
 validation = ["dep:aws-lambda-powertools-validation"]
 validation-jsonschema = ["validation", "aws-lambda-powertools-validation/jsonschema"]
 
