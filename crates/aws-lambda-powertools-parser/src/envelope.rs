@@ -18,7 +18,7 @@ use aws_lambda_events::{
             CognitoEventUserPoolsPreSignup, CognitoEventUserPoolsPreTokenGen,
             CognitoEventUserPoolsPreTokenGenV2, CognitoEventUserPoolsVerifyAuthChallenge,
         },
-        dynamodb::Event as DynamoDbEvent,
+        dynamodb::{Event as DynamoDbEvent, EventRecord as DynamoDbEventRecord},
         eventbridge::EventBridgeEvent,
         firehose::KinesisFirehoseEvent,
         kafka::{KafkaEvent, KafkaRecord},
@@ -529,6 +529,64 @@ impl EventParser {
             .collect()
     }
 
+    /// Parses `DynamoDB` stream `NewImage` records delivered through Kinesis data.
+    ///
+    /// Each Kinesis record data blob must contain a JSON `DynamoDB` stream
+    /// record. The nested non-empty `NewImage` item is decoded into `T` with
+    /// `serde_dynamo` and returned in Kinesis record order.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when Kinesis record data is not a valid `DynamoDB`
+    /// stream record, any record is missing a `NewImage`, or an image cannot be
+    /// decoded into `T`.
+    pub fn parse_kinesis_dynamodb_new_images<T>(
+        &self,
+        event: KinesisEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| {
+                let record = parse_kinesis_record_json(index, &record.kinesis.data)?;
+                dynamodb_image("NewImage", index, record.change.new_image)
+            })
+            .collect()
+    }
+
+    /// Parses `DynamoDB` stream `OldImage` records delivered through Kinesis data.
+    ///
+    /// Each Kinesis record data blob must contain a JSON `DynamoDB` stream
+    /// record. The nested non-empty `OldImage` item is decoded into `T` with
+    /// `serde_dynamo` and returned in Kinesis record order.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when Kinesis record data is not a valid `DynamoDB`
+    /// stream record, any record is missing an `OldImage`, or an image cannot
+    /// be decoded into `T`.
+    pub fn parse_kinesis_dynamodb_old_images<T>(
+        &self,
+        event: KinesisEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| {
+                let record = parse_kinesis_record_json(index, &record.kinesis.data)?;
+                dynamodb_image("OldImage", index, record.change.old_image)
+            })
+            .collect()
+    }
+
     /// Parses JSON Kinesis Firehose record data.
     ///
     /// Each record data blob is decoded into `T` and returned in record order.
@@ -920,6 +978,19 @@ where
             error.kind(),
             format!(
                 "Firehose record at index {index} data is not a valid {source}: {}",
+                error.message()
+            ),
+        )
+    })
+}
+
+fn parse_kinesis_record_json(index: usize, data: &[u8]) -> Result<DynamoDbEventRecord, ParseError> {
+    serde_json::from_slice(data).map_err(|error| {
+        let error = ParseError::from_json_error(&error);
+        ParseError::new(
+            error.kind(),
+            format!(
+                "Kinesis record at index {index} data is not a valid DynamoDB stream record: {}",
                 error.message()
             ),
         )
@@ -1793,6 +1864,106 @@ mod tests {
         assert_eq!(parsed.len(), 2);
         assert_eq!(parsed[0].payload().order_id, "order-1");
         assert_eq!(parsed[1].payload().quantity, 3);
+    }
+
+    #[test]
+    fn parses_kinesis_dynamodb_new_images() {
+        let dynamodb_record = json!({
+            "awsRegion": "us-east-1",
+            "eventID": "event-1",
+            "eventName": "INSERT",
+            "eventSource": "aws:dynamodb",
+            "recordFormat": "application/json",
+            "tableName": "orders",
+            "dynamodb": {
+                "Keys": {
+                    "order_id": {
+                        "S": "order-1"
+                    }
+                },
+                "NewImage": {
+                    "order_id": {
+                        "S": "order-1"
+                    },
+                    "quantity": {
+                        "N": "2"
+                    }
+                },
+                "SizeBytes": 42
+            }
+        });
+        let event: KinesisEvent = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "kinesis": {
+                        "kinesisSchemaVersion": "1.0",
+                        "partitionKey": "orders",
+                        "sequenceNumber": "1",
+                        "data": STANDARD.encode(dynamodb_record.to_string()),
+                        "approximateArrivalTimestamp": 1
+                    }
+                }
+            ]
+        }))
+        .expect("Kinesis event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_kinesis_dynamodb_new_images::<OrderEvent>(event)
+            .expect("Kinesis DynamoDB NewImage should parse");
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[0].payload().quantity, 2);
+    }
+
+    #[test]
+    fn parses_kinesis_dynamodb_old_images() {
+        let dynamodb_record = json!({
+            "awsRegion": "us-east-1",
+            "eventID": "event-1",
+            "eventName": "MODIFY",
+            "eventSource": "aws:dynamodb",
+            "recordFormat": "application/json",
+            "tableName": "orders",
+            "dynamodb": {
+                "Keys": {
+                    "order_id": {
+                        "S": "order-1"
+                    }
+                },
+                "OldImage": {
+                    "order_id": {
+                        "S": "order-1"
+                    },
+                    "quantity": {
+                        "N": "1"
+                    }
+                },
+                "SizeBytes": 42
+            }
+        });
+        let event: KinesisEvent = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "kinesis": {
+                        "kinesisSchemaVersion": "1.0",
+                        "partitionKey": "orders",
+                        "sequenceNumber": "1",
+                        "data": STANDARD.encode(dynamodb_record.to_string()),
+                        "approximateArrivalTimestamp": 1
+                    }
+                }
+            ]
+        }))
+        .expect("Kinesis event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_kinesis_dynamodb_old_images::<OrderEvent>(event)
+            .expect("Kinesis DynamoDB OldImage should parse");
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[0].payload().quantity, 1);
     }
 
     #[test]

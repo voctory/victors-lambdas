@@ -21,8 +21,8 @@ first implementation tranche has landed:
   REST/HTTP/WebSocket API, AppSync direct resolver arguments/source, Bedrock Agent input text, ALB, Lambda Function URL,
   and VPC Lattice body, SQS, SNS, SNS-over-SQS, S3, S3-over-SQS, S3 Object Lambda configuration payload, S3 Batch job
   task, EventBridge, CloudFormation custom resource properties, Cognito User Pool user attributes, SES, CloudWatch Logs,
-  Kinesis, Firehose, Firehose-delivered SQS, DynamoDB stream image, and Kafka envelopes, plus Transfer Family authorizer
-  event and response models
+  Kinesis, Kinesis-delivered DynamoDB stream image, Firehose, Firehose-delivered SQS, DynamoDB stream image, and Kafka
+  envelopes, plus Transfer Family authorizer event and response models
 - sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and
   optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior
 - validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,
