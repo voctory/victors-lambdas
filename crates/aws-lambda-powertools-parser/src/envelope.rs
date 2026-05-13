@@ -27,7 +27,7 @@ use aws_lambda_events::{
         s3::{S3Event, batch_job::S3BatchJobEvent, object_lambda::S3ObjectLambdaEvent},
         ses::SimpleEmailEvent,
         sns::{SnsEvent, SnsMessage},
-        sqs::SqsEvent,
+        sqs::{SqsEvent, SqsMessage},
         vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
     },
 };
@@ -552,6 +552,36 @@ impl EventParser {
             .collect()
     }
 
+    /// Parses JSON SQS message bodies delivered through Kinesis Firehose data.
+    ///
+    /// Each Firehose record data blob must contain a JSON SQS message. The SQS
+    /// message body is decoded into `T` and returned in Firehose record order.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when Firehose record data is not a valid SQS
+    /// message, an embedded SQS message is missing a body, or any body cannot
+    /// be decoded into `T`.
+    pub fn parse_firehose_sqs_message_bodies<T>(
+        &self,
+        event: KinesisFirehoseEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| {
+                let message: SqsMessage =
+                    parse_firehose_record_json("SQS message", index, &record.data)?;
+                let body = sqs_body(index, message.body)?;
+                self.parse_json_str(&body)
+            })
+            .collect()
+    }
+
     /// Parses `DynamoDB` stream `NewImage` records.
     ///
     /// Each non-empty `NewImage` item is decoded into `T` with `serde_dynamo`
@@ -874,6 +904,22 @@ where
             error.kind(),
             format!(
                 "SQS record at index {index} body is not a valid {source}: {}",
+                error.message()
+            ),
+        )
+    })
+}
+
+fn parse_firehose_record_json<T>(source: &str, index: usize, data: &[u8]) -> Result<T, ParseError>
+where
+    T: DeserializeOwned,
+{
+    serde_json::from_slice(data).map_err(|error| {
+        let error = ParseError::from_json_error(&error);
+        ParseError::new(
+            error.kind(),
+            format!(
+                "Firehose record at index {index} data is not a valid {source}: {}",
                 error.message()
             ),
         )
@@ -1769,6 +1815,55 @@ mod tests {
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].payload().order_id, "order-1");
         assert_eq!(parsed[0].payload().quantity, 2);
+    }
+
+    #[test]
+    fn parses_firehose_sqs_message_bodies() {
+        let sqs_message = json!({
+            "messageId": "message-1",
+            "body": r#"{"order_id":"order-1","quantity":2}"#,
+            "eventSource": "aws:sqs",
+            "awsRegion": "us-east-1"
+        });
+        let event: KinesisFirehoseEvent = serde_json::from_value(json!({
+            "records": [
+                {
+                    "recordId": "record-1",
+                    "approximateArrivalTimestamp": 1,
+                    "data": STANDARD.encode(sqs_message.to_string())
+                }
+            ]
+        }))
+        .expect("firehose event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_firehose_sqs_message_bodies::<OrderEvent>(event)
+            .expect("valid Firehose SQS records should parse");
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[0].payload().quantity, 2);
+    }
+
+    #[test]
+    fn rejects_firehose_sqs_record_without_sqs_message() {
+        let event: KinesisFirehoseEvent = serde_json::from_value(json!({
+            "records": [
+                {
+                    "recordId": "record-1",
+                    "approximateArrivalTimestamp": 1,
+                    "data": STANDARD.encode(r#"{"not":"an SQS message"}"#)
+                }
+            ]
+        }))
+        .expect("firehose event should deserialize");
+
+        let error = EventParser::new()
+            .parse_firehose_sqs_message_bodies::<OrderEvent>(event)
+            .expect_err("missing SQS body should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert!(error.message().contains("missing body"));
     }
 
     #[test]
