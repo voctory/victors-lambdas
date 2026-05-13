@@ -177,6 +177,7 @@ dependencies = [
  "aws-lambda-powertools-core",
  "aws_lambda_events",
  "base64 0.22.1",
+ "chrono",
  "serde",
  "serde_dynamo",
  "serde_json",

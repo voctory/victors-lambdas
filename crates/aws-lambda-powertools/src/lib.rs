@@ -150,10 +150,12 @@ pub mod prelude {
 
     #[cfg(feature = "parser")]
     pub use aws_lambda_powertools_parser::{
-        EventParser, ParseError, ParseErrorKind, ParsedEvent, TransferFamilyAuthorizerEvent,
-        TransferFamilyAuthorizerResponse, TransferFamilyHomeDirectoryEntry,
-        TransferFamilyHomeDirectoryType, TransferFamilyPosixProfile, TransferFamilyProtocol,
-        TransferFamilyResponseError, TransferFamilyResponseResult,
+        DynamoDbStreamBatchInfo, DynamoDbStreamOnFailureDestination, DynamoDbStreamRequestContext,
+        DynamoDbStreamResponseContext, EventParser, ParseError, ParseErrorKind, ParsedEvent,
+        TransferFamilyAuthorizerEvent, TransferFamilyAuthorizerResponse,
+        TransferFamilyHomeDirectoryEntry, TransferFamilyHomeDirectoryType,
+        TransferFamilyPosixProfile, TransferFamilyProtocol, TransferFamilyResponseError,
+        TransferFamilyResponseResult,
     };
 
     #[cfg(feature = "tracer")]
