@@ -108,6 +108,7 @@ name = "aws-lambda-powertools-metrics"
 version = "0.1.0"
 dependencies = [
  "aws-lambda-powertools-core",
+ "futures-executor",
 ]
 
 [[package]]

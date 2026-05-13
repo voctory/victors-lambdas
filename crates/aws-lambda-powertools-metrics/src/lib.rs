@@ -11,4 +11,4 @@ pub use config::MetricsConfig;
 pub use error::MetricsError;
 pub use metadata::MetadataValue;
 pub use metric::{Metric, MetricResolution, MetricUnit};
-pub use metrics::Metrics;
+pub use metrics::{Metrics, MetricsFuture};

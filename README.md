@@ -11,7 +11,8 @@ tranche has landed:
 - structured JSON logging with levels, persistent and per-entry fields, optional event rendering, debug sampling,
   correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, and stdout emission
 - CloudWatch EMF JSON rendering with metrics, dimensions, default dimensions, metadata, validation, limits,
-  high-resolution metrics, stdout flushing, explicit timestamps, overflow flush helpers, and cold-start metric support
+  high-resolution metrics, stdout flushing, explicit timestamps, overflow flush helpers, async capture helpers, and
+  cold-start metric support
 - parameter provider/cache traits with an in-memory provider, force-fetch support, and JSON/base64 transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway body, SQS, SNS,
   EventBridge, Kinesis, and Firehose envelopes

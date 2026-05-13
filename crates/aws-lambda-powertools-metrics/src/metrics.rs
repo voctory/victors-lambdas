@@ -2,7 +2,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
+use std::future::Future;
 use std::io::{self, Write};
+use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use aws_lambda_powertools_core::cold_start::ColdStart;
@@ -16,6 +18,9 @@ const MAX_DIMENSIONS_PER_METRIC: usize = 30;
 static COLD_START: ColdStart = ColdStart::new();
 
 type MetricValues<'metric> = BTreeMap<&'metric str, (MetricUnit, MetricResolution, Vec<f64>)>;
+
+/// Boxed future returned by asynchronous metrics capture handlers.
+pub type MetricsFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 /// Collects metrics before emission.
 #[derive(Clone, Debug, PartialEq)]
@@ -375,6 +380,45 @@ impl Metrics {
         };
         self.clear();
         Ok(written)
+    }
+
+    /// Runs an asynchronous handler and flushes pending metrics to stdout.
+    ///
+    /// The handler receives the metrics collector so it can add metrics during
+    /// execution. Request-scoped metrics, dimensions, and metadata are cleared
+    /// after a successful flush.
+    ///
+    /// # Errors
+    ///
+    /// Returns any validation, rendering, or stdout write error from
+    /// [`flush`](Self::flush).
+    pub async fn capture_async<T>(
+        &mut self,
+        handler: impl for<'a> FnOnce(&'a mut Self) -> MetricsFuture<'a, T>,
+    ) -> io::Result<T> {
+        let output = handler(self).await;
+        self.flush()?;
+        Ok(output)
+    }
+
+    /// Runs an asynchronous handler and writes pending metrics to a stream.
+    ///
+    /// The handler receives the metrics collector so it can add metrics during
+    /// execution. Request-scoped metrics, dimensions, and metadata are cleared
+    /// after a successful write.
+    ///
+    /// # Errors
+    ///
+    /// Returns any validation, rendering, or writer error from
+    /// [`write_to`](Self::write_to).
+    pub async fn capture_async_to<T>(
+        &mut self,
+        writer: &mut impl Write,
+        handler: impl for<'a> FnOnce(&'a mut Self) -> MetricsFuture<'a, T>,
+    ) -> io::Result<T> {
+        let output = handler(self).await;
+        self.write_to(writer)?;
+        Ok(output)
     }
 
     /// Returns the metrics configuration.
@@ -750,9 +794,16 @@ fn write_metric_values(output: &mut String, values: &[f64]) {
 
 #[cfg(test)]
 mod tests {
+    use std::future::Future;
+
     use aws_lambda_powertools_core::cold_start::ColdStart;
+    use futures_executor::block_on;
 
     use super::*;
+
+    fn metrics_future<'a, T>(future: impl Future<Output = T> + 'a) -> MetricsFuture<'a, T> {
+        Box::pin(future)
+    }
 
     fn configured_metrics() -> Metrics {
         Metrics::with_config(MetricsConfig::new("checkout", "Orders"))
@@ -1269,6 +1320,30 @@ mod tests {
 
         assert!(output.contains("\"Timestamp\":42"));
         assert!(metrics.metrics().is_empty());
+    }
+
+    #[test]
+    fn capture_async_to_flushes_after_handler_future() {
+        let mut metrics = configured_metrics();
+        let mut output = Vec::new();
+
+        let result = block_on(metrics.capture_async_to(&mut output, |metrics| {
+            metrics_future(async move {
+                metrics.add_metric("Processed", 1.0, MetricUnit::Count);
+                metrics
+                    .add_dimension("Route", "CreateOrder")
+                    .expect("dimension should be valid");
+                "created"
+            })
+        }))
+        .expect("capture should flush metrics");
+        let output = String::from_utf8(output).expect("metrics output should be utf-8");
+
+        assert_eq!(result, "created");
+        assert!(output.contains(r#""Processed":1"#));
+        assert!(output.contains(r#""Route":"CreateOrder""#));
+        assert!(metrics.metrics().is_empty());
+        assert!(metrics.dimensions().is_empty());
     }
 
     #[test]

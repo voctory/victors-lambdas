@@ -87,6 +87,7 @@ pub mod prelude {
     #[cfg(feature = "metrics")]
     pub use aws_lambda_powertools_metrics::{
         MetadataValue, Metric, MetricResolution, MetricUnit, Metrics, MetricsConfig, MetricsError,
+        MetricsFuture,
     };
 
     #[cfg(feature = "parameters")]
