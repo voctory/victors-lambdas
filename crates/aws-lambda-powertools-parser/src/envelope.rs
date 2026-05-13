@@ -16,13 +16,14 @@ use aws_lambda_events::{
         kafka::{KafkaEvent, KafkaRecord},
         kinesis::KinesisEvent,
         lambda_function_urls::LambdaFunctionUrlRequest,
-        sns::SnsEvent,
+        s3::S3Event,
+        sns::{SnsEvent, SnsMessage},
         sqs::SqsEvent,
         vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
     },
 };
 use base64::Engine;
-use serde::de::DeserializeOwned;
+use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
 use crate::{EventParser, ParseError, ParseErrorKind, ParsedEvent};
@@ -371,6 +372,56 @@ impl EventParser {
             .collect()
     }
 
+    /// Parses Amazon S3 event records.
+    ///
+    /// Each S3 event record is decoded into `T` and returned in record order.
+    /// This is most useful with a target type matching the S3 record shape from
+    /// `aws_lambda_events::event::s3`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any S3 record cannot be decoded into `T`.
+    pub fn parse_s3_records<T>(&self, event: S3Event) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| parse_record_value(self, "S3", index, record))
+            .collect()
+    }
+
+    /// Parses Amazon S3 event records delivered through SQS message bodies.
+    ///
+    /// Each SQS record body must contain a JSON S3 event notification. Inner S3
+    /// records are flattened and returned in S3 record order for each SQS
+    /// message.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when an SQS record is missing a body, a body is
+    /// not a valid S3 event notification, or an S3 record cannot be decoded
+    /// into `T`.
+    pub fn parse_s3_sqs_event_records<T>(
+        &self,
+        event: SqsEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let mut parsed = Vec::new();
+
+        for (index, record) in event.records.into_iter().enumerate() {
+            let body = sqs_body(index, record.body)?;
+            let s3_event: S3Event = parse_sqs_nested_json("S3 event notification", index, &body)?;
+            parsed.extend(self.parse_s3_records(s3_event)?);
+        }
+
+        Ok(parsed)
+    }
+
     /// Parses JSON SQS message bodies.
     ///
     /// Each record body is decoded into `T` and returned in record order.
@@ -391,12 +442,7 @@ impl EventParser {
             .into_iter()
             .enumerate()
             .map(|(index, record)| {
-                let body = record.body.ok_or_else(|| {
-                    ParseError::new(
-                        ParseErrorKind::Data,
-                        format!("SQS record at index {index} is missing body"),
-                    )
-                })?;
+                let body = sqs_body(index, record.body)?;
                 self.parse_json_str(&body)
             })
             .collect()
@@ -419,6 +465,82 @@ impl EventParser {
             .map(|record| self.parse_json_str(&record.sns.message))
             .collect()
     }
+
+    /// Parses JSON SNS notification messages delivered through SQS bodies.
+    ///
+    /// Each SQS record body must contain a JSON SNS notification. The SNS
+    /// notification `Message` field is decoded into `T` and returned in SQS
+    /// record order.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when an SQS record is missing a body, a body is
+    /// not a valid SNS notification, or an SNS notification message cannot be
+    /// decoded into `T`.
+    pub fn parse_sns_sqs_messages<T>(
+        &self,
+        event: SqsEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| {
+                let body = sqs_body(index, record.body)?;
+                let notification: SnsMessage =
+                    parse_sqs_nested_json("SNS notification", index, &body)?;
+                self.parse_json_str(&notification.message)
+            })
+            .collect()
+    }
+}
+
+fn parse_record_value<T, U>(
+    parser: &EventParser,
+    source: &str,
+    index: usize,
+    record: U,
+) -> Result<ParsedEvent<T>, ParseError>
+where
+    T: DeserializeOwned,
+    U: Serialize,
+{
+    let value = serde_json::to_value(record).map_err(|error| {
+        ParseError::new(
+            ParseErrorKind::Data,
+            format!("{source} record at index {index} cannot be encoded as JSON: {error}"),
+        )
+    })?;
+
+    parser.parse_json_value(value)
+}
+
+fn parse_sqs_nested_json<T>(source: &str, index: usize, body: &str) -> Result<T, ParseError>
+where
+    T: DeserializeOwned,
+{
+    serde_json::from_str(body).map_err(|error| {
+        let error = ParseError::from_json_error(&error);
+        ParseError::new(
+            error.kind(),
+            format!(
+                "SQS record at index {index} body is not a valid {source}: {}",
+                error.message()
+            ),
+        )
+    })
+}
+
+fn sqs_body(index: usize, body: Option<String>) -> Result<String, ParseError> {
+    body.ok_or_else(|| {
+        ParseError::new(
+            ParseErrorKind::Data,
+            format!("SQS record at index {index} is missing body"),
+        )
+    })
 }
 
 fn dynamodb_image<T>(
@@ -549,6 +671,7 @@ mod tests {
             kafka::{KafkaEvent, KafkaRecord},
             kinesis::KinesisEvent,
             lambda_function_urls::LambdaFunctionUrlRequest,
+            s3::S3Event,
             sns::{SnsEvent, SnsMessage, SnsRecord},
             sqs::{SqsEvent, SqsMessage},
             vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
@@ -564,6 +687,30 @@ mod tests {
     struct OrderEvent {
         order_id: String,
         quantity: u32,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct S3RecordSummary {
+        event_name: Option<String>,
+        s3: S3RecordEntity,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    struct S3RecordEntity {
+        bucket: S3RecordBucket,
+        object: S3RecordObject,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    struct S3RecordBucket {
+        name: Option<String>,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    struct S3RecordObject {
+        key: Option<String>,
+        size: Option<i64>,
     }
 
     #[test]
@@ -1014,6 +1161,136 @@ mod tests {
     }
 
     #[test]
+    fn parses_s3_records() {
+        let event: S3Event = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "eventVersion": "2.1",
+                    "eventSource": "aws:s3",
+                    "awsRegion": "us-east-1",
+                    "eventTime": "2023-04-12T20:43:38.021Z",
+                    "eventName": "ObjectCreated:Put",
+                    "userIdentity": {
+                        "principalId": "A1YQ72UWCM96UF"
+                    },
+                    "requestParameters": {
+                        "sourceIPAddress": "93.108.161.96"
+                    },
+                    "responseElements": {
+                        "x-amz-request-id": "request-1"
+                    },
+                    "s3": {
+                        "s3SchemaVersion": "1.0",
+                        "configurationId": "config-1",
+                        "bucket": {
+                            "name": "orders",
+                            "ownerIdentity": {
+                                "principalId": "A1YQ72UWCM96UF"
+                            },
+                            "arn": "arn:aws:s3:::orders"
+                        },
+                        "object": {
+                            "key": "order-1.json",
+                            "size": 512,
+                            "eTag": "etag-1",
+                            "sequencer": "001"
+                        }
+                    }
+                }
+            ]
+        }))
+        .expect("S3 event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_s3_records::<S3RecordSummary>(event)
+            .expect("S3 records should parse");
+
+        assert_eq!(
+            parsed[0].payload().event_name.as_deref(),
+            Some("ObjectCreated:Put")
+        );
+        assert_eq!(
+            parsed[0].payload().s3.bucket.name.as_deref(),
+            Some("orders")
+        );
+        assert_eq!(
+            parsed[0].payload().s3.object.key.as_deref(),
+            Some("order-1.json")
+        );
+        assert_eq!(parsed[0].payload().s3.object.size, Some(512));
+    }
+
+    #[test]
+    fn parses_s3_sqs_event_records() {
+        let s3_body = json!({
+            "Records": [
+                {
+                    "eventVersion": "2.1",
+                    "eventSource": "aws:s3",
+                    "awsRegion": "us-east-1",
+                    "eventTime": "2023-04-12T20:43:38.021Z",
+                    "eventName": "ObjectCreated:Put",
+                    "userIdentity": {
+                        "principalId": "A1YQ72UWCM96UF"
+                    },
+                    "requestParameters": {
+                        "sourceIPAddress": "93.108.161.96"
+                    },
+                    "responseElements": {
+                        "x-amz-request-id": "request-1"
+                    },
+                    "s3": {
+                        "s3SchemaVersion": "1.0",
+                        "configurationId": "config-1",
+                        "bucket": {
+                            "name": "orders",
+                            "ownerIdentity": {
+                                "principalId": "A1YQ72UWCM96UF"
+                            },
+                            "arn": "arn:aws:s3:::orders"
+                        },
+                        "object": {
+                            "key": "order-1.json",
+                            "size": 512,
+                            "eTag": "etag-1",
+                            "sequencer": "001"
+                        }
+                    }
+                }
+            ]
+        });
+        let mut message = SqsMessage::default();
+        message.body = Some(s3_body.to_string());
+        let mut event = SqsEvent::default();
+        event.records = vec![message];
+
+        let parsed = EventParser::new()
+            .parse_s3_sqs_event_records::<S3RecordSummary>(event)
+            .expect("S3 notifications should parse");
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(
+            parsed[0].payload().s3.object.key.as_deref(),
+            Some("order-1.json")
+        );
+    }
+
+    #[test]
+    fn rejects_s3_sqs_records_without_s3_notifications() {
+        let mut message = SqsMessage::default();
+        message.body = Some(r#"{"not":"an S3 event"}"#.to_owned());
+        let mut event = SqsEvent::default();
+        event.records = vec![message];
+
+        let error = EventParser::new()
+            .parse_s3_sqs_event_records::<S3RecordSummary>(event)
+            .expect_err("invalid S3 notification should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert!(error.message().contains("S3 event notification"));
+    }
+
+    #[test]
     fn rejects_sqs_records_without_bodies() {
         let mut event = SqsEvent::default();
         event.records = vec![SqsMessage::default()];
@@ -1040,6 +1317,50 @@ mod tests {
             .expect("valid messages should parse");
 
         assert_eq!(parsed[0].payload().order_id, "order-1");
+    }
+
+    #[test]
+    fn parses_sns_sqs_messages() {
+        let notification = json!({
+            "Type": "Notification",
+            "MessageId": "message-1",
+            "TopicArn": "arn:aws:sns:us-east-1:123456789012:orders",
+            "Subject": "Order",
+            "Message": "{\"order_id\":\"order-1\",\"quantity\":2}",
+            "Timestamp": "2019-01-02T12:45:07.000Z",
+            "SignatureVersion": "1",
+            "Signature": "signature",
+            "SigningCertURL": "https://sns.us-east-1.amazonaws.com/cert.pem",
+            "UnsubscribeURL": "https://sns.us-east-1.amazonaws.com/unsubscribe",
+            "MessageAttributes": {}
+        });
+        let mut message = SqsMessage::default();
+        message.body = Some(notification.to_string());
+        let mut event = SqsEvent::default();
+        event.records = vec![message];
+
+        let parsed = EventParser::new()
+            .parse_sns_sqs_messages::<OrderEvent>(event)
+            .expect("SNS notification should parse");
+
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[0].payload().quantity, 2);
+    }
+
+    #[test]
+    fn rejects_sns_sqs_records_without_sns_notifications() {
+        let mut message = SqsMessage::default();
+        message.body =
+            Some(r#"{"Message":"{\"order_id\":\"order-1\",\"quantity\":2}"}"#.to_owned());
+        let mut event = SqsEvent::default();
+        event.records = vec![message];
+
+        let error = EventParser::new()
+            .parse_sns_sqs_messages::<OrderEvent>(event)
+            .expect_err("invalid SNS notification should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert!(error.message().contains("SNS notification"));
     }
 
     #[test]
