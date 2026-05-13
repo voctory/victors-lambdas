@@ -17,9 +17,9 @@ first implementation tranche has landed:
 - sync and async parameter provider/cache traits with in-memory, optional SSM Parameter Store single, by-name, path, and
   set operations, optional Secrets Manager, AppConfig, and DynamoDB providers, force-fetch support, and JSON/base64
   transforms
-- serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway, ALB, Lambda
-  Function URL, and VPC Lattice body, SQS, SNS, EventBridge, CloudWatch Logs, Kinesis, Firehose, DynamoDB stream image,
-  and Kafka envelopes
+- serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway
+  REST/HTTP/WebSocket API, ALB, Lambda Function URL, and VPC Lattice body, SQS, SNS, EventBridge, CloudWatch Logs,
+  Kinesis, Firehose, DynamoDB stream image, and Kafka envelopes
 - sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and
   optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior
 - validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,

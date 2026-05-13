@@ -6,7 +6,7 @@ use aws_lambda_events::{
     encodings::Body,
     event::{
         alb::AlbTargetGroupRequest,
-        apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
+        apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
         cloudwatch_logs::LogsEvent,
         dynamodb::Event as DynamoDbEvent,
         eventbridge::EventBridgeEvent,
@@ -57,6 +57,23 @@ impl EventParser {
         T: DeserializeOwned,
     {
         let body = gateway_body("API Gateway v2", event.body, event.is_base64_encoded)?;
+        self.parse_json_slice(&body)
+    }
+
+    /// Parses an API Gateway WebSocket API JSON body.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the body is missing, cannot be base64
+    /// decoded, or cannot be decoded into `T`.
+    pub fn parse_apigw_websocket_body<T>(
+        &self,
+        event: ApiGatewayWebsocketProxyRequest,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let body = gateway_body("API Gateway WebSocket", event.body, event.is_base64_encoded)?;
         self.parse_json_slice(&body)
     }
 
@@ -464,7 +481,9 @@ mod tests {
         encodings::Body,
         event::{
             alb::AlbTargetGroupRequest,
-            apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
+            apigw::{
+                ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest,
+            },
             cloudwatch_logs::{LogEntry, LogsEvent},
             dynamodb::Event as DynamoDbEvent,
             eventbridge::EventBridgeEvent,
@@ -512,6 +531,18 @@ mod tests {
             .expect("valid body should parse");
 
         assert_eq!(parsed.payload().quantity, 2);
+    }
+
+    #[test]
+    fn parses_api_gateway_websocket_body() {
+        let mut event = ApiGatewayWebsocketProxyRequest::default();
+        event.body = Some(r#"{"order_id":"order-1","quantity":2}"#.to_owned());
+
+        let parsed = EventParser::new()
+            .parse_apigw_websocket_body::<OrderEvent>(event)
+            .expect("valid body should parse");
+
+        assert_eq!(parsed.payload().order_id, "order-1");
     }
 
     #[test]
