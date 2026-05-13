@@ -1,5 +1,7 @@
 //! Event parsing utility.
 
+#[cfg(feature = "aws-lambda-events")]
+mod envelope;
 mod error;
 mod parser;
 

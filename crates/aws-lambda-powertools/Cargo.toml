@@ -31,6 +31,7 @@ logger = ["dep:aws-lambda-powertools-logger"]
 metrics = ["dep:aws-lambda-powertools-metrics"]
 parameters = ["dep:aws-lambda-powertools-parameters"]
 parser = ["dep:aws-lambda-powertools-parser"]
+parser-aws-lambda-events = ["parser", "aws-lambda-powertools-parser/aws-lambda-events"]
 tracer = ["dep:aws-lambda-powertools-tracer"]
 validation = ["dep:aws-lambda-powertools-validation"]
 
@@ -48,4 +49,3 @@ aws-lambda-powertools-validation = { workspace = true, optional = true }
 
 [lints]
 workspace = true
-

@@ -8,8 +8,8 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 - Workspace: virtual Cargo workspace with resolver `3`, Rust 2024, Rust `1.85.0`, committed `Cargo.lock`, shared lints,
   a `release-lambda` profile, and CI for fmt, clippy, test, and check.
 - Crates: one umbrella crate, `aws-lambda-powertools`, plus utility crates under `crates/`.
-- Feature flags: the umbrella crate exposes `logger`, `metrics`, `tracer`, `parameters`, `parser`, `batch`,
-  `idempotency`, `validation`, `event-handler`, and `all`.
+- Feature flags: the umbrella crate exposes `logger`, `metrics`, `tracer`, `parameters`, `parser`,
+  `parser-aws-lambda-events`, `batch`, `idempotency`, `validation`, `event-handler`, and `all`.
 - Example: `examples/basic-lambda` builds against the umbrella crate with all current utility features enabled.
 - Publishing: no crates.io release is documented yet. Local examples use path dependencies.
 
@@ -43,7 +43,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Metrics | `MetricsConfig`, `Metric`, `MetricUnit`, `MetricResolution`, `MetadataValue`, EMF JSON renderer, request dimensions, default dimensions, metadata, name/value validation, service dimension, cold-start metric, high-resolution metric definitions, stdout flush API, CloudWatch limits | Async handler ergonomics, overflow auto-flush convenience, timestamp customization |
 | Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing, `TraceSegment`, `TraceValue` | Real `tracing` spans, OpenTelemetry, X-Ray propagation/export |
 | Parameters | `ParameterProvider`, `Parameters`, `Parameter`, `CachePolicy`, in-memory provider | SSM, Secrets Manager, AppConfig, DynamoDB providers, decrypt options, forced fetch, transforms |
-| Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing | `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
+| Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, optional `aws_lambda_events` EventBridge detail, SQS body, and SNS message envelopes | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse` | SQS/Kinesis/DynamoDB source adapters, FIFO early-stop behavior, concurrent processing |
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, and custom predicate helpers | JSON Schema backend, schema cache, inbound/outbound validation wrappers |
 | Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `IdempotencyStatus`, `IdempotencyRecord`, store trait/error/result, in-memory store | Handler wrapper, key extraction, payload hashing, result replay, DynamoDB store, concurrency semantics |
@@ -60,7 +60,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
    propagation/export features.
 3. Add parameter provider integrations behind feature flags. Confirm the AWS SDK MSRV impact before enabling those
    dependencies.
-4. Add parser envelopes and fixtures using `aws_lambda_events` as the default event model source.
+4. Expand parser envelopes and fixtures using `aws_lambda_events` as the default event model source.
 5. Expand batch and idempotency together where AWS retry semantics overlap: source-specific batch adapters, key
    extraction, payload hashing, DynamoDB persistence, and replay behavior.
 6. Add event adapters for HTTP routing after parser/event model choices are stable.
@@ -75,7 +75,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-metrics` | CloudWatch EMF metrics | Renderer, flush API, high-resolution metrics, and default dimensions exist; next work is async handler ergonomics and feature completeness |
 | `aws-lambda-powertools-tracer` | Tracing facade | Segment records exist; next work is integration with Rust tracing/export pipelines |
 | `aws-lambda-powertools-parameters` | Parameter retrieval | Trait, cache facade, and in-memory provider exist; AWS providers are next |
-| `aws-lambda-powertools-parser` | Event parsing | serde JSON facade exists; event envelopes are next |
+| `aws-lambda-powertools-parser` | Event parsing | serde JSON facade and initial `aws_lambda_events` envelopes exist; broader envelope coverage and fixtures are next |
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential processing exists; source-specific behavior is next |
 | `aws-lambda-powertools-idempotency` | Deduplication | Records and stores exist; handler semantics and providers are next |
 | `aws-lambda-powertools-validation` | Payload validation | Basic validators exist; JSON Schema remains optional future work |
@@ -94,6 +94,7 @@ Implemented umbrella features:
 - `tracer`
 - `parameters`
 - `parser`
+- `parser-aws-lambda-events`
 - `batch`
 - `idempotency`
 - `validation`
@@ -110,7 +111,6 @@ Likely future provider and integration features:
 - `idempotency-redis`
 - `validation-jsonschema`
 - `parser-serde`
-- `events-aws-lambda-events`
 - `parser-schemars`
 - `tracer-otel`
 - `tracer-xray-propagation`
@@ -166,7 +166,8 @@ Powertools conventions.
 - [x] Add metrics flush ergonomics, high-resolution metrics, and default dimension helpers.
 - [ ] Implement `tracing` span integration and optional OpenTelemetry/X-Ray features.
 - [ ] Implement AWS-backed parameter providers behind feature flags.
-- [ ] Add event envelopes and fixtures based on `aws_lambda_events`.
+- [x] Add initial SQS, SNS, and EventBridge parser envelopes based on `aws_lambda_events`.
+- [ ] Expand parser envelopes and fixtures based on `aws_lambda_events`.
 - [ ] Add source-specific batch processors and retry semantics.
 - [ ] Add JSON Schema validation behind an optional feature.
 - [ ] Add idempotency handler workflow and DynamoDB persistence.
