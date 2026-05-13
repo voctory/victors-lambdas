@@ -111,7 +111,7 @@ pub mod prelude {
     pub use aws_lambda_powertools_parameters::SecretsManagerProvider;
 
     #[cfg(feature = "parameters-ssm")]
-    pub use aws_lambda_powertools_parameters::SsmParameterProvider;
+    pub use aws_lambda_powertools_parameters::{SsmParameterProvider, SsmParametersByName};
 
     #[cfg(feature = "parser")]
     pub use aws_lambda_powertools_parser::{EventParser, ParseError, ParseErrorKind, ParsedEvent};
