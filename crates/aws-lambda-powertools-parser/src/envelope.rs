@@ -3,6 +3,8 @@
 use aws_lambda_events::event::{
     apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
     eventbridge::EventBridgeEvent,
+    firehose::KinesisFirehoseEvent,
+    kinesis::KinesisEvent,
     sns::SnsEvent,
     sqs::SqsEvent,
 };
@@ -60,6 +62,52 @@ impl EventParser {
         T: DeserializeOwned,
     {
         self.parse_json_value(event.detail)
+    }
+
+    /// Parses JSON Kinesis record data.
+    ///
+    /// Each record data blob is decoded into `T` and returned in record order.
+    /// The `aws_lambda_events` model base64-decodes Kinesis data during event
+    /// deserialization, so this method parses the decoded bytes directly.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any record data cannot be decoded into `T`.
+    pub fn parse_kinesis_records<T>(
+        &self,
+        event: KinesisEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .map(|record| self.parse_json_slice(&record.kinesis.data))
+            .collect()
+    }
+
+    /// Parses JSON Kinesis Firehose record data.
+    ///
+    /// Each record data blob is decoded into `T` and returned in record order.
+    /// The `aws_lambda_events` model base64-decodes Firehose data during event
+    /// deserialization, so this method parses the decoded bytes directly.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any record data cannot be decoded into `T`.
+    pub fn parse_firehose_records<T>(
+        &self,
+        event: KinesisFirehoseEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .map(|record| self.parse_json_slice(&record.data))
+            .collect()
     }
 
     /// Parses JSON SQS message bodies.
@@ -143,6 +191,8 @@ mod tests {
     use aws_lambda_events::event::{
         apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
         eventbridge::EventBridgeEvent,
+        firehose::KinesisFirehoseEvent,
+        kinesis::KinesisEvent,
         sns::{SnsEvent, SnsMessage, SnsRecord},
         sqs::{SqsEvent, SqsMessage},
     };
@@ -227,6 +277,63 @@ mod tests {
                 quantity: 2,
             }
         );
+    }
+
+    #[test]
+    fn parses_kinesis_record_data() {
+        let event: KinesisEvent = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "kinesis": {
+                        "kinesisSchemaVersion": "1.0",
+                        "partitionKey": "orders",
+                        "sequenceNumber": "1",
+                        "data": "eyJvcmRlcl9pZCI6Im9yZGVyLTEiLCJxdWFudGl0eSI6Mn0=",
+                        "approximateArrivalTimestamp": 1
+                    }
+                },
+                {
+                    "kinesis": {
+                        "kinesisSchemaVersion": "1.0",
+                        "partitionKey": "orders",
+                        "sequenceNumber": "2",
+                        "data": "eyJvcmRlcl9pZCI6Im9yZGVyLTIiLCJxdWFudGl0eSI6M30=",
+                        "approximateArrivalTimestamp": 1
+                    }
+                }
+            ]
+        }))
+        .expect("kinesis event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_kinesis_records::<OrderEvent>(event)
+            .expect("valid records should parse");
+
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[1].payload().quantity, 3);
+    }
+
+    #[test]
+    fn parses_firehose_record_data() {
+        let event: KinesisFirehoseEvent = serde_json::from_value(json!({
+            "records": [
+                {
+                    "recordId": "record-1",
+                    "approximateArrivalTimestamp": 1,
+                    "data": "eyJvcmRlcl9pZCI6Im9yZGVyLTEiLCJxdWFudGl0eSI6Mn0="
+                }
+            ]
+        }))
+        .expect("firehose event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_firehose_records::<OrderEvent>(event)
+            .expect("valid records should parse");
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[0].payload().quantity, 2);
     }
 
     #[test]

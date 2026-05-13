@@ -17,6 +17,8 @@ aws-lambda-events = [
     "dep:base64",
     "aws_lambda_events/apigw",
     "aws_lambda_events/eventbridge",
+    "aws_lambda_events/firehose",
+    "aws_lambda_events/kinesis",
     "aws_lambda_events/sns",
     "aws_lambda_events/sqs",
 ]
