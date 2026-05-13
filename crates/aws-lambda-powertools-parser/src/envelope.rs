@@ -17,7 +17,7 @@ use aws_lambda_events::{
         kafka::{KafkaEvent, KafkaRecord},
         kinesis::KinesisEvent,
         lambda_function_urls::LambdaFunctionUrlRequest,
-        s3::S3Event,
+        s3::{S3Event, batch_job::S3BatchJobEvent, object_lambda::S3ObjectLambdaEvent},
         ses::SimpleEmailEvent,
         sns::{SnsEvent, SnsMessage},
         sqs::SqsEvent,
@@ -449,6 +449,46 @@ impl EventParser {
             .collect()
     }
 
+    /// Parses an Amazon S3 Object Lambda configuration payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the Object Lambda configuration payload
+    /// cannot be decoded into `T`.
+    pub fn parse_s3_object_lambda_configuration_payload<T>(
+        &self,
+        event: S3ObjectLambdaEvent<Value>,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        self.parse_json_value(event.configuration.payload)
+    }
+
+    /// Parses Amazon S3 Batch job tasks.
+    ///
+    /// Each S3 Batch task is decoded into `T` and returned in task order. This
+    /// is most useful with a target type matching the S3 Batch task shape from
+    /// `aws_lambda_events::event::s3::batch_job`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any S3 Batch task cannot be decoded into `T`.
+    pub fn parse_s3_batch_job_tasks<T>(
+        &self,
+        event: S3BatchJobEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .tasks
+            .into_iter()
+            .enumerate()
+            .map(|(index, task)| parse_record_value(self, "S3 Batch job task", index, task))
+            .collect()
+    }
+
     /// Parses Amazon S3 event records delivered through SQS message bodies.
     ///
     /// Each SQS record body must contain a JSON S3 event notification. Inner S3
@@ -752,7 +792,7 @@ mod tests {
             kafka::{KafkaEvent, KafkaRecord},
             kinesis::KinesisEvent,
             lambda_function_urls::LambdaFunctionUrlRequest,
-            s3::S3Event,
+            s3::{S3Event, batch_job::S3BatchJobEvent, object_lambda::S3ObjectLambdaEvent},
             ses::SimpleEmailEvent,
             sns::{SnsEvent, SnsMessage, SnsRecord},
             sqs::{SqsEvent, SqsMessage},
@@ -800,6 +840,21 @@ mod tests {
     struct S3RecordObject {
         key: Option<String>,
         size: Option<i64>,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct S3ObjectLambdaPayload {
+        tenant: String,
+        redact: bool,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct S3BatchTaskSummary {
+        task_id: Option<String>,
+        s3_key: Option<String>,
+        s3_bucket_arn: Option<String>,
     }
 
     #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -1429,6 +1484,87 @@ mod tests {
             Some("order-1.json")
         );
         assert_eq!(parsed[0].payload().s3.object.size, Some(512));
+    }
+
+    #[test]
+    fn parses_s3_object_lambda_configuration_payload() {
+        let event: S3ObjectLambdaEvent<Value> = serde_json::from_value(json!({
+            "xAmzRequestId": "request-1",
+            "getObjectContext": {
+                "inputS3Url": "https://s3.amazonaws.com/orders/order-1.json",
+                "outputRoute": "route",
+                "outputToken": "token"
+            },
+            "configuration": {
+                "accessPointArn": "arn:aws:s3-object-lambda:us-east-1:123456789012:accesspoint/orders",
+                "supportingAccessPointArn": "arn:aws:s3:us-east-1:123456789012:accesspoint/orders-support",
+                "payload": {
+                    "tenant": "tenant-1",
+                    "redact": true
+                }
+            },
+            "userRequest": {
+                "url": "/orders/order-1.json",
+                "headers": {
+                    "Accept": "application/json"
+                }
+            },
+            "userIdentity": {
+                "type": "IAMUser",
+                "principalId": "principal-1",
+                "arn": "arn:aws:iam::123456789012:user/test",
+                "accountId": "123456789012",
+                "accessKeyId": "access-key-1"
+            },
+            "protocolVersion": "1.00"
+        }))
+        .expect("S3 Object Lambda event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_s3_object_lambda_configuration_payload::<S3ObjectLambdaPayload>(event)
+            .expect("S3 Object Lambda payload should parse");
+
+        assert_eq!(parsed.payload().tenant, "tenant-1");
+        assert!(parsed.payload().redact);
+    }
+
+    #[test]
+    fn parses_s3_batch_job_tasks() {
+        let event: S3BatchJobEvent = serde_json::from_value(json!({
+            "invocationSchemaVersion": "1.0",
+            "invocationId": "invocation-1",
+            "job": {
+                "id": "job-1"
+            },
+            "tasks": [
+                {
+                    "taskId": "task-1",
+                    "s3Key": "orders/order-1.json",
+                    "s3BucketArn": "arn:aws:s3:::orders"
+                },
+                {
+                    "taskId": "task-2",
+                    "s3Key": "orders/order-2.json",
+                    "s3BucketArn": "arn:aws:s3:::orders"
+                }
+            ]
+        }))
+        .expect("S3 Batch job event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_s3_batch_job_tasks::<S3BatchTaskSummary>(event)
+            .expect("S3 Batch tasks should parse");
+
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed[0].payload().task_id.as_deref(), Some("task-1"));
+        assert_eq!(
+            parsed[1].payload().s3_key.as_deref(),
+            Some("orders/order-2.json")
+        );
+        assert_eq!(
+            parsed[1].payload().s3_bucket_arn.as_deref(),
+            Some("arn:aws:s3:::orders")
+        );
     }
 
     #[test]
