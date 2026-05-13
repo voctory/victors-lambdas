@@ -11,6 +11,9 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+base64 = "0.22"
+serde = "1.0"
+serde_json = "1.0"
 
 [lints]
 workspace = true

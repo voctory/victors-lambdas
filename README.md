@@ -12,7 +12,7 @@ tranche has landed:
   correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, and stdout emission
 - CloudWatch EMF JSON rendering with metrics, dimensions, default dimensions, metadata, validation, limits,
   high-resolution metrics, stdout flushing, explicit timestamps, overflow flush helpers, and cold-start metric support
-- parameter provider/cache traits with an in-memory provider
+- parameter provider/cache traits with an in-memory provider, force-fetch support, and JSON/base64 transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway body, SQS, SNS,
   and EventBridge envelopes
 - batch record processing, partial batch response builders, and optional `aws_lambda_events` SQS, Kinesis, and DynamoDB

@@ -43,7 +43,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Logger | `LoggerConfig`, `LogLevel`, `Logger`, `LogEntry`, `LogValue`, `LogFormatter`, `LogRedactor`, `JsonLogFormatter`, `LambdaContextFields`, JSON rendering, persistent fields, temporary fields, event rendering toggle, level filtering, debug sampling, correlation ID helpers, Lambda context fields, key redaction, custom formatter/redaction hook APIs, stdout emission | `tracing` subscriber integration |
 | Metrics | `MetricsConfig`, `Metric`, `MetricUnit`, `MetricResolution`, `MetadataValue`, EMF JSON renderer, request dimensions, default dimensions, metadata, name/value validation, service dimension, cold-start metric, high-resolution metric definitions, stdout flush API, explicit timestamp rendering/writing, opt-in overflow flush helpers, CloudWatch limits | Async handler ergonomics |
 | Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing, `TraceSegment`, `TraceValue` | Real `tracing` spans, OpenTelemetry, X-Ray propagation/export |
-| Parameters | `ParameterProvider`, `Parameters`, `Parameter`, `CachePolicy`, in-memory provider | SSM, Secrets Manager, AppConfig, DynamoDB providers, decrypt options, forced fetch, transforms |
+| Parameters | `ParameterProvider`, `Parameters`, `Parameter`, `CachePolicy`, in-memory provider, force-fetch support, JSON transforms, and base64 binary transforms | SSM, Secrets Manager, AppConfig, DynamoDB providers, decrypt options |
 | Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, optional `aws_lambda_events` API Gateway REST/HTTP API body, EventBridge detail, SQS body, and SNS message envelopes | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior | Concurrent processing and richer stream checkpoint ergonomics |
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, inbound/outbound validation wrappers, optional local JSON Schema backend, and compiled schema cache | Handler middleware/docs integration |
@@ -75,7 +75,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-logger` | Structured logs | JSON renderer, sampling, correlation IDs, Lambda context fields, key redaction, and custom formatter/redaction hooks exist; next work should avoid forcing one subscriber setup |
 | `aws-lambda-powertools-metrics` | CloudWatch EMF metrics | Renderer, flush API, high-resolution metrics, default dimensions, explicit timestamps, and overflow flush helpers exist; next work is async handler ergonomics |
 | `aws-lambda-powertools-tracer` | Tracing facade | Segment records exist; next work is integration with Rust tracing/export pipelines |
-| `aws-lambda-powertools-parameters` | Parameter retrieval | Trait, cache facade, and in-memory provider exist; AWS providers are next |
+| `aws-lambda-powertools-parameters` | Parameter retrieval | Trait, cache facade, in-memory provider, force-fetch support, and JSON/base64 transforms exist; AWS providers are next |
 | `aws-lambda-powertools-parser` | Event parsing | serde JSON facade plus API Gateway, SQS, SNS, and EventBridge `aws_lambda_events` envelopes exist; broader envelope coverage and fixtures are next |
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential processing plus SQS, Kinesis, and DynamoDB stream adapters exist; concurrent processing and richer stream checkpoint ergonomics are next |
 | `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, handler workflow, replay, records, and stores exist; DynamoDB persistence is next |
@@ -169,6 +169,7 @@ Powertools conventions.
 - [x] Add metrics flush ergonomics, high-resolution metrics, and default dimension helpers.
 - [x] Add metrics explicit timestamp rendering and overflow flush helpers.
 - [ ] Implement `tracing` span integration and optional OpenTelemetry/X-Ray features.
+- [x] Add parameter force-fetch and local value transforms.
 - [ ] Implement AWS-backed parameter providers behind feature flags.
 - [x] Add initial SQS, SNS, and EventBridge parser envelopes based on `aws_lambda_events`.
 - [x] Add API Gateway REST API and HTTP API parser body envelopes based on `aws_lambda_events`.

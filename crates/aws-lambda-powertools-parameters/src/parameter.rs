@@ -2,7 +2,10 @@
 
 use std::{collections::BTreeMap, sync::Mutex, time::SystemTime};
 
-use crate::{CachePolicy, ParameterProvider};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
+use serde::de::DeserializeOwned;
+
+use crate::{CachePolicy, ParameterProvider, ParameterTransformError};
 
 /// A resolved parameter value.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -31,6 +34,31 @@ impl Parameter {
     #[must_use]
     pub fn value(&self) -> &str {
         &self.value
+    }
+
+    /// Deserializes the parameter value from JSON.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transform error when the parameter value is not valid JSON for
+    /// the requested type.
+    pub fn json<T>(&self) -> Result<T, ParameterTransformError>
+    where
+        T: DeserializeOwned,
+    {
+        serde_json::from_str(&self.value)
+            .map_err(|error| ParameterTransformError::json(self.name.clone(), error.to_string()))
+    }
+
+    /// Decodes the parameter value as standard base64.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transform error when the parameter value is not valid base64.
+    pub fn binary(&self) -> Result<Vec<u8>, ParameterTransformError> {
+        STANDARD
+            .decode(&self.value)
+            .map_err(|error| ParameterTransformError::binary(self.name.clone(), error.to_string()))
     }
 }
 
@@ -74,6 +102,67 @@ where
         self.get_at(name, SystemTime::now())
     }
 
+    /// Gets a parameter by name, bypassing any cached value.
+    ///
+    /// When the provider returns a value, the cache is updated with that value.
+    /// When the provider returns no value, the cached value is removed.
+    #[must_use]
+    pub fn get_force(&self, name: &str) -> Option<Parameter> {
+        self.fetch_at(name, SystemTime::now())
+    }
+
+    /// Gets a parameter and deserializes its value from JSON.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transform error when the parameter exists but the value cannot
+    /// be deserialized into the requested type.
+    pub fn get_json<T>(&self, name: &str) -> Result<Option<T>, ParameterTransformError>
+    where
+        T: DeserializeOwned,
+    {
+        self.get(name).map(|parameter| parameter.json()).transpose()
+    }
+
+    /// Force-fetches a parameter and deserializes its value from JSON.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transform error when the parameter exists but the value cannot
+    /// be deserialized into the requested type.
+    pub fn get_force_json<T>(&self, name: &str) -> Result<Option<T>, ParameterTransformError>
+    where
+        T: DeserializeOwned,
+    {
+        self.get_force(name)
+            .map(|parameter| parameter.json())
+            .transpose()
+    }
+
+    /// Gets a parameter and decodes its value as standard base64.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transform error when the parameter exists but the value is not
+    /// valid base64.
+    pub fn get_binary(&self, name: &str) -> Result<Option<Vec<u8>>, ParameterTransformError> {
+        self.get(name)
+            .map(|parameter| parameter.binary())
+            .transpose()
+    }
+
+    /// Force-fetches a parameter and decodes its value as standard base64.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transform error when the parameter exists but the value is not
+    /// valid base64.
+    pub fn get_force_binary(&self, name: &str) -> Result<Option<Vec<u8>>, ParameterTransformError> {
+        self.get_force(name)
+            .map(|parameter| parameter.binary())
+            .transpose()
+    }
+
     /// Returns the provider.
     #[must_use]
     pub fn provider(&self) -> &P {
@@ -108,6 +197,10 @@ where
             return Some(Parameter::new(name, value));
         }
 
+        self.fetch_at(name, now)
+    }
+
+    fn fetch_at(&self, name: &str, now: SystemTime) -> Option<Parameter> {
         if let Some(value) = self.provider.get(name) {
             self.store_cached_value(name, &value, now);
             Some(Parameter::new(name, value))
@@ -169,7 +262,9 @@ mod tests {
         time::{Duration, UNIX_EPOCH},
     };
 
-    use crate::{CachePolicy, ParameterProvider};
+    use serde_json::{Value, json};
+
+    use crate::{CachePolicy, ParameterProvider, ParameterTransformErrorKind};
 
     use super::{Parameter, Parameters};
 
@@ -233,6 +328,72 @@ mod tests {
             parameters.get("name").as_ref().map(Parameter::value),
             Some("value-2")
         );
+    }
+
+    #[test]
+    fn force_fetch_bypasses_and_updates_cache() {
+        let parameters =
+            Parameters::with_cache_policy(CountingProvider::default(), CachePolicy::forever());
+
+        assert_eq!(
+            parameters.get("name").as_ref().map(Parameter::value),
+            Some("value-1")
+        );
+        assert_eq!(
+            parameters.get("name").as_ref().map(Parameter::value),
+            Some("value-1")
+        );
+        assert_eq!(
+            parameters.get_force("name").as_ref().map(Parameter::value),
+            Some("value-2")
+        );
+        assert_eq!(
+            parameters.get("name").as_ref().map(Parameter::value),
+            Some("value-2")
+        );
+        assert_eq!(parameters.provider().calls.get(), 2);
+    }
+
+    #[test]
+    fn json_transform_deserializes_parameter_values() {
+        let parameters = Parameters::new(
+            crate::InMemoryParameterProvider::new()
+                .with_parameter("/service/config", r#"{"retries":3}"#),
+        );
+
+        let value = parameters
+            .get_json::<Value>("/service/config")
+            .expect("json transform should succeed")
+            .expect("parameter should exist");
+
+        assert_eq!(value, json!({ "retries": 3 }));
+    }
+
+    #[test]
+    fn binary_transform_decodes_base64_parameter_values() {
+        let parameters = Parameters::new(
+            crate::InMemoryParameterProvider::new().with_parameter("/service/key", "c2VjcmV0"),
+        );
+
+        let value = parameters
+            .get_binary("/service/key")
+            .expect("binary transform should succeed")
+            .expect("parameter should exist");
+
+        assert_eq!(value, b"secret");
+    }
+
+    #[test]
+    fn transform_errors_include_parameter_name_and_kind() {
+        let parameter = Parameter::new("/service/config", "{");
+
+        let error = parameter
+            .json::<Value>()
+            .expect_err("invalid json should fail");
+
+        assert_eq!(error.kind(), ParameterTransformErrorKind::Json);
+        assert_eq!(error.name(), "/service/config");
+        assert!(error.message().contains("EOF"));
     }
 
     #[test]

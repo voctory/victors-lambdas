@@ -90,7 +90,8 @@ pub mod prelude {
 
     #[cfg(feature = "parameters")]
     pub use aws_lambda_powertools_parameters::{
-        CachePolicy, InMemoryParameterProvider, Parameter, ParameterProvider, Parameters,
+        CachePolicy, InMemoryParameterProvider, Parameter, ParameterProvider,
+        ParameterTransformError, ParameterTransformErrorKind, Parameters,
     };
 
     #[cfg(feature = "parser")]
