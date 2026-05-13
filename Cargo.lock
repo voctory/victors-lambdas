@@ -117,6 +117,7 @@ dependencies = [
 name = "aws-lambda-powertools-idempotency"
 version = "0.1.0"
 dependencies = [
+ "aws-sdk-dynamodb",
  "futures-executor",
  "serde",
  "serde_json",

@@ -85,6 +85,9 @@ pub mod prelude {
         key_from_json_pointer, key_from_payload,
     };
 
+    #[cfg(feature = "idempotency-dynamodb")]
+    pub use aws_lambda_powertools_idempotency::DynamoDbIdempotencyStore;
+
     #[cfg(feature = "logger")]
     pub use aws_lambda_powertools_logger::{
         JsonLogFormatter, LambdaContextFields, LambdaLogContext, LogEntry, LogFields, LogFormatter,

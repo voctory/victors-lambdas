@@ -1,6 +1,8 @@
 //! Idempotency utility.
 
 mod config;
+#[cfg(feature = "dynamodb")]
+mod dynamodb;
 mod error;
 mod key;
 mod payload;
@@ -10,6 +12,8 @@ mod store;
 mod workflow;
 
 pub use config::IdempotencyConfig;
+#[cfg(feature = "dynamodb")]
+pub use dynamodb::DynamoDbIdempotencyStore;
 pub use error::{IdempotencyError, IdempotencyExecutionError, IdempotencyResult};
 pub use key::IdempotencyKey;
 pub use payload::{hash_payload, key_from_json_pointer, key_from_payload};
