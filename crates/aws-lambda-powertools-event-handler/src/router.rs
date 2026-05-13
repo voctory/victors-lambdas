@@ -2,7 +2,7 @@
 
 use std::{cmp::Ordering, fmt};
 
-use crate::{CorsConfig, Method, Request, Response, Route};
+use crate::{AsyncRoute, CorsConfig, Method, Request, Response, ResponseFuture, Route};
 
 /// Function signature used by request middleware.
 pub type RequestMiddleware = dyn Fn(Request) -> Request + Send + Sync + 'static;
@@ -18,6 +18,19 @@ pub type ResponseMiddleware = dyn Fn(&Request, Response) -> Response + Send + Sy
 #[derive(Default)]
 pub struct Router {
     routes: Vec<Route>,
+    cors: Option<CorsConfig>,
+    request_middleware: Vec<Box<RequestMiddleware>>,
+    response_middleware: Vec<Box<ResponseMiddleware>>,
+}
+
+/// Stores asynchronous HTTP route handlers and selects the most specific matching route.
+///
+/// Route precedence is path-first: static path segments take precedence over
+/// dynamic path parameters, then exact method routes take precedence over
+/// `Method::Any`. Ties preserve registration order.
+#[derive(Default)]
+pub struct AsyncRouter {
+    routes: Vec<AsyncRoute>,
     cors: Option<CorsConfig>,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
@@ -257,10 +270,255 @@ impl Router {
     }
 }
 
+impl AsyncRouter {
+    /// Creates an empty asynchronous router.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            routes: Vec::new(),
+            cors: None,
+            request_middleware: Vec::new(),
+            response_middleware: Vec::new(),
+        }
+    }
+
+    /// Enables CORS handling with the provided configuration.
+    pub fn enable_cors(&mut self, cors: CorsConfig) -> &mut Self {
+        self.cors = Some(cors);
+        self
+    }
+
+    /// Returns a copy of this router with CORS enabled.
+    #[must_use]
+    pub fn with_cors(mut self, cors: CorsConfig) -> Self {
+        self.cors = Some(cors);
+        self
+    }
+
+    /// Returns the CORS configuration when enabled.
+    #[must_use]
+    pub const fn cors(&self) -> Option<&CorsConfig> {
+        self.cors.as_ref()
+    }
+
+    /// Adds request middleware that runs before CORS preflight handling and route matching.
+    pub fn add_request_middleware(
+        &mut self,
+        middleware: impl Fn(Request) -> Request + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.request_middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Adds response middleware that runs after route handling and before CORS headers are applied.
+    pub fn add_response_middleware(
+        &mut self,
+        middleware: impl Fn(&Request, Response) -> Response + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.response_middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Returns the number of registered request middleware functions.
+    #[must_use]
+    pub fn request_middleware_len(&self) -> usize {
+        self.request_middleware.len()
+    }
+
+    /// Returns the number of registered response middleware functions.
+    #[must_use]
+    pub fn response_middleware_len(&self) -> usize {
+        self.response_middleware.len()
+    }
+
+    /// Adds an asynchronous route handler.
+    pub fn add_route(
+        &mut self,
+        method: Method,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.routes.push(AsyncRoute::new(method, path, handler));
+        self
+    }
+
+    /// Adds an asynchronous `GET` route handler.
+    pub fn get(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_route(Method::Get, path, handler)
+    }
+
+    /// Adds an asynchronous `HEAD` route handler.
+    pub fn head(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_route(Method::Head, path, handler)
+    }
+
+    /// Adds an asynchronous `POST` route handler.
+    pub fn post(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_route(Method::Post, path, handler)
+    }
+
+    /// Adds an asynchronous `PUT` route handler.
+    pub fn put(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_route(Method::Put, path, handler)
+    }
+
+    /// Adds an asynchronous `PATCH` route handler.
+    pub fn patch(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_route(Method::Patch, path, handler)
+    }
+
+    /// Adds an asynchronous `DELETE` route handler.
+    pub fn delete(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_route(Method::Delete, path, handler)
+    }
+
+    /// Adds an asynchronous `OPTIONS` route handler.
+    pub fn options(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_route(Method::Options, path, handler)
+    }
+
+    /// Adds an asynchronous route handler that accepts any request method.
+    pub fn any(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl for<'a> Fn(&'a Request) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self {
+        self.add_route(Method::Any, path, handler)
+    }
+
+    /// Returns the most specific route match for a request.
+    #[must_use]
+    pub fn find(&self, request: &Request) -> Option<AsyncRouteMatch<'_>> {
+        let mut selected: Option<SelectedAsyncRoute<'_>> = None;
+
+        for route in &self.routes {
+            let Some(route_match) = route.match_request(request.method(), request.path()) else {
+                continue;
+            };
+
+            if selected.as_ref().is_none_or(|current| {
+                async_route_takes_precedence(route, route_match.method_score, current)
+            }) {
+                selected = Some(SelectedAsyncRoute {
+                    route,
+                    path_params: route_match.path_params,
+                    method_score: route_match.method_score,
+                });
+            }
+        }
+
+        selected.map(|selected| AsyncRouteMatch {
+            route: selected.route,
+            path_params: selected.path_params,
+        })
+    }
+
+    /// Handles a request asynchronously with the matching route or returns `404 Not Found`.
+    pub async fn handle(&self, mut request: Request) -> Response {
+        request = self.apply_request_middleware(request);
+
+        if let Some(cors) = &self.cors {
+            if cors.is_preflight_request(&request) {
+                return cors.preflight_response();
+            }
+        }
+
+        let Some(route_match) = self.find(&request) else {
+            let response = self.apply_response_middleware(&request, Response::not_found());
+            return self.apply_cors(response);
+        };
+        let route = route_match.route;
+
+        request.set_path_params(route_match.path_params);
+        let response = self.apply_response_middleware(&request, route.handle(&request).await);
+        self.apply_cors(response)
+    }
+
+    /// Returns registered routes in registration order.
+    #[must_use]
+    pub fn routes(&self) -> &[AsyncRoute] {
+        &self.routes
+    }
+
+    /// Returns the number of registered routes.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.routes.len()
+    }
+
+    /// Returns true when no routes have been registered.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.routes.is_empty()
+    }
+
+    fn apply_cors(&self, response: Response) -> Response {
+        if let Some(cors) = &self.cors {
+            cors.apply(response)
+        } else {
+            response
+        }
+    }
+
+    fn apply_request_middleware(&self, mut request: Request) -> Request {
+        for middleware in &self.request_middleware {
+            request = middleware(request);
+        }
+        request
+    }
+
+    fn apply_response_middleware(&self, request: &Request, mut response: Response) -> Response {
+        for middleware in &self.response_middleware {
+            response = middleware(request, response);
+        }
+        response
+    }
+}
+
 impl fmt::Debug for Router {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("Router")
+            .field("routes", &self.routes)
+            .field("cors", &self.cors)
+            .field("request_middleware_len", &self.request_middleware.len())
+            .field("response_middleware_len", &self.response_middleware.len())
+            .finish()
+    }
+}
+
+impl fmt::Debug for AsyncRouter {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("AsyncRouter")
             .field("routes", &self.routes)
             .field("cors", &self.cors)
             .field("request_middleware_len", &self.request_middleware.len())
@@ -302,8 +560,47 @@ impl<'a> RouteMatch<'a> {
     }
 }
 
+/// A matched asynchronous route and the path parameters captured from the request path.
+#[derive(Debug)]
+pub struct AsyncRouteMatch<'a> {
+    route: &'a AsyncRoute,
+    path_params: crate::PathParams,
+}
+
+impl<'a> AsyncRouteMatch<'a> {
+    /// Returns the matched route.
+    #[must_use]
+    pub const fn route(&self) -> &'a AsyncRoute {
+        self.route
+    }
+
+    /// Returns captured path parameters.
+    #[must_use]
+    pub const fn path_params(&self) -> &crate::PathParams {
+        &self.path_params
+    }
+
+    /// Returns a captured path parameter by name.
+    #[must_use]
+    pub fn path_param(&self, name: &str) -> Option<&str> {
+        self.path_params.get(name)
+    }
+
+    /// Consumes the match and returns captured path parameters.
+    #[must_use]
+    pub fn into_path_params(self) -> crate::PathParams {
+        self.path_params
+    }
+}
+
 struct SelectedRoute<'a> {
     route: &'a Route,
+    path_params: crate::PathParams,
+    method_score: u8,
+}
+
+struct SelectedAsyncRoute<'a> {
+    route: &'a AsyncRoute,
     path_params: crate::PathParams,
     method_score: u8,
 }
@@ -323,9 +620,34 @@ fn route_takes_precedence(
     }
 }
 
+fn async_route_takes_precedence(
+    candidate: &AsyncRoute,
+    candidate_method_score: u8,
+    selected: &SelectedAsyncRoute<'_>,
+) -> bool {
+    match candidate
+        .path_precedence()
+        .cmp(selected.route.path_precedence())
+    {
+        Ordering::Greater => true,
+        Ordering::Less => false,
+        Ordering::Equal => candidate_method_score > selected.method_score,
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{CorsConfig, Method, Request, Response, Router};
+    use std::future::Future;
+
+    use futures_executor::block_on;
+
+    use crate::{AsyncRouter, CorsConfig, Method, Request, Response, ResponseFuture, Router};
+
+    fn async_response<'a>(
+        future: impl Future<Output = Response> + Send + 'a,
+    ) -> ResponseFuture<'a> {
+        Box::pin(future)
+    }
 
     #[test]
     fn static_route_precedes_dynamic_peer_even_when_registered_later() {
@@ -474,6 +796,52 @@ mod tests {
         let response = router.handle(Request::new(Method::Get, "/orders"));
 
         assert_eq!(router.response_middleware_len(), 1);
+        assert_eq!(response.header("x-path"), Some("/orders"));
+        assert_eq!(response.header("access-control-allow-origin"), Some("*"));
+    }
+
+    #[test]
+    fn async_router_handles_dynamic_routes() {
+        let mut router = AsyncRouter::new();
+        router.get("/orders/{id}", |request| {
+            async_response(async move {
+                Response::ok(format!(
+                    "order:{}",
+                    request.path_param("id").expect("id is captured")
+                ))
+            })
+        });
+
+        let request = Request::new(Method::Get, "/orders/order-1");
+        let route_match = router.find(&request).expect("route matches");
+        let response = block_on(router.handle(request));
+
+        assert_eq!(route_match.path_param("id"), Some("order-1"));
+        assert_eq!(response.body(), b"order:order-1");
+    }
+
+    #[test]
+    fn async_router_runs_middleware_and_cors() {
+        let mut router = AsyncRouter::new().with_cors(CorsConfig::default());
+        router.add_request_middleware(|request| {
+            if request.path() == "/legacy-orders" {
+                Request::new(request.method(), "/orders")
+            } else {
+                request
+            }
+        });
+        router.add_response_middleware(|request, response| {
+            response.with_header("x-path", request.path())
+        });
+        router.get("/orders", |request| {
+            async_response(async move { Response::ok(request.path().to_owned()) })
+        });
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/legacy-orders")));
+
+        assert_eq!(router.request_middleware_len(), 1);
+        assert_eq!(router.response_middleware_len(), 1);
+        assert_eq!(response.body(), b"/orders");
         assert_eq!(response.header("x-path"), Some("/orders"));
         assert_eq!(response.header("access-control-allow-origin"), Some("*"));
     }

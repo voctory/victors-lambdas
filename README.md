@@ -22,8 +22,8 @@ tranche has landed:
 - idempotency keys, payload hashing, JSON Pointer key extraction, handler workflow, replay behavior, store traits, and
   an in-memory store
 - tracer configuration, X-Ray header context parsing, trace segment records, and JSON-compatible trace values
-- event-handler request/response types, route matching, dynamic path parameters, router dispatch, request/response
-  middleware, CORS handling, and optional API Gateway REST/HTTP API adapters
+- event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
+  request/response middleware, CORS handling, and optional API Gateway REST/HTTP API adapters
 - minimal testing helper surfaces
 
 Not yet implemented: AWS SDK-backed parameter providers, DynamoDB-backed idempotency persistence, broader

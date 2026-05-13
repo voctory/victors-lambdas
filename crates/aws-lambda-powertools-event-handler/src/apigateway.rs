@@ -12,7 +12,7 @@ use aws_lambda_events::{
 use base64::Engine;
 use http::{HeaderMap, HeaderName, HeaderValue};
 
-use crate::{Method, Request, Response, Router};
+use crate::{AsyncRouter, Method, Request, Response, Router};
 
 /// Result returned by API Gateway adapter operations.
 pub type ApiGatewayAdapterResult<T> = Result<T, ApiGatewayAdapterError>;
@@ -207,6 +207,34 @@ impl Router {
     ) -> ApiGatewayAdapterResult<ApiGatewayV2httpResponse> {
         let request = request_from_apigw_v2(event)?;
         response_to_apigw_v2(&self.handle(request))
+    }
+}
+
+impl AsyncRouter {
+    /// Handles an API Gateway REST API v1 request asynchronously.
+    ///
+    /// # Errors
+    ///
+    /// Returns an adapter error when request conversion or response conversion fails.
+    pub async fn handle_apigw_v1(
+        &self,
+        event: &ApiGatewayProxyRequest,
+    ) -> ApiGatewayAdapterResult<ApiGatewayProxyResponse> {
+        let request = request_from_apigw_v1(event)?;
+        response_to_apigw_v1(&self.handle(request).await)
+    }
+
+    /// Handles an API Gateway HTTP API v2 request asynchronously.
+    ///
+    /// # Errors
+    ///
+    /// Returns an adapter error when request conversion or response conversion fails.
+    pub async fn handle_apigw_v2(
+        &self,
+        event: &ApiGatewayV2httpRequest,
+    ) -> ApiGatewayAdapterResult<ApiGatewayV2httpResponse> {
+        let request = request_from_apigw_v2(event)?;
+        response_to_apigw_v2(&self.handle(request).await)
     }
 }
 

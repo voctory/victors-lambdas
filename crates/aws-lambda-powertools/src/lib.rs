@@ -59,8 +59,9 @@ pub mod prelude {
 
     #[cfg(feature = "event-handler")]
     pub use aws_lambda_powertools_event_handler::{
-        CorsConfig, Handler, Method, ParseMethodError, PathParams, Request, RequestMiddleware,
-        Response, ResponseMiddleware, Route, RouteMatch, Router,
+        AsyncHandler, AsyncRoute, AsyncRouteMatch, AsyncRouter, CorsConfig, Handler, Method,
+        ParseMethodError, PathParams, Request, RequestMiddleware, Response, ResponseFuture,
+        ResponseMiddleware, Route, RouteMatch, Router,
     };
 
     #[cfg(feature = "event-handler-aws-lambda-events")]

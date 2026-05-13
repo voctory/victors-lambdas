@@ -18,5 +18,7 @@ pub use cors::CorsConfig;
 pub use method::{Method, ParseMethodError};
 pub use request::Request;
 pub use response::Response;
-pub use route::{Handler, PathParams, Route};
-pub use router::{RequestMiddleware, ResponseMiddleware, RouteMatch, Router};
+pub use route::{AsyncHandler, AsyncRoute, Handler, PathParams, ResponseFuture, Route};
+pub use router::{
+    AsyncRouteMatch, AsyncRouter, RequestMiddleware, ResponseMiddleware, RouteMatch, Router,
+};
