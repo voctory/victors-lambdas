@@ -69,6 +69,7 @@ Initial feature docs:
 
 - [Logger](docs/features/logger.md)
 - [Metrics](docs/features/metrics.md)
+- [Tracer](docs/features/tracer.md)
 - [Idempotency](docs/features/idempotency.md)
 - [Feature Flags](docs/features/feature-flags.md)
 

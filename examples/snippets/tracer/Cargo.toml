@@ -1,0 +1,14 @@
+[package]
+name = "tracer-snippet"
+description = "Buildable tracer snippet for Powertools Lambda Rust docs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["tracer", "tracer-xray"] }
+
+[lints]
+workspace = true
