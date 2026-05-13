@@ -1726,6 +1726,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "parser-snippet"
+version = "0.1.0"
+dependencies = [
+ "aws-lambda-powertools",
+ "aws_lambda_events",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

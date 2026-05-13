@@ -1,0 +1,17 @@
+[package]
+name = "parser-snippet"
+description = "Buildable parser snippet for Powertools Lambda Rust docs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["parser-aws-lambda-events"] }
+aws_lambda_events = { version = "1.2.0", default-features = false, features = ["sqs"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[lints]
+workspace = true
