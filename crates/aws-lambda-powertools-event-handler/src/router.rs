@@ -1,6 +1,6 @@
 //! Router facade.
 
-use std::{cmp::Ordering, fmt, sync::Arc};
+use std::{any::TypeId, cmp::Ordering, fmt, future::Future, pin::Pin, sync::Arc};
 
 #[cfg(feature = "validation")]
 use crate::validation::{
@@ -25,6 +25,13 @@ pub type ErrorHandler = dyn Fn(&Request, &RouteError) -> Response + Send + Sync 
 pub type AsyncErrorHandler =
     dyn for<'a> Fn(&'a Request, &'a RouteError) -> ResponseFuture<'a> + Send + Sync + 'static;
 
+type OptionalResponseFuture<'a> = Pin<Box<dyn Future<Output = Option<Response>> + Send + 'a>>;
+type TypedErrorHandler = dyn Fn(&Request, &RouteError) -> Option<Response> + Send + Sync + 'static;
+type AsyncTypedErrorHandler = dyn for<'a> Fn(&'a Request, &'a RouteError) -> OptionalResponseFuture<'a>
+    + Send
+    + Sync
+    + 'static;
+
 /// Stores HTTP route handlers and selects the most specific matching route.
 ///
 /// Route precedence is path-first: static path segments take precedence over
@@ -37,6 +44,7 @@ pub struct Router {
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
     not_found_handler: Option<Box<Handler>>,
+    typed_error_handlers: Vec<TypedErrorHandlerEntry>,
     error_handler: Option<Box<ErrorHandler>>,
     #[cfg(feature = "validation")]
     validation: Option<ValidationConfig>,
@@ -54,6 +62,7 @@ pub struct AsyncRouter {
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
     not_found_handler: Option<Box<AsyncHandler>>,
+    typed_error_handlers: Vec<AsyncTypedErrorHandlerEntry>,
     error_handler: Option<Box<AsyncErrorHandler>>,
     #[cfg(feature = "validation")]
     validation: Option<ValidationConfig>,
@@ -69,6 +78,7 @@ impl Router {
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
             not_found_handler: None,
+            typed_error_handlers: Vec::new(),
             error_handler: None,
             #[cfg(feature = "validation")]
             validation: None,
@@ -160,6 +170,22 @@ impl Router {
         self
     }
 
+    /// Sets the handler used when a fallible route returns a concrete error type.
+    ///
+    /// Typed error handlers run before the catch-all handler configured with
+    /// [`Router::set_error_handler`]. Registering another handler for the same
+    /// error type replaces the previous handler.
+    pub fn set_error_handler_for<E>(
+        &mut self,
+        handler: impl Fn(&Request, &E) -> Response + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.upsert_typed_error_handler(TypedErrorHandlerEntry::new(handler));
+        self
+    }
+
     /// Returns a copy of this router with a fallible route error handler.
     #[must_use]
     pub fn with_error_handler(
@@ -167,6 +193,19 @@ impl Router {
         handler: impl Fn(&Request, &RouteError) -> Response + Send + Sync + 'static,
     ) -> Self {
         self.set_error_handler(handler);
+        self
+    }
+
+    /// Returns a copy of this router with a concrete fallible route error handler.
+    #[must_use]
+    pub fn with_error_handler_for<E>(
+        mut self,
+        handler: impl Fn(&Request, &E) -> Response + Send + Sync + 'static,
+    ) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.set_error_handler_for(handler);
         self
     }
 
@@ -507,6 +546,7 @@ impl Router {
             request_middleware,
             response_middleware,
             not_found_handler,
+            typed_error_handlers,
             error_handler,
             #[cfg(feature = "validation")]
             validation,
@@ -523,6 +563,7 @@ impl Router {
         if let Some(not_found_handler) = not_found_handler {
             self.not_found_handler = Some(not_found_handler);
         }
+        self.merge_typed_error_handlers(typed_error_handlers);
         if let Some(error_handler) = error_handler {
             self.error_handler = Some(error_handler);
         }
@@ -661,10 +702,27 @@ impl Router {
     }
 
     fn error_response(&self, request: &Request, error: &RouteError) -> Response {
-        self.error_handler.as_ref().map_or_else(
-            || default_error_response(error),
-            |handler| handler(request, error),
-        )
+        self.typed_error_handlers
+            .iter()
+            .find_map(|entry| entry.handle(request, error))
+            .or_else(|| {
+                self.error_handler
+                    .as_ref()
+                    .map(|handler| handler(request, error))
+            })
+            .unwrap_or_else(|| default_error_response(error))
+    }
+
+    fn upsert_typed_error_handler(&mut self, entry: TypedErrorHandlerEntry) {
+        self.typed_error_handlers
+            .retain(|existing| existing.type_id != entry.type_id);
+        self.typed_error_handlers.push(entry);
+    }
+
+    fn merge_typed_error_handlers(&mut self, entries: Vec<TypedErrorHandlerEntry>) {
+        for entry in entries {
+            self.upsert_typed_error_handler(entry);
+        }
     }
 
     #[cfg(feature = "validation")]
@@ -696,6 +754,7 @@ impl AsyncRouter {
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
             not_found_handler: None,
+            typed_error_handlers: Vec::new(),
             error_handler: None,
             #[cfg(feature = "validation")]
             validation: None,
@@ -790,6 +849,22 @@ impl AsyncRouter {
         self
     }
 
+    /// Sets the asynchronous handler used when a fallible route returns a concrete error type.
+    ///
+    /// Typed error handlers run before the catch-all handler configured with
+    /// [`AsyncRouter::set_error_handler`]. Registering another handler for the
+    /// same error type replaces the previous handler.
+    pub fn set_error_handler_for<E>(
+        &mut self,
+        handler: impl for<'a> Fn(&'a Request, &'a E) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> &mut Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.upsert_typed_error_handler(AsyncTypedErrorHandlerEntry::new(handler));
+        self
+    }
+
     /// Returns a copy of this asynchronous router with a fallible route error handler.
     #[must_use]
     pub fn with_error_handler(
@@ -800,6 +875,19 @@ impl AsyncRouter {
         + 'static,
     ) -> Self {
         self.set_error_handler(handler);
+        self
+    }
+
+    /// Returns a copy of this asynchronous router with a concrete fallible route error handler.
+    #[must_use]
+    pub fn with_error_handler_for<E>(
+        mut self,
+        handler: impl for<'a> Fn(&'a Request, &'a E) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.set_error_handler_for(handler);
         self
     }
 
@@ -1109,6 +1197,7 @@ impl AsyncRouter {
             request_middleware,
             response_middleware,
             not_found_handler,
+            typed_error_handlers,
             error_handler,
             #[cfg(feature = "validation")]
             validation,
@@ -1125,6 +1214,7 @@ impl AsyncRouter {
         if let Some(not_found_handler) = not_found_handler {
             self.not_found_handler = Some(not_found_handler);
         }
+        self.merge_typed_error_handlers(typed_error_handlers);
         if let Some(error_handler) = error_handler {
             self.error_handler = Some(error_handler);
         }
@@ -1268,10 +1358,30 @@ impl AsyncRouter {
         request: &'a Request,
         error: &'a RouteError,
     ) -> ResponseFuture<'a> {
-        if let Some(handler) = &self.error_handler {
-            handler(request, error)
-        } else {
-            Box::pin(async move { default_error_response(error) })
+        Box::pin(async move {
+            for entry in &self.typed_error_handlers {
+                if let Some(response) = entry.handle(request, error).await {
+                    return response;
+                }
+            }
+
+            if let Some(handler) = &self.error_handler {
+                handler(request, error).await
+            } else {
+                default_error_response(error)
+            }
+        })
+    }
+
+    fn upsert_typed_error_handler(&mut self, entry: AsyncTypedErrorHandlerEntry) {
+        self.typed_error_handlers
+            .retain(|existing| existing.type_id != entry.type_id);
+        self.typed_error_handlers.push(entry);
+    }
+
+    fn merge_typed_error_handlers(&mut self, entries: Vec<AsyncTypedErrorHandlerEntry>) {
+        for entry in entries {
+            self.upsert_typed_error_handler(entry);
         }
     }
 
@@ -1303,6 +1413,7 @@ impl fmt::Debug for Router {
             .field("request_middleware_len", &self.request_middleware.len())
             .field("response_middleware_len", &self.response_middleware.len())
             .field("has_not_found_handler", &self.not_found_handler.is_some())
+            .field("typed_error_handlers_len", &self.typed_error_handlers.len())
             .field("has_error_handler", &self.error_handler.is_some());
         #[cfg(feature = "validation")]
         debug.field("validation_enabled", &self.validation.is_some());
@@ -1319,6 +1430,7 @@ impl fmt::Debug for AsyncRouter {
             .field("request_middleware_len", &self.request_middleware.len())
             .field("response_middleware_len", &self.response_middleware.len())
             .field("has_not_found_handler", &self.not_found_handler.is_some())
+            .field("typed_error_handlers_len", &self.typed_error_handlers.len())
             .field("has_error_handler", &self.error_handler.is_some());
         #[cfg(feature = "validation")]
         debug.field("validation_enabled", &self.validation.is_some());
@@ -1404,6 +1516,65 @@ struct SelectedAsyncRoute<'a> {
     method_score: u8,
 }
 
+struct TypedErrorHandlerEntry {
+    type_id: TypeId,
+    handler: Box<TypedErrorHandler>,
+}
+
+impl TypedErrorHandlerEntry {
+    fn new<E>(handler: impl Fn(&Request, &E) -> Response + Send + Sync + 'static) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Self {
+            type_id: TypeId::of::<E>(),
+            handler: Box::new(move |request, error| {
+                error
+                    .downcast_ref::<E>()
+                    .map(|error| handler(request, error))
+            }),
+        }
+    }
+
+    fn handle(&self, request: &Request, error: &RouteError) -> Option<Response> {
+        (self.handler)(request, error)
+    }
+}
+
+struct AsyncTypedErrorHandlerEntry {
+    type_id: TypeId,
+    handler: Box<AsyncTypedErrorHandler>,
+}
+
+impl AsyncTypedErrorHandlerEntry {
+    fn new<E>(
+        handler: impl for<'a> Fn(&'a Request, &'a E) -> ResponseFuture<'a> + Send + Sync + 'static,
+    ) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Self {
+            type_id: TypeId::of::<E>(),
+            handler: Box::new(move |request, error| {
+                if let Some(error) = error.downcast_ref::<E>() {
+                    let response = handler(request, error);
+                    Box::pin(async move { Some(response.await) })
+                } else {
+                    Box::pin(async { None })
+                }
+            }),
+        }
+    }
+
+    fn handle<'a>(
+        &'a self,
+        request: &'a Request,
+        error: &'a RouteError,
+    ) -> OptionalResponseFuture<'a> {
+        (self.handler)(request, error)
+    }
+}
+
 fn route_takes_precedence(
     candidate: &Route,
     candidate_method_score: u8,
@@ -1465,6 +1636,17 @@ mod tests {
     }
 
     impl std::error::Error for TestRouteError {}
+
+    #[derive(Debug)]
+    struct OtherRouteError(&'static str);
+
+    impl fmt::Display for OtherRouteError {
+        fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str(self.0)
+        }
+    }
+
+    impl std::error::Error for OtherRouteError {}
 
     fn async_response<'a>(
         future: impl Future<Output = Response> + Send + 'a,
@@ -1619,6 +1801,37 @@ mod tests {
         assert_eq!(response.body(), b"/orders:duplicate order");
         assert_eq!(response.header("x-middleware"), Some("1"));
         assert_eq!(response.header("access-control-allow-origin"), Some("*"));
+    }
+
+    #[test]
+    fn typed_error_handler_runs_before_catch_all_error_handler() {
+        let mut router = Router::new().with_cors(CorsConfig::default());
+        router.set_error_handler(|_, _| Response::internal_server_error());
+        router.set_error_handler_for::<TestRouteError>(|request, error| {
+            Response::new(409).with_body(format!("{}:{}", request.path(), error))
+        });
+        router.add_response_middleware(|_, response| response.with_header("x-middleware", "1"));
+        router.get_fallible("/orders", |_| Err(TestRouteError("duplicate order")));
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(response.status_code(), 409);
+        assert_eq!(response.body(), b"/orders:duplicate order");
+        assert_eq!(response.header("x-middleware"), Some("1"));
+        assert_eq!(response.header("access-control-allow-origin"), Some("*"));
+    }
+
+    #[test]
+    fn unmatched_typed_error_handler_falls_back_to_catch_all_error_handler() {
+        let mut router = Router::new();
+        router.set_error_handler_for::<OtherRouteError>(|_, _| Response::new(418));
+        router.set_error_handler(|_, error| Response::new(422).with_body(error.to_string()));
+        router.get_fallible("/orders", |_| Err(TestRouteError("invalid order")));
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(response.status_code(), 422);
+        assert_eq!(response.body(), b"invalid order");
     }
 
     #[test]
@@ -1842,6 +2055,24 @@ mod tests {
 
         assert_eq!(response.status_code(), 422);
         assert_eq!(response.body(), b"invalid order");
+    }
+
+    #[test]
+    fn include_router_merges_typed_error_handlers_with_child_precedence() {
+        let mut child = Router::new();
+        child.set_error_handler_for::<TestRouteError>(|_, error| {
+            Response::new(409).with_body(format!("child:{error}"))
+        });
+        child.get_fallible("/orders", |_| Err(TestRouteError("duplicate order")));
+
+        let mut router = Router::new()
+            .with_error_handler_for::<TestRouteError>(|_, _| Response::internal_server_error());
+        router.include_router(child);
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(response.status_code(), 409);
+        assert_eq!(response.body(), b"child:duplicate order");
     }
 
     #[cfg(feature = "validation")]
@@ -2124,6 +2355,27 @@ mod tests {
         router.get_fallible("/orders", |_| {
             async_fallible_response(async {
                 Err(Box::new(TestRouteError("duplicate order")) as Box<crate::RouteError>)
+            })
+        });
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/orders")));
+
+        assert_eq!(response.status_code(), 409);
+        assert_eq!(response.body(), b"/orders:duplicate order");
+    }
+
+    #[test]
+    fn async_typed_error_handler_runs_before_catch_all_error_handler() {
+        let mut router = AsyncRouter::new();
+        router
+            .set_error_handler(|_, _| async_response(async { Response::internal_server_error() }));
+        router.set_error_handler_for::<TestRouteError>(|request, error| {
+            let body = format!("{}:{}", request.path(), error);
+            async_response(async move { Response::new(409).with_body(body) })
+        });
+        router.get_fallible("/orders", |_| {
+            async_fallible_response(async {
+                Err(Box::new(TestRouteError("duplicate order")) as Box<RouteError>)
             })
         });
 
