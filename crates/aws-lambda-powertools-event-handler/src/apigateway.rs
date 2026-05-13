@@ -6,7 +6,7 @@ use aws_lambda_events::{
     encodings::Body,
     event::apigw::{
         ApiGatewayProxyRequest, ApiGatewayProxyResponse, ApiGatewayV2httpRequest,
-        ApiGatewayV2httpResponse,
+        ApiGatewayV2httpResponse, ApiGatewayWebsocketProxyRequest,
     },
 };
 use base64::Engine;
@@ -137,6 +137,34 @@ pub fn request_from_apigw_v2(event: &ApiGatewayV2httpRequest) -> ApiGatewayAdapt
     Ok(request)
 }
 
+/// Converts an API Gateway WebSocket API event into a router request.
+///
+/// WebSocket APIs route by route key instead of a URL path. When a route key is
+/// present, this adapter exposes it as a router path such as `/$connect`,
+/// `/$disconnect`, `/$default`, or `/sendMessage`.
+///
+/// # Errors
+///
+/// Returns an error when the method is unsupported, a header is not UTF-8, or a
+/// base64 body cannot be decoded.
+pub fn request_from_apigw_websocket(
+    event: &ApiGatewayWebsocketProxyRequest,
+) -> ApiGatewayAdapterResult<Request> {
+    let method = websocket_method(event)?;
+    let mut request = Request::new(method, websocket_route_path(event))
+        .with_body(body_bytes(event.body.as_deref(), event.is_base64_encoded)?);
+
+    request = add_headers(request, &event.headers)?;
+    for (name, value) in event.query_string_parameters.iter() {
+        request = request.with_query_string_parameter(name, value);
+    }
+    for (name, value) in &event.path_parameters {
+        request = request.with_path_param(name, value);
+    }
+
+    Ok(request)
+}
+
 /// Converts a router response into an API Gateway REST API v1 response.
 ///
 /// # Errors
@@ -156,6 +184,21 @@ pub fn response_to_apigw_v1(
     gateway_response.is_base64_encoded = is_base64_encoded;
 
     Ok(gateway_response)
+}
+
+/// Converts a router response into an API Gateway WebSocket API response.
+///
+/// WebSocket Lambda integrations use the same proxy response payload shape as
+/// API Gateway REST API proxy integrations.
+///
+/// # Errors
+///
+/// Returns an error when a response header cannot be represented as an HTTP
+/// header name or value.
+pub fn response_to_apigw_websocket(
+    response: &Response,
+) -> ApiGatewayAdapterResult<ApiGatewayProxyResponse> {
+    response_to_apigw_v1(response)
 }
 
 /// Converts a router response into an API Gateway HTTP API v2 response.
@@ -208,6 +251,19 @@ impl Router {
         let request = request_from_apigw_v2(event)?;
         response_to_apigw_v2(&self.handle(request))
     }
+
+    /// Handles an API Gateway WebSocket API event and returns a proxy response.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when request or response adapter conversion fails.
+    pub fn handle_apigw_websocket(
+        &self,
+        event: &ApiGatewayWebsocketProxyRequest,
+    ) -> ApiGatewayAdapterResult<ApiGatewayProxyResponse> {
+        let request = request_from_apigw_websocket(event)?;
+        response_to_apigw_websocket(&self.handle(request))
+    }
 }
 
 impl AsyncRouter {
@@ -236,6 +292,19 @@ impl AsyncRouter {
         let request = request_from_apigw_v2(event)?;
         response_to_apigw_v2(&self.handle(request).await)
     }
+
+    /// Handles an API Gateway WebSocket API event asynchronously.
+    ///
+    /// # Errors
+    ///
+    /// Returns an adapter error when request conversion or response conversion fails.
+    pub async fn handle_apigw_websocket(
+        &self,
+        event: &ApiGatewayWebsocketProxyRequest,
+    ) -> ApiGatewayAdapterResult<ApiGatewayProxyResponse> {
+        let request = request_from_apigw_websocket(event)?;
+        response_to_apigw_websocket(&self.handle(request).await)
+    }
 }
 
 fn method_from_token(method: &str) -> ApiGatewayAdapterResult<Method> {
@@ -257,6 +326,39 @@ fn body_bytes(body: Option<&str>, is_base64_encoded: bool) -> ApiGatewayAdapterR
             })
     } else {
         Ok(body.as_bytes().to_vec())
+    }
+}
+
+fn websocket_method(event: &ApiGatewayWebsocketProxyRequest) -> ApiGatewayAdapterResult<Method> {
+    if let Some(method) = event
+        .http_method
+        .as_ref()
+        .or(event.request_context.http_method.as_ref())
+    {
+        method_from_token(method.as_str())
+    } else {
+        Ok(Method::Get)
+    }
+}
+
+fn websocket_route_path(event: &ApiGatewayWebsocketProxyRequest) -> String {
+    event
+        .request_context
+        .route_key
+        .as_deref()
+        .or(event.request_context.resource_path.as_deref())
+        .or(event.path.as_deref())
+        .or(event.resource.as_deref())
+        .map_or_else(|| "/$default".to_owned(), router_path)
+}
+
+fn router_path(path: &str) -> String {
+    if path.is_empty() {
+        "/".to_owned()
+    } else if path.starts_with('/') {
+        path.to_owned()
+    } else {
+        format!("/{path}")
     }
 }
 
@@ -334,13 +436,16 @@ fn api_gateway_body(body: &[u8]) -> (Option<Body>, bool) {
 mod tests {
     use aws_lambda_events::{
         encodings::Body,
-        event::apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
+        event::apigw::{
+            ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest,
+        },
     };
     use http::Method as HttpMethod;
 
     use crate::{
         ApiGatewayAdapterError, Method, Request, Response, Router, request_from_apigw_v1,
-        response_to_apigw_v1, response_to_apigw_v2,
+        request_from_apigw_websocket, response_to_apigw_v1, response_to_apigw_v2,
+        response_to_apigw_websocket,
     };
 
     #[test]
@@ -402,6 +507,48 @@ mod tests {
     }
 
     #[test]
+    fn converts_api_gateway_websocket_request() {
+        let mut event = ApiGatewayWebsocketProxyRequest::default();
+        event.request_context.route_key = Some("sendMessage".to_owned());
+        event.body = Some("hello".to_owned());
+        event
+            .headers
+            .insert("x-request-id", "req-1".parse().unwrap());
+        event.query_string_parameters =
+            std::collections::HashMap::from([("debug".to_owned(), "true".to_owned())]).into();
+        event
+            .path_parameters
+            .insert("connection_id".to_owned(), "abc123".to_owned());
+
+        let request = request_from_apigw_websocket(&event).expect("request converts");
+
+        assert_eq!(request.method(), Method::Get);
+        assert_eq!(request.path(), "/sendMessage");
+        assert_eq!(request.header("x-request-id"), Some("req-1"));
+        assert_eq!(request.query_string_parameter("debug"), Some("true"));
+        assert_eq!(request.path_param("connection_id"), Some("abc123"));
+        assert_eq!(request.body(), b"hello");
+    }
+
+    #[test]
+    fn converts_response_to_api_gateway_websocket() {
+        let response = Response::ok("accepted").with_header("content-type", "text/plain");
+
+        let gateway_response = response_to_apigw_websocket(&response).expect("response converts");
+
+        assert_eq!(gateway_response.status_code, 200);
+        assert_eq!(
+            gateway_response.headers.get("content-type").unwrap(),
+            "text/plain"
+        );
+        assert_eq!(
+            gateway_response.body,
+            Some(Body::Text("accepted".to_owned()))
+        );
+        assert!(!gateway_response.is_base64_encoded);
+    }
+
+    #[test]
     fn converts_binary_response_to_base64_api_gateway_body() {
         let response = Response::new(200).with_body([0xff, 0x00]);
 
@@ -443,6 +590,24 @@ mod tests {
 
         assert_eq!(response.status_code, 200);
         assert_eq!(response.body, Some(Body::Text("123".to_owned())));
+    }
+
+    #[test]
+    fn router_handles_api_gateway_websocket_events() {
+        let mut router = Router::new();
+        router.any("/sendMessage", |request| {
+            Response::ok(std::str::from_utf8(request.body()).unwrap_or_default())
+        });
+        let mut event = ApiGatewayWebsocketProxyRequest::default();
+        event.request_context.route_key = Some("sendMessage".to_owned());
+        event.body = Some("ping".to_owned());
+
+        let response = router
+            .handle_apigw_websocket(&event)
+            .expect("router handles event");
+
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.body, Some(Body::Text("ping".to_owned())));
     }
 
     #[test]

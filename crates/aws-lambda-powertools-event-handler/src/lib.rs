@@ -26,7 +26,8 @@ pub use alb::{AlbAdapterError, AlbAdapterResult, request_from_alb, response_to_a
 #[cfg(feature = "aws-lambda-events")]
 pub use apigateway::{
     ApiGatewayAdapterError, ApiGatewayAdapterResult, request_from_apigw_v1, request_from_apigw_v2,
-    response_to_apigw_v1, response_to_apigw_v2,
+    request_from_apigw_websocket, response_to_apigw_v1, response_to_apigw_v2,
+    response_to_apigw_websocket,
 };
 #[cfg(feature = "aws-lambda-events")]
 pub use appsync::{

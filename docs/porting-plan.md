@@ -51,7 +51,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, sequential and concurrent generic processing, stream checkpoint helpers, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior | Parser-integrated processors and larger examples |
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, inbound/outbound validation wrappers, optional local JSON Schema backend, and compiled schema cache | Handler middleware/docs integration |
 | Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `Idempotency`, `AsyncIdempotency`, `IdempotencyOutcome`, typed workflow errors, SHA-256 JSON payload hashing, JSON Pointer key extraction, sync and async handler wrappers, payload hash validation, result replay, sync and async store traits/errors/results, in-memory store, and optional DynamoDB store | Lambda-context timeout integration and richer examples |
-| Event handler | `Method`, method parsing/matching, `Request`, `Response`, `PathParams`, `Route`, `AsyncRoute`, `Router`, `AsyncRouter`, static/dynamic path precedence, `ANY` routes, 404 dispatch, request/response middleware, `CorsConfig`, preflight responses, routed/404 CORS headers, optional gzip/deflate compression middleware, optional AppSync direct resolver routing, optional Bedrock Agent adapter, optional ALB, Lambda Function URL, and VPC Lattice adapters, and optional API Gateway REST API v1 / HTTP API v2 adapters | Additional resolver families and docs |
+| Event handler | `Method`, method parsing/matching, `Request`, `Response`, `PathParams`, `Route`, `AsyncRoute`, `Router`, `AsyncRouter`, static/dynamic path precedence, `ANY` routes, 404 dispatch, request/response middleware, `CorsConfig`, preflight responses, routed/404 CORS headers, optional gzip/deflate compression middleware, optional AppSync direct resolver routing, optional Bedrock Agent adapter, optional ALB, Lambda Function URL, and VPC Lattice adapters, and optional API Gateway REST API v1 / HTTP API v2 / WebSocket API adapters | Additional resolver families and docs |
 | Testing | `LambdaContextStub`, parameter provider stub re-export, text/bytes fixture readers, and JSON fixture decoder | Fake AWS providers, handler harnesses |
 
 ## Next Durable Work
@@ -65,8 +65,8 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 3. Expand parser envelopes and fixtures using `aws_lambda_events` as the default event model source.
 4. Expand idempotency where AWS retry semantics overlap: DynamoDB persistence, conditional writes, and concurrency
    behavior.
-5. Add event-handler adapters for additional resolver families and document the current HTTP, ALB, Lambda Function URL,
-   VPC Lattice, AppSync, and Bedrock surfaces.
+5. Add event-handler adapters for additional resolver families and document the current HTTP, WebSocket, ALB, Lambda
+   Function URL, VPC Lattice, AppSync, and Bedrock surfaces.
 
 ## Crate Strategy
 
@@ -82,7 +82,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential/concurrent processing, stream checkpoint helpers, and SQS, Kinesis, and DynamoDB stream adapters exist; parser-integrated processors and examples are next |
 | `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, sync and async handler workflows, replay, records, in-memory store, and optional DynamoDB persistence exist; Lambda-context timeout integration and richer examples are next |
 | `aws-lambda-powertools-validation` | Payload validation | Basic validators, inbound/outbound wrappers, optional JSON Schema validation, and schema caching exist; next work is handler middleware and examples |
-| `aws-lambda-powertools-event-handler` | Routing | Dependency-free sync/async routing, middleware, CORS, optional compression middleware, optional AppSync direct resolver routing, optional Bedrock Agent adapter, optional ALB, Lambda Function URL, and VPC Lattice adapters, and optional API Gateway adapters exist; next work is additional event adapters and docs |
+| `aws-lambda-powertools-event-handler` | Routing | Dependency-free sync/async routing, middleware, CORS, optional compression middleware, optional AppSync direct resolver routing, optional Bedrock Agent adapter, optional ALB, Lambda Function URL, and VPC Lattice adapters, and optional API Gateway REST API, HTTP API, and WebSocket API adapters exist; next work is additional event adapters and docs |
 | `aws-lambda-powertools-testing` | Test helpers | Context stubs, parameter provider stubs, and fixture loaders exist; expand fake providers and handler harnesses only as real utilities need them |
 
 Provider features should live on the owning utility crate first and be re-exposed by the umbrella crate only when that is
@@ -210,6 +210,7 @@ Powertools conventions.
 - [x] Add event-handler ALB adapter.
 - [x] Add event-handler Lambda Function URL adapter.
 - [x] Add event-handler VPC Lattice v1/v2 adapters.
+- [x] Add event-handler API Gateway WebSocket adapter.
 - [x] Add testing fixture loaders.
 - [ ] Add release notes, crates.io publishing checks, docs.rs coverage, and provenance/SBOM work after API boundaries
   settle.
