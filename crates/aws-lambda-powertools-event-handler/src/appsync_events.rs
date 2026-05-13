@@ -324,6 +324,21 @@ impl AppSyncEventsResolver {
         &self.subscribe_routes
     }
 
+    /// Includes publish and subscribe routes from another AWS `AppSync` Events resolver.
+    ///
+    /// Included routes behave as if they were registered after this resolver's
+    /// existing routes.
+    pub fn include_router(&mut self, resolver: AppSyncEventsResolver) -> &mut Self {
+        let AppSyncEventsResolver {
+            publish_routes,
+            subscribe_routes,
+        } = resolver;
+
+        self.publish_routes.extend(publish_routes);
+        self.subscribe_routes.extend(subscribe_routes);
+        self
+    }
+
     /// Dispatches an AWS `AppSync` Events invocation.
     ///
     /// Publish handlers return an object with an `events` array, or an `error`
@@ -400,7 +415,7 @@ fn best_route<'a, T>(
             continue;
         };
 
-        if best.is_none() || route_score > best_score {
+        if best.is_none() || route_score >= best_score {
             best = Some(route);
             best_score = route_score;
         }
@@ -735,6 +750,64 @@ mod tests {
         let response = resolver.handle_subscribe(&event);
 
         assert_eq!(response, json!({ "error": "not authorized" }));
+    }
+
+    #[test]
+    fn include_router_merges_publish_and_subscribe_routes() {
+        let mut child = AppSyncEventsResolver::new();
+        child.on_publish("/default/orders", |payload, _| {
+            Ok(json!({
+                "source": "child",
+                "id": payload["id"],
+            }))
+        });
+        child.on_subscribe("/default/orders", |_| {
+            Err(AppSyncEventsHandlerError::new("subscription denied"))
+        });
+
+        let mut resolver = AppSyncEventsResolver::new();
+        resolver.include_router(child);
+
+        let publish_response = resolver
+            .handle_publish(&publish_event(
+                "/default/orders",
+                vec![message("event-1", json!({"id": 1}))],
+            ))
+            .expect("included publish route should match");
+        let subscribe_response = resolver.handle_subscribe(&subscribe_event("/default/orders"));
+
+        assert_eq!(resolver.publish_routes().len(), 1);
+        assert_eq!(resolver.subscribe_routes().len(), 1);
+        assert_eq!(
+            publish_response["events"][0]["payload"],
+            json!({
+                "source": "child",
+                "id": 1
+            })
+        );
+        assert_eq!(
+            subscribe_response,
+            json!({ "error": "subscription denied" })
+        );
+    }
+
+    #[test]
+    fn included_publish_route_can_override_existing_route() {
+        let mut child = AppSyncEventsResolver::new();
+        child.on_publish("/default/orders", |_, _| Ok(json!({"source": "child"})));
+
+        let mut resolver = AppSyncEventsResolver::new();
+        resolver.on_publish("/default/orders", |_, _| Ok(json!({"source": "parent"})));
+        resolver.include_router(child);
+
+        let response = resolver
+            .handle_publish(&publish_event(
+                "/default/orders",
+                vec![message("event-1", json!({}))],
+            ))
+            .expect("included publish route should match");
+
+        assert_eq!(response["events"][0]["payload"], json!({"source": "child"}));
     }
 
     #[test]
