@@ -21,6 +21,7 @@ aws-lambda-events = [
     "aws_lambda_events/eventbridge",
     "aws_lambda_events/firehose",
     "aws_lambda_events/kinesis",
+    "aws_lambda_events/lambda_function_urls",
     "aws_lambda_events/sns",
     "aws_lambda_events/sqs",
 ]

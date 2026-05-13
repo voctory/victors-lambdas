@@ -7,6 +7,7 @@ use aws_lambda_events::event::{
     eventbridge::EventBridgeEvent,
     firehose::KinesisFirehoseEvent,
     kinesis::KinesisEvent,
+    lambda_function_urls::LambdaFunctionUrlRequest,
     sns::SnsEvent,
     sqs::SqsEvent,
 };
@@ -65,6 +66,23 @@ impl EventParser {
         T: DeserializeOwned,
     {
         let body = gateway_body("ALB", event.body, event.is_base64_encoded)?;
+        self.parse_json_slice(&body)
+    }
+
+    /// Parses a Lambda Function URL JSON body.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when the body is missing, cannot be base64
+    /// decoded, or cannot be decoded into `T`.
+    pub fn parse_lambda_function_url_body<T>(
+        &self,
+        event: LambdaFunctionUrlRequest,
+    ) -> Result<ParsedEvent<T>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let body = gateway_body("Lambda Function URL", event.body, event.is_base64_encoded)?;
         self.parse_json_slice(&body)
     }
 
@@ -240,6 +258,7 @@ mod tests {
         eventbridge::EventBridgeEvent,
         firehose::KinesisFirehoseEvent,
         kinesis::KinesisEvent,
+        lambda_function_urls::LambdaFunctionUrlRequest,
         sns::{SnsEvent, SnsMessage, SnsRecord},
         sqs::{SqsEvent, SqsMessage},
     };
@@ -296,6 +315,28 @@ mod tests {
 
         let parsed = EventParser::new()
             .parse_alb_body::<OrderEvent>(event)
+            .expect("valid base64 body should parse");
+
+        assert_eq!(parsed.payload().quantity, 3);
+    }
+
+    #[test]
+    fn parses_lambda_function_url_body() {
+        let mut event = LambdaFunctionUrlRequest::default();
+        event.body = Some(r#"{"order_id":"order-1","quantity":2}"#.to_owned());
+
+        let parsed = EventParser::new()
+            .parse_lambda_function_url_body::<OrderEvent>(event)
+            .expect("valid body should parse");
+
+        assert_eq!(parsed.payload().order_id, "order-1");
+
+        let mut event = LambdaFunctionUrlRequest::default();
+        event.body = Some("eyJvcmRlcl9pZCI6Im9yZGVyLTIiLCJxdWFudGl0eSI6M30=".to_owned());
+        event.is_base64_encoded = true;
+
+        let parsed = EventParser::new()
+            .parse_lambda_function_url_body::<OrderEvent>(event)
             .expect("valid base64 body should parse");
 
         assert_eq!(parsed.payload().quantity, 3);
