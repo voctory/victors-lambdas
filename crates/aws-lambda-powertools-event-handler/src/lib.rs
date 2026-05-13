@@ -1,6 +1,8 @@
 //! Event handler utility.
 
 #[cfg(feature = "aws-lambda-events")]
+mod alb;
+#[cfg(feature = "aws-lambda-events")]
 mod apigateway;
 #[cfg(feature = "aws-lambda-events")]
 mod appsync;
@@ -15,6 +17,8 @@ mod response;
 mod route;
 mod router;
 
+#[cfg(feature = "aws-lambda-events")]
+pub use alb::{AlbAdapterError, AlbAdapterResult, request_from_alb, response_to_alb};
 #[cfg(feature = "aws-lambda-events")]
 pub use apigateway::{
     ApiGatewayAdapterError, ApiGatewayAdapterResult, request_from_apigw_v1, request_from_apigw_v2,

@@ -27,7 +27,7 @@ first implementation tranche has landed:
 - tracer configuration, X-Ray header context parsing, trace segment records, and JSON-compatible trace values
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
   request/response middleware, CORS handling, optional gzip/deflate compression middleware, and optional API Gateway
-  REST/HTTP API, AppSync direct resolver, and Bedrock Agent adapters
+  REST/HTTP API, ALB, AppSync direct resolver, and Bedrock Agent adapters
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
 Not yet implemented: broader AWS SDK-backed parameter providers, DynamoDB-backed idempotency persistence, broader
