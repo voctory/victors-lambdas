@@ -138,6 +138,29 @@ impl BatchProcessingReport {
     pub fn response(&self) -> BatchResponse {
         BatchResponse::from_failures(self.failures())
     }
+
+    /// Returns the item identifier Lambda will use as a stream retry checkpoint.
+    ///
+    /// Kinesis and `DynamoDB` stream event sources use the lowest failed sequence
+    /// number as the checkpoint when multiple failures are reported. Processing
+    /// reports preserve batch order, so the first failed item determines that
+    /// checkpoint for stream batches.
+    #[must_use]
+    pub fn stream_checkpoint(&self) -> Option<&str> {
+        self.results
+            .iter()
+            .find(|result| result.is_failure())
+            .map(BatchRecordResult::item_identifier)
+    }
+
+    /// Returns a stream checkpoint response containing only the first failed item.
+    ///
+    /// This is useful when callers want the partial batch response to make the
+    /// effective Kinesis or `DynamoDB` stream retry checkpoint explicit.
+    #[must_use]
+    pub fn stream_checkpoint_response(&self) -> BatchResponse {
+        BatchResponse::from_failures(self.stream_checkpoint().map(BatchItemFailure::new))
+    }
 }
 
 /// Processes batch records and builds partial failure responses.
@@ -235,7 +258,7 @@ mod tests {
     use serde_json::json;
 
     use super::{BatchProcessor, BatchRecordResult};
-    use crate::{BatchRecord, BatchResponse};
+    use crate::{BatchItemFailure, BatchRecord, BatchResponse};
 
     #[test]
     fn processing_report_records_successes_and_failures() {
@@ -336,6 +359,21 @@ mod tests {
         assert_eq!(
             response.batch_item_failures()[0].item_identifier(),
             "message-2"
+        );
+    }
+
+    #[test]
+    fn stream_checkpoint_response_uses_first_failure_in_batch_order() {
+        let report = super::BatchProcessingReport::from_results([
+            BatchRecordResult::success("sequence-1"),
+            BatchRecordResult::failure("sequence-3", "first failure"),
+            BatchRecordResult::failure("sequence-5", "later failure"),
+        ]);
+
+        assert_eq!(report.stream_checkpoint(), Some("sequence-3"));
+        assert_eq!(
+            report.stream_checkpoint_response().batch_item_failures(),
+            &[BatchItemFailure::new("sequence-3")]
         );
     }
 

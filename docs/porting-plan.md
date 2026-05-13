@@ -45,7 +45,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing, `TraceSegment`, `TraceValue` | Real `tracing` spans, OpenTelemetry, X-Ray propagation/export |
 | Parameters | `ParameterProvider`, `Parameters`, `Parameter`, `CachePolicy`, in-memory provider, force-fetch support, JSON transforms, and base64 binary transforms | SSM, Secrets Manager, AppConfig, DynamoDB providers, decrypt options |
 | Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, optional `aws_lambda_events` API Gateway REST/HTTP API body, EventBridge detail, SQS body, SNS message, Kinesis record data, and Firehose record data envelopes | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
-| Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, sequential and concurrent generic processing, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior | Richer stream checkpoint ergonomics |
+| Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, sequential and concurrent generic processing, stream checkpoint helpers, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior | Parser-integrated processors and larger examples |
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, inbound/outbound validation wrappers, optional local JSON Schema backend, and compiled schema cache | Handler middleware/docs integration |
 | Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `Idempotency`, `IdempotencyOutcome`, typed workflow errors, SHA-256 JSON payload hashing, JSON Pointer key extraction, handler wrapper, payload hash validation, result replay, store trait/error/result, in-memory store | DynamoDB store and provider-level concurrency semantics |
 | Event handler | `Method`, method parsing/matching, `Request`, `Response`, `PathParams`, `Route`, `AsyncRoute`, `Router`, `AsyncRouter`, static/dynamic path precedence, `ANY` routes, 404 dispatch, request/response middleware, `CorsConfig`, preflight responses, routed/404 CORS headers, and optional API Gateway REST API v1 / HTTP API v2 adapters | Compression, AppSync, Bedrock Agent |
@@ -77,7 +77,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-tracer` | Tracing facade | Segment records exist; next work is integration with Rust tracing/export pipelines |
 | `aws-lambda-powertools-parameters` | Parameter retrieval | Trait, cache facade, in-memory provider, force-fetch support, and JSON/base64 transforms exist; AWS providers are next |
 | `aws-lambda-powertools-parser` | Event parsing | serde JSON facade plus API Gateway, SQS, SNS, EventBridge, Kinesis, and Firehose `aws_lambda_events` envelopes exist; broader envelope coverage and fixtures are next |
-| `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential/concurrent processing plus SQS, Kinesis, and DynamoDB stream adapters exist; richer stream checkpoint ergonomics are next |
+| `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential/concurrent processing, stream checkpoint helpers, and SQS, Kinesis, and DynamoDB stream adapters exist; parser-integrated processors and examples are next |
 | `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, handler workflow, replay, records, and stores exist; DynamoDB persistence is next |
 | `aws-lambda-powertools-validation` | Payload validation | Basic validators, inbound/outbound wrappers, optional JSON Schema validation, and schema caching exist; next work is handler middleware and examples |
 | `aws-lambda-powertools-event-handler` | Routing | Dependency-free sync/async routing, middleware, CORS, and optional API Gateway adapters exist; next work is compression and additional event adapters |
@@ -180,6 +180,7 @@ Powertools conventions.
 - [x] Add SQS source-specific batch processing and FIFO retry semantics.
 - [x] Add Kinesis and DynamoDB stream batch processors and retry semantics.
 - [x] Add generic concurrent batch processing.
+- [x] Add stream checkpoint helpers for Kinesis and DynamoDB retry semantics.
 - [x] Add JSON Schema validation behind an optional feature.
 - [x] Add validation schema cache and inbound/outbound wrappers.
 - [x] Add idempotency handler workflow, key hashing, payload validation, and replay behavior.

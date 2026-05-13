@@ -17,8 +17,8 @@ tranche has landed:
 - parameter provider/cache traits with an in-memory provider, force-fetch support, and JSON/base64 transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway body, SQS, SNS,
   EventBridge, Kinesis, and Firehose envelopes
-- sequential and concurrent batch record processing, partial batch response builders, and optional `aws_lambda_events`
-  SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior
+- sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and
+  optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior
 - validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,
   and optional local JSON Schema validation with a compiled schema cache
 - idempotency keys, payload hashing, JSON Pointer key extraction, handler workflow, replay behavior, store traits, and
