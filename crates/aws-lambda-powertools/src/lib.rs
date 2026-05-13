@@ -168,10 +168,12 @@ pub mod prelude {
         IoTCoreThingEvent, IoTCoreThingGroupEvent, IoTCoreThingGroupHierarchyEvent,
         IoTCoreThingGroupMembershipEvent, IoTCoreThingGroupReference,
         IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent, ParseError, ParseErrorKind,
-        ParsedEvent, TransferFamilyAuthorizerEvent, TransferFamilyAuthorizerResponse,
-        TransferFamilyHomeDirectoryEntry, TransferFamilyHomeDirectoryType,
-        TransferFamilyPosixProfile, TransferFamilyProtocol, TransferFamilyResponseError,
-        TransferFamilyResponseResult,
+        ParsedEvent, S3EventBridgeBucket, S3EventBridgeDetail, S3EventBridgeEvent,
+        S3EventBridgeObject, S3EventNotificationEventBridgeDetailModel,
+        S3EventNotificationEventBridgeModel, TransferFamilyAuthorizerEvent,
+        TransferFamilyAuthorizerResponse, TransferFamilyHomeDirectoryEntry,
+        TransferFamilyHomeDirectoryType, TransferFamilyPosixProfile, TransferFamilyProtocol,
+        TransferFamilyResponseError, TransferFamilyResponseResult,
     };
 
     #[cfg(feature = "tracer")]

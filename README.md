@@ -23,8 +23,8 @@ first implementation tranche has landed:
   configuration payload, S3 Batch job task, EventBridge, CloudFormation custom resource properties, Cognito User Pool
   user attributes, SES, CloudWatch Logs, Kinesis, Kinesis-delivered DynamoDB stream image, Firehose,
   Firehose-delivered SQS, DynamoDB stream image, and Kafka envelopes, plus Transfer Family authorizer event/response,
-  AppSync Events, DynamoDB stream on-failure destination, IoT Core registry, Cognito migrate-user, and Cognito custom
-  sender event models
+  AppSync Events, DynamoDB stream on-failure destination, S3 EventBridge notification, IoT Core registry, Cognito
+  migrate-user, and Cognito custom sender event models
 - sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and
   optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior
 - validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,

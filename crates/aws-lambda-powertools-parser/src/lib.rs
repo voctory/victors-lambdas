@@ -8,6 +8,7 @@ mod envelope;
 mod error;
 mod iot_registry;
 mod parser;
+mod s3_eventbridge;
 mod transfer_family;
 
 pub use appsync_events::{
@@ -37,6 +38,10 @@ pub use iot_registry::{
     IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent,
 };
 pub use parser::{EventParser, ParsedEvent};
+pub use s3_eventbridge::{
+    S3EventBridgeBucket, S3EventBridgeDetail, S3EventBridgeEvent, S3EventBridgeObject,
+    S3EventNotificationEventBridgeDetailModel, S3EventNotificationEventBridgeModel,
+};
 pub use transfer_family::{
     TransferFamilyAuthorizerEvent, TransferFamilyAuthorizerResponse,
     TransferFamilyHomeDirectoryEntry, TransferFamilyHomeDirectoryType, TransferFamilyPosixProfile,
