@@ -54,12 +54,13 @@ pub use bedrock::{
 };
 #[cfg(feature = "bedrock-agent-functions")]
 pub use bedrock_function::{
+    AsyncBedrockAgentFunctionHandler, AsyncBedrockAgentFunctionResolver, AsyncBedrockFunctionRoute,
     BedrockAgentFunctionAgent, BedrockAgentFunctionEvent, BedrockAgentFunctionHandler,
     BedrockAgentFunctionHandlerError, BedrockAgentFunctionHandlerResult,
     BedrockAgentFunctionParameter, BedrockAgentFunctionParameterValue,
     BedrockAgentFunctionParameters, BedrockAgentFunctionResolver,
-    BedrockAgentFunctionResponseState, BedrockFunctionResponse, BedrockFunctionResult,
-    BedrockFunctionRoute,
+    BedrockAgentFunctionResponseFuture, BedrockAgentFunctionResponseState, BedrockFunctionResponse,
+    BedrockFunctionResult, BedrockFunctionRoute,
 };
 #[cfg(feature = "compression")]
 pub use compression::{

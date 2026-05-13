@@ -1,6 +1,6 @@
 //! Bedrock Agent function-details resolver.
 
-use std::{collections::BTreeMap, fmt};
+use std::{collections::BTreeMap, fmt, future::Future, pin::Pin};
 
 pub use aws_lambda_powertools_parser::{
     BedrockAgentFunctionAgent, BedrockAgentFunctionEvent, BedrockAgentFunctionParameter,
@@ -18,6 +18,20 @@ pub type BedrockAgentFunctionHandler = dyn Fn(
         &BedrockAgentFunctionParameters,
         &BedrockAgentFunctionEvent,
     ) -> BedrockAgentFunctionHandlerResult<BedrockFunctionResult>
+    + Send
+    + Sync
+    + 'static;
+
+/// Boxed future returned by asynchronous Bedrock Agent function handlers.
+pub type BedrockAgentFunctionResponseFuture<'a> = Pin<
+    Box<dyn Future<Output = BedrockAgentFunctionHandlerResult<BedrockFunctionResult>> + Send + 'a>,
+>;
+
+/// Asynchronous handler function for a Bedrock Agent function tool.
+pub type AsyncBedrockAgentFunctionHandler = dyn for<'a> Fn(
+        &'a BedrockAgentFunctionParameters,
+        &'a BedrockAgentFunctionEvent,
+    ) -> BedrockAgentFunctionResponseFuture<'a>
     + Send
     + Sync
     + 'static;
@@ -402,10 +416,81 @@ impl fmt::Debug for BedrockFunctionRoute {
     }
 }
 
+/// Registered asynchronous Bedrock Agent function route.
+pub struct AsyncBedrockFunctionRoute {
+    name: String,
+    description: Option<String>,
+    handler: Box<AsyncBedrockAgentFunctionHandler>,
+}
+
+impl AsyncBedrockFunctionRoute {
+    /// Creates an asynchronous Bedrock Agent function route.
+    #[must_use]
+    pub fn new(
+        name: impl Into<String>,
+        handler: impl for<'a> Fn(
+            &'a BedrockAgentFunctionParameters,
+            &'a BedrockAgentFunctionEvent,
+        ) -> BedrockAgentFunctionResponseFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            description: None,
+            handler: Box::new(handler),
+        }
+    }
+
+    /// Returns the Bedrock Agent function name matched by this route.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Returns the optional function description.
+    #[must_use]
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
+
+    /// Sets a human-readable function description.
+    #[must_use]
+    pub fn with_description(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
+    fn handle<'a>(
+        &'a self,
+        parameters: &'a BedrockAgentFunctionParameters,
+        event: &'a BedrockAgentFunctionEvent,
+    ) -> BedrockAgentFunctionResponseFuture<'a> {
+        (self.handler)(parameters, event)
+    }
+}
+
+impl fmt::Debug for AsyncBedrockFunctionRoute {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("AsyncBedrockFunctionRoute")
+            .field("name", &self.name)
+            .field("description", &self.description)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Routes Bedrock Agent function-details invocations by function name.
 #[derive(Default, Debug)]
 pub struct BedrockAgentFunctionResolver {
     routes: Vec<BedrockFunctionRoute>,
+}
+
+/// Routes Bedrock Agent function-details invocations with async handlers.
+#[derive(Default, Debug)]
+pub struct AsyncBedrockAgentFunctionResolver {
+    routes: Vec<AsyncBedrockFunctionRoute>,
 }
 
 impl BedrockAgentFunctionResolver {
@@ -463,25 +548,89 @@ impl BedrockAgentFunctionResolver {
     #[must_use]
     pub fn handle(&self, event: &BedrockAgentFunctionEvent) -> Value {
         let Some(route) = self.route_for(&event.function_name) else {
-            return BedrockFunctionResponse::text(format!(
-                "Error: tool \"{}\" has not been registered.",
-                event.function_name
-            ))
-            .build(event);
+            return missing_tool_response(event);
         };
 
         let parameters = parameters_from_event(event);
 
         match route.handle(&parameters, event) {
             Ok(result) => result.build(event),
-            Err(error) => BedrockFunctionResponse::text(format!(
-                "Unable to complete tool execution due to {error}"
-            ))
-            .build(event),
+            Err(error) => handler_error_response(event, &error),
         }
     }
 
     fn route_for(&self, name: &str) -> Option<&BedrockFunctionRoute> {
+        self.routes.iter().rev().find(|route| route.name == name)
+    }
+}
+
+impl AsyncBedrockAgentFunctionResolver {
+    /// Creates an empty asynchronous Bedrock Agent function resolver.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { routes: Vec::new() }
+    }
+
+    /// Registers an asynchronous Bedrock Agent function tool.
+    pub fn tool(
+        &mut self,
+        name: impl Into<String>,
+        handler: impl for<'a> Fn(
+            &'a BedrockAgentFunctionParameters,
+            &'a BedrockAgentFunctionEvent,
+        ) -> BedrockAgentFunctionResponseFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.routes
+            .push(AsyncBedrockFunctionRoute::new(name, handler));
+        self
+    }
+
+    /// Registers an asynchronous Bedrock Agent function tool with a description.
+    pub fn tool_with_description(
+        &mut self,
+        name: impl Into<String>,
+        description: impl Into<String>,
+        handler: impl for<'a> Fn(
+            &'a BedrockAgentFunctionParameters,
+            &'a BedrockAgentFunctionEvent,
+        ) -> BedrockAgentFunctionResponseFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) -> &mut Self {
+        self.routes
+            .push(AsyncBedrockFunctionRoute::new(name, handler).with_description(description));
+        self
+    }
+
+    /// Returns registered async tools in insertion order.
+    #[must_use]
+    pub fn routes(&self) -> &[AsyncBedrockFunctionRoute] {
+        &self.routes
+    }
+
+    /// Dispatches a Bedrock Agent function-details event with async handlers.
+    ///
+    /// When no tool is registered for the event's `function`, the response body
+    /// describes the missing tool. Handler errors are converted into a Bedrock
+    /// response body so the agent receives the expected response envelope.
+    pub async fn handle(&self, event: &BedrockAgentFunctionEvent) -> Value {
+        let Some(route) = self.route_for(&event.function_name) else {
+            return missing_tool_response(event);
+        };
+
+        let parameters = parameters_from_event(event);
+
+        match route.handle(&parameters, event).await {
+            Ok(result) => result.build(event),
+            Err(error) => handler_error_response(event, &error),
+        }
+    }
+
+    fn route_for(&self, name: &str) -> Option<&AsyncBedrockFunctionRoute> {
         self.routes.iter().rev().find(|route| route.name == name)
     }
 }
@@ -494,6 +643,22 @@ impl BedrockFunctionResult {
             Self::Response(response) => response.build(event),
         }
     }
+}
+
+fn missing_tool_response(event: &BedrockAgentFunctionEvent) -> Value {
+    BedrockFunctionResponse::text(format!(
+        "Error: tool \"{}\" has not been registered.",
+        event.function_name
+    ))
+    .build(event)
+}
+
+fn handler_error_response(
+    event: &BedrockAgentFunctionEvent,
+    error: &BedrockAgentFunctionHandlerError,
+) -> Value {
+    BedrockFunctionResponse::text(format!("Unable to complete tool execution due to {error}"))
+        .build(event)
 }
 
 fn parameters_from_event(event: &BedrockAgentFunctionEvent) -> BedrockAgentFunctionParameters {
@@ -516,9 +681,9 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::{
-        BedrockAgentFunctionEvent, BedrockAgentFunctionHandlerError,
-        BedrockAgentFunctionParameterValue, BedrockAgentFunctionResolver,
-        BedrockAgentFunctionResponseState, BedrockFunctionResponse,
+        AsyncBedrockAgentFunctionResolver, BedrockAgentFunctionEvent,
+        BedrockAgentFunctionHandlerError, BedrockAgentFunctionParameterValue,
+        BedrockAgentFunctionResolver, BedrockAgentFunctionResponseState, BedrockFunctionResponse,
     };
 
     #[test]
@@ -694,6 +859,64 @@ mod tests {
     fn registers_tool_descriptions() {
         let mut resolver = BedrockAgentFunctionResolver::new();
         resolver.tool_with_description("lookup", "Looks up a claim", |_, _| Ok("ok".into()));
+
+        assert_eq!(resolver.routes()[0].name(), "lookup");
+        assert_eq!(resolver.routes()[0].description(), Some("Looks up a claim"));
+    }
+
+    #[test]
+    fn async_resolver_routes_registered_function_tool() {
+        let event = event(&json!({
+            "function": "get_claim",
+            "parameters": [
+                { "name": "claim_id", "type": "string", "value": "claim-1" }
+            ],
+        }));
+        let mut resolver = AsyncBedrockAgentFunctionResolver::new();
+        resolver.tool("get_claim", |parameters, _| {
+            let claim_id = parameters
+                .get("claim_id")
+                .and_then(BedrockAgentFunctionParameterValue::as_str)
+                .unwrap_or_default()
+                .to_owned();
+
+            Box::pin(async move { Ok(json!({ "claimId": claim_id }).into()) })
+        });
+
+        let response = futures_executor::block_on(resolver.handle(&event));
+
+        assert_eq!(
+            response["response"]["functionResponse"]["responseBody"]["TEXT"]["body"],
+            "{\"claimId\":\"claim-1\"}"
+        );
+    }
+
+    #[test]
+    fn async_resolver_formats_handler_errors() {
+        let event = event(&json!({ "function": "fail" }));
+        let mut resolver = AsyncBedrockAgentFunctionResolver::new();
+        resolver.tool("fail", |_, _| {
+            Box::pin(async {
+                Err(BedrockAgentFunctionHandlerError::new(
+                    "dependency timed out",
+                ))
+            })
+        });
+
+        let response = futures_executor::block_on(resolver.handle(&event));
+
+        assert_eq!(
+            response["response"]["functionResponse"]["responseBody"]["TEXT"]["body"],
+            "Unable to complete tool execution due to dependency timed out"
+        );
+    }
+
+    #[test]
+    fn async_resolver_tracks_tool_descriptions() {
+        let mut resolver = AsyncBedrockAgentFunctionResolver::new();
+        resolver.tool_with_description("lookup", "Looks up a claim", |_, _| {
+            Box::pin(async { Ok("ok".into()) })
+        });
 
         assert_eq!(resolver.routes()[0].name(), "lookup");
         assert_eq!(resolver.routes()[0].description(), Some("Looks up a claim"));

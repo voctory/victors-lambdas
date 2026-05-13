@@ -98,10 +98,12 @@ pub mod prelude {
 
     #[cfg(feature = "event-handler-bedrock-agent-functions")]
     pub use aws_lambda_powertools_event_handler::{
-        BedrockAgentFunctionAgent, BedrockAgentFunctionEvent, BedrockAgentFunctionHandler,
-        BedrockAgentFunctionHandlerError, BedrockAgentFunctionHandlerResult,
-        BedrockAgentFunctionParameter, BedrockAgentFunctionParameterValue,
-        BedrockAgentFunctionParameters, BedrockAgentFunctionResolver,
+        AsyncBedrockAgentFunctionHandler, AsyncBedrockAgentFunctionResolver,
+        AsyncBedrockFunctionRoute, BedrockAgentFunctionAgent, BedrockAgentFunctionEvent,
+        BedrockAgentFunctionHandler, BedrockAgentFunctionHandlerError,
+        BedrockAgentFunctionHandlerResult, BedrockAgentFunctionParameter,
+        BedrockAgentFunctionParameterValue, BedrockAgentFunctionParameters,
+        BedrockAgentFunctionResolver, BedrockAgentFunctionResponseFuture,
         BedrockAgentFunctionResponseState, BedrockFunctionResponse, BedrockFunctionResult,
         BedrockFunctionRoute,
     };
