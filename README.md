@@ -76,6 +76,7 @@ Initial feature docs:
 - [Idempotency](docs/features/idempotency.md)
 - [Validation](docs/features/validation.md)
 - [Feature Flags](docs/features/feature-flags.md)
+- [Event Handler](docs/features/event-handler.md)
 
 ## Validation
 

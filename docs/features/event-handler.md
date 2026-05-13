@@ -1,0 +1,54 @@
+# Event Handler
+
+The event-handler utility provides dependency-free HTTP request/response routing and optional adapters for Lambda event
+sources. It is exposed through the `event-handler` Cargo feature on the umbrella crate:
+
+```toml
+aws-lambda-powertools = { version = "0.1", features = ["event-handler"] }
+```
+
+## Supported Behavior
+
+- `Router` and `AsyncRouter` for sync and async route dispatch.
+- `Request`, `Response`, `Method`, and `PathParams` types independent of a specific Lambda event source.
+- Static and dynamic route matching with static path precedence and exact-method precedence over `ANY`.
+- Multi-method route registration, custom not-found handlers, and router composition with path prefixes.
+- Fallible route handlers with built-in HTTP errors, catch-all error handlers, and typed error handlers.
+- Router-level and route-specific request/response middleware.
+- Optional CORS preflight handling and response headers.
+- Optional request/response validation hooks through `event-handler-validation`.
+- Optional gzip and deflate response compression through `event-handler-compression`.
+- Optional adapters for API Gateway REST API, HTTP API, and WebSocket API events, Application Load Balancer events,
+  Lambda Function URL events, VPC Lattice v1/v2 events, AppSync direct and batch resolvers, AppSync Events, Bedrock
+  Agent OpenAPI action groups, and Bedrock Agent function-details action groups.
+
+## Event Source Adapters
+
+Enable `event-handler-aws-lambda-events` to convert common `aws_lambda_events` HTTP event models to and from the
+dependency-free `Request` and `Response` types:
+
+```toml
+aws-lambda-powertools = { version = "0.1", features = ["event-handler-aws-lambda-events"] }
+```
+
+AppSync Events and Bedrock Agent function-details resolvers have separate feature flags so applications can opt into
+only the adapters they use:
+
+```toml
+aws-lambda-powertools = { version = "0.1", features = [
+  "event-handler-appsync-events",
+  "event-handler-bedrock-agent-functions",
+] }
+```
+
+## Snippet
+
+The buildable snippet in [examples/snippets/event-handler/src/main.rs](../../examples/snippets/event-handler/src/main.rs)
+registers dynamic and multi-method routes, adds response middleware, and maps a fallible route error to an HTTP
+response.
+
+Run it locally with:
+
+```sh
+cargo run -p event-handler-snippet
+```
