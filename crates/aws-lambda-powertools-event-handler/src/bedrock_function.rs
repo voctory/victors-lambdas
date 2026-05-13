@@ -2,7 +2,9 @@
 
 use std::{collections::BTreeMap, fmt};
 
-use serde::{Deserialize, Serialize};
+pub use aws_lambda_powertools_parser::{
+    BedrockAgentFunctionAgent, BedrockAgentFunctionEvent, BedrockAgentFunctionParameter,
+};
 use serde_json::{Value, json};
 
 /// Handler result for Bedrock Agent function tools.
@@ -19,64 +21,6 @@ pub type BedrockAgentFunctionHandler = dyn Fn(
     + Send
     + Sync
     + 'static;
-
-/// Agent metadata in a Bedrock Agent function-details invocation.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BedrockAgentFunctionAgent {
-    /// Agent name.
-    pub name: String,
-    /// Agent identifier.
-    pub id: String,
-    /// Agent alias.
-    pub alias: String,
-    /// Agent version.
-    pub version: String,
-}
-
-/// Raw parameter supplied in a Bedrock Agent function-details invocation.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BedrockAgentFunctionParameter {
-    /// Parameter name.
-    pub name: String,
-    /// Parameter type as defined in the Bedrock Agent function details.
-    #[serde(rename = "type")]
-    pub parameter_type: String,
-    /// Parameter value supplied by Bedrock.
-    pub value: String,
-}
-
-/// Bedrock Agent function-details invocation event.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BedrockAgentFunctionEvent {
-    /// Message format version.
-    pub message_version: String,
-    /// Agent metadata.
-    pub agent: BedrockAgentFunctionAgent,
-    /// User input for the conversation turn.
-    pub input_text: String,
-    /// Unique Bedrock Agent session identifier.
-    pub session_id: String,
-    /// Action group name.
-    pub action_group: String,
-    /// Function name selected by Bedrock.
-    #[serde(rename = "function")]
-    pub function_name: String,
-    /// Function parameters supplied by Bedrock.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub parameters: Vec<BedrockAgentFunctionParameter>,
-    /// Session attributes supplied by Bedrock.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub session_attributes: BTreeMap<String, Value>,
-    /// Prompt session attributes supplied by Bedrock.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub prompt_session_attributes: BTreeMap<String, Value>,
-    /// Optional knowledge base retrieval configuration to preserve in responses.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub knowledge_bases_configuration: Option<Value>,
-}
 
 /// Converted Bedrock Agent function parameter value.
 #[derive(Clone, Debug, PartialEq)]

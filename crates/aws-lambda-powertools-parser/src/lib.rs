@@ -1,6 +1,7 @@
 //! Event parsing utility.
 
 mod appsync_events;
+mod bedrock_agent;
 mod cognito;
 mod dynamodb;
 #[cfg(feature = "aws-lambda-events")]
@@ -16,6 +17,10 @@ pub use appsync_events::{
     AppSyncEventsEvent, AppSyncEventsIamIdentity, AppSyncEventsIdentity,
     AppSyncEventsIncomingEvent, AppSyncEventsInfo, AppSyncEventsLambdaIdentity, AppSyncEventsModel,
     AppSyncEventsOidcIdentity, AppSyncEventsOperation, AppSyncEventsRequest,
+};
+pub use bedrock_agent::{
+    BedrockAgentFunctionAgent, BedrockAgentFunctionEvent, BedrockAgentFunctionEventModel,
+    BedrockAgentFunctionParameter,
 };
 pub use cognito::{
     CognitoCustomEmailSenderTriggerEvent, CognitoCustomEmailSenderTriggerModel,
