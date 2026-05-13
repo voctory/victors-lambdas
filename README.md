@@ -15,8 +15,8 @@ first implementation tranche has landed:
   high-resolution metrics, stdout flushing, explicit timestamps, overflow flush helpers, async capture helpers, and
   cold-start metric support
 - sync and async parameter provider/cache traits with in-memory, optional SSM Parameter Store single, by-name, path, and
-  set operations, optional Secrets Manager, AppConfig, and DynamoDB providers, force-fetch support, and JSON/base64
-  transforms
+  set operations, optional Secrets Manager, AppConfig, and DynamoDB providers, force-fetch support, and JSON, base64, and
+  suffix-based auto transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway
   REST/HTTP/WebSocket API, AppSync direct resolver arguments/source, AppSync Events publish payload, Bedrock Agent
   OpenAPI input text, ALB, Lambda Function URL, and VPC Lattice body, SQS, SNS, SNS-over-SQS, S3, S3-over-SQS, S3

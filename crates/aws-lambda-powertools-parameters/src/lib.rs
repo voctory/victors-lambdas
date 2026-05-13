@@ -29,4 +29,6 @@ pub use provider::{InMemoryParameterProvider, ParameterProvider};
 pub use secrets::SecretsManagerProvider;
 #[cfg(feature = "ssm")]
 pub use ssm::{SsmParameterProvider, SsmParameterType, SsmParametersByName};
-pub use transform::{ParameterTransformError, ParameterTransformErrorKind};
+pub use transform::{
+    ParameterTransform, ParameterTransformError, ParameterTransformErrorKind, ParameterValue,
+};

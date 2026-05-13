@@ -5,7 +5,9 @@ use std::{collections::BTreeMap, sync::Mutex, time::SystemTime};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::de::DeserializeOwned;
 
-use crate::{CachePolicy, ParameterProvider, ParameterTransformError};
+use crate::{
+    CachePolicy, ParameterProvider, ParameterTransform, ParameterTransformError, ParameterValue,
+};
 
 /// A resolved parameter value.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -59,6 +61,24 @@ impl Parameter {
         STANDARD
             .decode(&self.value)
             .map_err(|error| ParameterTransformError::binary(self.name.clone(), error.to_string()))
+    }
+
+    /// Applies a text, JSON, binary, or auto transform to the parameter value.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transform error when JSON or binary decoding fails.
+    pub fn transform(
+        &self,
+        transform: ParameterTransform,
+    ) -> Result<ParameterValue, ParameterTransformError> {
+        match transform.resolve_for_name(&self.name) {
+            ParameterTransform::None | ParameterTransform::Auto => {
+                Ok(ParameterValue::Text(self.value.clone()))
+            }
+            ParameterTransform::Json => self.json().map(ParameterValue::Json),
+            ParameterTransform::Binary => self.binary().map(ParameterValue::Binary),
+        }
     }
 }
 
@@ -163,6 +183,38 @@ where
             .transpose()
     }
 
+    /// Gets a parameter and applies a text, JSON, binary, or auto transform.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transform error when the parameter exists but JSON or binary
+    /// decoding fails.
+    pub fn get_transformed(
+        &self,
+        name: &str,
+        transform: ParameterTransform,
+    ) -> Result<Option<ParameterValue>, ParameterTransformError> {
+        self.get(name)
+            .map(|parameter| parameter.transform(transform))
+            .transpose()
+    }
+
+    /// Force-fetches a parameter and applies a text, JSON, binary, or auto transform.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transform error when the parameter exists but JSON or binary
+    /// decoding fails.
+    pub fn get_force_transformed(
+        &self,
+        name: &str,
+        transform: ParameterTransform,
+    ) -> Result<Option<ParameterValue>, ParameterTransformError> {
+        self.get_force(name)
+            .map(|parameter| parameter.transform(transform))
+            .transpose()
+    }
+
     /// Returns the provider.
     #[must_use]
     pub fn provider(&self) -> &P {
@@ -264,7 +316,10 @@ mod tests {
 
     use serde_json::{Value, json};
 
-    use crate::{CachePolicy, ParameterProvider, ParameterTransformErrorKind};
+    use crate::{
+        CachePolicy, ParameterProvider, ParameterTransform, ParameterTransformErrorKind,
+        ParameterValue,
+    };
 
     use super::{Parameter, Parameters};
 
@@ -381,6 +436,60 @@ mod tests {
             .expect("parameter should exist");
 
         assert_eq!(value, b"secret");
+    }
+
+    #[test]
+    fn transform_api_returns_text_json_or_binary_values() {
+        let parameters = Parameters::new(
+            crate::InMemoryParameterProvider::new()
+                .with_parameter("/service/plain", "text")
+                .with_parameter("/service/config", r#"{"retries":3}"#)
+                .with_parameter("/service/key", "c2VjcmV0"),
+        );
+
+        let text = parameters
+            .get_transformed("/service/plain", ParameterTransform::None)
+            .expect("text transform should succeed")
+            .expect("parameter should exist");
+        let json = parameters
+            .get_transformed("/service/config", ParameterTransform::Json)
+            .expect("json transform should succeed")
+            .expect("parameter should exist");
+        let binary = parameters
+            .get_transformed("/service/key", ParameterTransform::Binary)
+            .expect("binary transform should succeed")
+            .expect("parameter should exist");
+
+        assert_eq!(text.as_text(), Some("text"));
+        assert_eq!(json.as_json(), Some(&json!({ "retries": 3 })));
+        assert_eq!(binary.as_binary(), Some(b"secret".as_slice()));
+    }
+
+    #[test]
+    fn auto_transform_uses_parameter_name_suffix() {
+        let parameters = Parameters::new(
+            crate::InMemoryParameterProvider::new()
+                .with_parameter("/service/config.JSON", r#"{"enabled":true}"#)
+                .with_parameter("/service/key.binary", "aGVsbG8=")
+                .with_parameter("/service/plain", "hello"),
+        );
+
+        let json = parameters
+            .get_transformed("/service/config.JSON", ParameterTransform::Auto)
+            .expect("auto JSON transform should succeed")
+            .expect("parameter should exist");
+        let binary = parameters
+            .get_transformed("/service/key.binary", ParameterTransform::Auto)
+            .expect("auto binary transform should succeed")
+            .expect("parameter should exist");
+        let text = parameters
+            .get_force_transformed("/service/plain", ParameterTransform::Auto)
+            .expect("auto text transform should succeed")
+            .expect("parameter should exist");
+
+        assert_eq!(json, ParameterValue::Json(json!({ "enabled": true })));
+        assert_eq!(binary, ParameterValue::Binary(b"hello".to_vec()));
+        assert_eq!(text, ParameterValue::Text("hello".to_owned()));
     }
 
     #[test]

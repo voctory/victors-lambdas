@@ -11,7 +11,8 @@ use std::{
 use serde::de::DeserializeOwned;
 
 use crate::{
-    CachePolicy, InMemoryParameterProvider, Parameter, ParameterProvider, ParameterTransformError,
+    CachePolicy, InMemoryParameterProvider, Parameter, ParameterProvider, ParameterTransform,
+    ParameterTransformError, ParameterValue,
 };
 
 /// Boxed future returned by asynchronous parameter providers.
@@ -224,6 +225,42 @@ where
             .map_err(Into::into)
     }
 
+    /// Gets a parameter and applies a text, JSON, binary, or auto transform.
+    ///
+    /// # Errors
+    ///
+    /// Returns a provider error when retrieval fails, or a transform error when
+    /// the parameter exists but JSON or binary decoding fails.
+    pub async fn get_transformed(
+        &self,
+        name: &str,
+        transform: ParameterTransform,
+    ) -> AsyncParameterResult<Option<ParameterValue>> {
+        self.get(name)
+            .await?
+            .map(|parameter| parameter.transform(transform))
+            .transpose()
+            .map_err(Into::into)
+    }
+
+    /// Force-fetches a parameter and applies a text, JSON, binary, or auto transform.
+    ///
+    /// # Errors
+    ///
+    /// Returns a provider error when retrieval fails, or a transform error when
+    /// the parameter exists but JSON or binary decoding fails.
+    pub async fn get_force_transformed(
+        &self,
+        name: &str,
+        transform: ParameterTransform,
+    ) -> AsyncParameterResult<Option<ParameterValue>> {
+        self.get_force(name)
+            .await?
+            .map(|parameter| parameter.transform(transform))
+            .transpose()
+            .map_err(Into::into)
+    }
+
     /// Returns the provider.
     #[must_use]
     pub fn provider(&self) -> &P {
@@ -337,7 +374,7 @@ mod tests {
     use futures_executor::block_on;
     use serde_json::{Value, json};
 
-    use crate::{CachePolicy, ParameterTransformErrorKind};
+    use crate::{CachePolicy, ParameterTransform, ParameterTransformErrorKind, ParameterValue};
 
     use super::{
         AsyncParameterError, AsyncParameterProvider, AsyncParameters, InMemoryParameterProvider,
@@ -418,6 +455,30 @@ mod tests {
 
         assert_eq!(json, json!({ "enabled": true }));
         assert_eq!(binary, b"hello");
+    }
+
+    #[test]
+    fn async_auto_transform_uses_parameter_name_suffix() {
+        let parameters = AsyncParameters::new(
+            InMemoryParameterProvider::new()
+                .with_parameter("config.json", r#"{"enabled":true}"#)
+                .with_parameter("key.binary", "aGVsbG8=")
+                .with_parameter("plain", "hello"),
+        );
+
+        let json = block_on(parameters.get_transformed("config.json", ParameterTransform::Auto))
+            .expect("auto JSON transform should succeed")
+            .expect("parameter should exist");
+        let binary = block_on(parameters.get_transformed("key.binary", ParameterTransform::Auto))
+            .expect("auto binary transform should succeed")
+            .expect("parameter should exist");
+        let text = block_on(parameters.get_force_transformed("plain", ParameterTransform::Auto))
+            .expect("auto text transform should succeed")
+            .expect("parameter should exist");
+
+        assert_eq!(json, ParameterValue::Json(json!({ "enabled": true })));
+        assert_eq!(binary, ParameterValue::Binary(b"hello".to_vec()));
+        assert_eq!(text, ParameterValue::Text("hello".to_owned()));
     }
 
     #[test]

@@ -152,8 +152,8 @@ pub mod prelude {
     pub use aws_lambda_powertools_parameters::{
         AsyncParameterError, AsyncParameterProvider, AsyncParameterResult, AsyncParameters,
         CachePolicy, InMemoryParameterProvider, Parameter, ParameterFuture, ParameterProvider,
-        ParameterProviderError, ParameterProviderResult, ParameterTransformError,
-        ParameterTransformErrorKind, Parameters,
+        ParameterProviderError, ParameterProviderResult, ParameterTransform,
+        ParameterTransformError, ParameterTransformErrorKind, ParameterValue, Parameters,
     };
 
     #[cfg(feature = "parameters-appconfig")]
