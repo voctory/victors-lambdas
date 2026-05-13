@@ -4,7 +4,7 @@ use std::{error::Error, fmt, future::Future, pin::Pin};
 
 #[cfg(feature = "validation")]
 use crate::ValidationConfig;
-use crate::{Method, Request, RequestMiddleware, Response, ResponseMiddleware};
+use crate::{HttpError, Method, Request, RequestMiddleware, Response, ResponseMiddleware};
 
 /// Function signature used by HTTP routes.
 pub type Handler = dyn Fn(&Request) -> Response + Send + Sync + 'static;
@@ -182,7 +182,7 @@ impl Route {
     #[must_use]
     pub fn handle(&self, request: &Request) -> Response {
         self.try_handle(request)
-            .unwrap_or_else(|_| Response::internal_server_error())
+            .unwrap_or_else(|error| error_response(error.as_ref()))
     }
 
     /// Runs this route's handler, preserving fallible route errors.
@@ -492,7 +492,7 @@ impl AsyncRoute {
         Box::pin(async move {
             self.try_handle(request)
                 .await
-                .unwrap_or_else(|_| Response::internal_server_error())
+                .unwrap_or_else(|error| error_response(error.as_ref()))
         })
     }
 
@@ -749,6 +749,12 @@ impl AsyncRouteHandler {
             Self::Fallible(handler) => handler(request),
         }
     }
+}
+
+fn error_response(error: &RouteError) -> Response {
+    error
+        .downcast_ref::<HttpError>()
+        .map_or_else(Response::internal_server_error, HttpError::to_response)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

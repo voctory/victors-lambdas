@@ -7,8 +7,8 @@ use crate::validation::{
     ValidationConfig, request_validation_response, response_validation_response,
 };
 use crate::{
-    AsyncHandler, AsyncRoute, CorsConfig, FallibleResponseFuture, Handler, Method, Request,
-    Response, ResponseFuture, Route, RouteError,
+    AsyncHandler, AsyncRoute, CorsConfig, FallibleResponseFuture, Handler, HttpError, Method,
+    Request, Response, ResponseFuture, Route, RouteError,
 };
 
 /// Function signature used by request middleware.
@@ -606,11 +606,10 @@ impl Router {
     }
 
     fn error_response(&self, request: &Request, error: &RouteError) -> Response {
-        self.error_handler
-            .as_ref()
-            .map_or_else(Response::internal_server_error, |handler| {
-                handler(request, error)
-            })
+        self.error_handler.as_ref().map_or_else(
+            || default_error_response(error),
+            |handler| handler(request, error),
+        )
     }
 
     #[cfg(feature = "validation")]
@@ -1168,7 +1167,7 @@ impl AsyncRouter {
         if let Some(handler) = &self.error_handler {
             handler(request, error)
         } else {
-            Box::pin(async { Response::internal_server_error() })
+            Box::pin(async move { default_error_response(error) })
         }
     }
 
@@ -1331,6 +1330,12 @@ fn async_route_takes_precedence(
     }
 }
 
+fn default_error_response(error: &RouteError) -> Response {
+    error
+        .downcast_ref::<HttpError>()
+        .map_or_else(Response::internal_server_error, HttpError::to_response)
+}
+
 #[cfg(test)]
 mod tests {
     use std::{fmt, future::Future};
@@ -1342,8 +1347,8 @@ mod tests {
     #[cfg(feature = "validation")]
     use crate::ValidationConfig;
     use crate::{
-        AsyncRoute, AsyncRouter, CorsConfig, FallibleResponseFuture, Method, Request, Response,
-        ResponseFuture, Route, RouteResult, Router,
+        AsyncRoute, AsyncRouter, CorsConfig, FallibleResponseFuture, HttpError, Method, Request,
+        Response, ResponseFuture, Route, RouteResult, Router,
     };
 
     #[derive(Debug)]
@@ -1482,6 +1487,22 @@ mod tests {
 
         assert_eq!(response.status_code(), 500);
         assert_eq!(response.body(), b"Internal Server Error");
+    }
+
+    #[test]
+    fn fallible_http_errors_map_to_status_responses_by_default() {
+        let mut router = Router::new();
+        router.get_fallible("/orders/{id}", |request| {
+            Err(HttpError::not_found(format!(
+                "missing {}",
+                request.path_param("id").unwrap_or_default()
+            )))
+        });
+
+        let response = router.handle(Request::new(Method::Get, "/orders/order-1"));
+
+        assert_eq!(response.status_code(), 404);
+        assert_eq!(response.body(), b"missing order-1");
     }
 
     #[test]
@@ -1924,6 +1945,21 @@ mod tests {
 
         assert_eq!(response.status_code(), 409);
         assert_eq!(response.body(), b"/orders:duplicate order");
+    }
+
+    #[test]
+    fn async_fallible_http_errors_map_to_status_responses_by_default() {
+        let mut router = AsyncRouter::new();
+        router.get_fallible("/orders", |_| {
+            async_fallible_response(async {
+                Err(Box::new(HttpError::bad_request("invalid order")) as Box<crate::RouteError>)
+            })
+        });
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/orders")));
+
+        assert_eq!(response.status_code(), 400);
+        assert_eq!(response.body(), b"invalid order");
     }
 
     #[test]
