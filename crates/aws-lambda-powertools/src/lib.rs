@@ -104,6 +104,9 @@ pub mod prelude {
         ParameterTransformErrorKind, Parameters,
     };
 
+    #[cfg(feature = "parameters-ssm")]
+    pub use aws_lambda_powertools_parameters::SsmParameterProvider;
+
     #[cfg(feature = "parser")]
     pub use aws_lambda_powertools_parser::{EventParser, ParseError, ParseErrorKind, ParsedEvent};
 

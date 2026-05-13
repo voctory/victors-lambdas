@@ -14,8 +14,8 @@ first implementation tranche has landed:
 - CloudWatch EMF JSON rendering with metrics, dimensions, default dimensions, metadata, validation, limits,
   high-resolution metrics, stdout flushing, explicit timestamps, overflow flush helpers, async capture helpers, and
   cold-start metric support
-- sync and async parameter provider/cache traits with an in-memory provider, force-fetch support, and JSON/base64
-  transforms
+- sync and async parameter provider/cache traits with in-memory and optional SSM Parameter Store providers, force-fetch
+  support, and JSON/base64 transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway body, SQS, SNS,
   EventBridge, CloudWatch Logs, Kinesis, and Firehose envelopes
 - sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and
@@ -30,7 +30,7 @@ first implementation tranche has landed:
   REST/HTTP API, AppSync direct resolver, and Bedrock Agent adapters
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
-Not yet implemented: AWS SDK-backed parameter providers, DynamoDB-backed idempotency persistence, broader
+Not yet implemented: broader AWS SDK-backed parameter providers, DynamoDB-backed idempotency persistence, broader
 `aws_lambda_events` envelopes and fixtures, OpenTelemetry or X-Ray tracing integration, additional event-handler
 adapters, crates.io publishing, and remaining feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the
 current backlog.
