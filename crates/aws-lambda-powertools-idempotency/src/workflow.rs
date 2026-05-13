@@ -82,6 +82,14 @@ impl<S> Idempotency<S> {
         &self.config
     }
 
+    /// Returns a mutable reference to the idempotency configuration.
+    ///
+    /// This can be used to register the current Lambda invocation deadline
+    /// before executing a reused workflow.
+    pub const fn config_mut(&mut self) -> &mut IdempotencyConfig {
+        &mut self.config
+    }
+
     /// Returns the backing idempotency store.
     #[must_use]
     pub const fn store(&self) -> &S {
@@ -117,6 +125,14 @@ impl<S> AsyncIdempotency<S> {
     #[must_use]
     pub const fn config(&self) -> &IdempotencyConfig {
         &self.config
+    }
+
+    /// Returns a mutable reference to the idempotency configuration.
+    ///
+    /// This can be used to register the current Lambda invocation deadline
+    /// before executing a reused workflow.
+    pub const fn config_mut(&mut self) -> &mut IdempotencyConfig {
+        &mut self.config
     }
 
     /// Returns the backing idempotency store.
@@ -206,7 +222,7 @@ where
             }
         }
 
-        let in_progress_expires_at = now + self.config.in_progress_ttl();
+        let in_progress_expires_at = in_progress_expires_at(&self.config, now);
         let in_progress = IdempotencyRecord::in_progress_until(key.clone(), in_progress_expires_at)
             .with_payload_hash(payload_hash.clone());
         self.store
@@ -313,7 +329,7 @@ where
             }
         }
 
-        let in_progress_expires_at = now + self.config.in_progress_ttl();
+        let in_progress_expires_at = in_progress_expires_at(&self.config, now);
         let in_progress = IdempotencyRecord::in_progress_until(key.clone(), in_progress_expires_at)
             .with_payload_hash(payload_hash.clone());
         self.store
@@ -398,13 +414,19 @@ enum ExistingRecord<R> {
     Expired,
 }
 
+fn in_progress_expires_at(config: &IdempotencyConfig, now: SystemTime) -> SystemTime {
+    config
+        .lambda_deadline()
+        .unwrap_or_else(|| now + config.in_progress_ttl())
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
         cell::Cell,
         collections::BTreeMap,
         sync::{Mutex, PoisonError},
-        time::SystemTime,
+        time::{Duration, SystemTime},
     };
 
     use futures_executor::block_on;
@@ -413,7 +435,8 @@ mod tests {
     use crate::{
         AsyncIdempotency, AsyncIdempotencyStore, Idempotency, IdempotencyConfig, IdempotencyError,
         IdempotencyExecutionError, IdempotencyKey, IdempotencyOutcome, IdempotencyRecord,
-        IdempotencyStoreFuture, InMemoryIdempotencyStore, hash_payload,
+        IdempotencyStatus, IdempotencyStore, IdempotencyStoreFuture, InMemoryIdempotencyStore,
+        hash_payload,
     };
 
     #[derive(Debug, Default)]
@@ -482,6 +505,52 @@ mod tests {
                 records.retain(|_, record| !record.is_expired_at(now));
                 Ok(before - records.len())
             })
+        }
+    }
+
+    #[derive(Debug, Default)]
+    struct RecordingStore {
+        records: BTreeMap<IdempotencyKey, IdempotencyRecord>,
+        puts: Vec<IdempotencyRecord>,
+    }
+
+    impl RecordingStore {
+        fn new() -> Self {
+            Self::default()
+        }
+
+        fn puts(&self) -> &[IdempotencyRecord] {
+            &self.puts
+        }
+    }
+
+    impl IdempotencyStore for RecordingStore {
+        fn get(
+            &self,
+            key: &IdempotencyKey,
+        ) -> crate::IdempotencyStoreResult<Option<IdempotencyRecord>> {
+            Ok(self.records.get(key).cloned())
+        }
+
+        fn put(
+            &mut self,
+            record: IdempotencyRecord,
+        ) -> crate::IdempotencyStoreResult<Option<IdempotencyRecord>> {
+            self.puts.push(record.clone());
+            Ok(self.records.insert(record.key().clone(), record))
+        }
+
+        fn remove(
+            &mut self,
+            key: &IdempotencyKey,
+        ) -> crate::IdempotencyStoreResult<Option<IdempotencyRecord>> {
+            Ok(self.records.remove(key))
+        }
+
+        fn clear_expired(&mut self, now: SystemTime) -> crate::IdempotencyStoreResult<usize> {
+            let before = self.records.len();
+            self.records.retain(|_, record| !record.is_expired_at(now));
+            Ok(before - self.records.len())
         }
     }
 
@@ -577,6 +646,24 @@ mod tests {
                 .store()
                 .contains(&IdempotencyKey::new("orders#order-1"))
         );
+    }
+
+    #[test]
+    fn execute_json_uses_lambda_deadline_for_in_progress_expiry() {
+        let deadline = SystemTime::now() + Duration::from_millis(1);
+        let config = IdempotencyConfig::new(false).with_lambda_deadline(deadline);
+        let mut idempotency = Idempotency::with_config(RecordingStore::new(), config);
+
+        let outcome = idempotency
+            .execute_json_with_key("order-1", &json!({"order_id": "1"}), || {
+                Ok::<_, &'static str>(json!({"ok": true}))
+            })
+            .expect("handler succeeds");
+
+        assert!(outcome.is_executed());
+        let in_progress = &idempotency.store().puts()[0];
+        assert_eq!(in_progress.status(), IdempotencyStatus::InProgress);
+        assert_eq!(in_progress.expires_at(), deadline);
     }
 
     #[test]

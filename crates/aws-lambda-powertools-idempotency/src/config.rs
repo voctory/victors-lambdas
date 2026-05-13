@@ -1,6 +1,6 @@
 //! Idempotency configuration.
 
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 /// Environment variable that disables idempotency.
 pub const POWERTOOLS_IDEMPOTENCY_DISABLED: &str = "POWERTOOLS_IDEMPOTENCY_DISABLED";
@@ -18,6 +18,7 @@ pub struct IdempotencyConfig {
     key_prefix: Option<String>,
     record_ttl: Duration,
     in_progress_ttl: Duration,
+    lambda_deadline: Option<SystemTime>,
 }
 
 impl IdempotencyConfig {
@@ -29,6 +30,7 @@ impl IdempotencyConfig {
             key_prefix: None,
             record_ttl: DEFAULT_RECORD_TTL,
             in_progress_ttl: DEFAULT_IN_PROGRESS_TTL,
+            lambda_deadline: None,
         }
     }
 
@@ -62,6 +64,15 @@ impl IdempotencyConfig {
         self.in_progress_ttl
     }
 
+    /// Returns the registered Lambda invocation deadline.
+    ///
+    /// When present, this deadline is used for in-progress record expiry so a
+    /// retry can proceed after a timed-out invocation.
+    #[must_use]
+    pub const fn lambda_deadline(&self) -> Option<SystemTime> {
+        self.lambda_deadline
+    }
+
     /// Returns a copy of this configuration with a completed record time-to-live duration.
     #[must_use]
     pub const fn with_record_ttl(mut self, record_ttl: Duration) -> Self {
@@ -73,6 +84,49 @@ impl IdempotencyConfig {
     #[must_use]
     pub const fn with_in_progress_ttl(mut self, in_progress_ttl: Duration) -> Self {
         self.in_progress_ttl = in_progress_ttl;
+        self
+    }
+
+    /// Returns a copy of this configuration with a Lambda invocation deadline.
+    ///
+    /// Pass `lambda_runtime::Context::deadline()` when using `lambda_runtime`.
+    /// The deadline is used for in-progress record expiry.
+    #[must_use]
+    pub const fn with_lambda_deadline(mut self, deadline: SystemTime) -> Self {
+        self.lambda_deadline = Some(deadline);
+        self
+    }
+
+    /// Returns a copy of this configuration with Lambda remaining invocation time.
+    ///
+    /// The remaining time is converted to an absolute deadline when this method
+    /// is called. For reusable workflows, register the current invocation's
+    /// deadline or remaining time before each handler execution.
+    #[must_use]
+    pub fn with_lambda_remaining_time(self, remaining_time: Duration) -> Self {
+        self.with_lambda_deadline(SystemTime::now() + remaining_time)
+    }
+
+    /// Registers a Lambda invocation deadline on this configuration.
+    ///
+    /// This should be refreshed for each Lambda invocation when the workflow is
+    /// reused across invocations.
+    pub fn register_lambda_deadline(&mut self, deadline: SystemTime) -> &mut Self {
+        self.lambda_deadline = Some(deadline);
+        self
+    }
+
+    /// Registers Lambda remaining invocation time on this configuration.
+    ///
+    /// The remaining time is converted to an absolute deadline when this method
+    /// is called.
+    pub fn register_lambda_remaining_time(&mut self, remaining_time: Duration) -> &mut Self {
+        self.register_lambda_deadline(SystemTime::now() + remaining_time)
+    }
+
+    /// Clears a previously registered Lambda invocation deadline.
+    pub fn clear_lambda_deadline(&mut self) -> &mut Self {
+        self.lambda_deadline = None;
         self
     }
 
@@ -105,7 +159,7 @@ fn is_truthy(value: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::time::{Duration, UNIX_EPOCH};
 
     use super::{DEFAULT_IN_PROGRESS_TTL, DEFAULT_RECORD_TTL, IdempotencyConfig};
 
@@ -116,6 +170,7 @@ mod tests {
         assert!(!config.disabled());
         assert_eq!(config.record_ttl(), DEFAULT_RECORD_TTL);
         assert_eq!(config.in_progress_ttl(), DEFAULT_IN_PROGRESS_TTL);
+        assert_eq!(config.lambda_deadline(), None);
     }
 
     #[test]
@@ -129,6 +184,21 @@ mod tests {
         assert_eq!(config.key_prefix(), Some("orders"));
         assert_eq!(config.record_ttl(), Duration::from_secs(10));
         assert_eq!(config.in_progress_ttl(), Duration::from_secs(2));
+    }
+
+    #[test]
+    fn lambda_deadline_can_be_registered_and_cleared() {
+        let deadline = UNIX_EPOCH + Duration::from_secs(30);
+        let mut config = IdempotencyConfig::new(false).with_lambda_deadline(deadline);
+
+        assert_eq!(config.lambda_deadline(), Some(deadline));
+
+        let next_deadline = UNIX_EPOCH + Duration::from_secs(60);
+        config.register_lambda_deadline(next_deadline);
+        assert_eq!(config.lambda_deadline(), Some(next_deadline));
+
+        config.clear_lambda_deadline();
+        assert_eq!(config.lambda_deadline(), None);
     }
 
     #[test]

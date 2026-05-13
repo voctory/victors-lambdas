@@ -26,7 +26,8 @@ first implementation tranche has landed:
 - validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,
   and optional local JSON Schema validation with a compiled schema cache
 - idempotency keys, payload hashing, JSON Pointer key extraction, sync and async handler workflows, replay behavior,
-  sync and async store traits, an in-memory store, and an optional DynamoDB store
+  Lambda remaining-time in-progress expiry, sync and async store traits, an in-memory store, and an optional DynamoDB
+  store
 - feature flag schema parsing, sync/async store traits, in-memory and optional AppConfig stores, boolean and JSON-valued
   evaluation, enabled-feature listing, configuration cache policies, common context comparators, modulo range matching,
   and time-window rules
@@ -38,9 +39,9 @@ first implementation tranche has landed:
   Bedrock Agent adapters
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
-Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, Lambda-context idempotency timeout handling,
-OpenTelemetry or X-Ray tracing integration, additional event-handler adapters, crates.io publishing, and remaining
-feature docs. See [docs/porting-plan.md](docs/porting-plan.md) for the current backlog.
+Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, richer idempotency examples, OpenTelemetry or
+X-Ray tracing integration, additional event-handler adapters, crates.io publishing, and remaining feature docs. See
+[docs/porting-plan.md](docs/porting-plan.md) for the current backlog.
 
 ## Workspace
 
