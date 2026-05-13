@@ -390,6 +390,21 @@ impl AppSyncResolver {
         &self.batch_routes
     }
 
+    /// Includes routes and batch routes from another `AppSync` resolver.
+    ///
+    /// Included routes behave as if they were registered after this resolver's
+    /// existing routes.
+    pub fn include_router(&mut self, resolver: AppSyncResolver) -> &mut Self {
+        let AppSyncResolver {
+            routes,
+            batch_routes,
+        } = resolver;
+
+        self.routes.extend(routes);
+        self.batch_routes.extend(batch_routes);
+        self
+    }
+
     /// Dispatches an `AppSync` direct resolver event to a registered route.
     ///
     /// Exact `type.field` routes take precedence over wildcard type routes.
@@ -568,6 +583,21 @@ impl AsyncAppSyncResolver {
     #[must_use]
     pub fn batch_routes(&self) -> &[AsyncAppSyncBatchRoute] {
         &self.batch_routes
+    }
+
+    /// Includes routes and batch routes from another asynchronous `AppSync` resolver.
+    ///
+    /// Included routes behave as if they were registered after this resolver's
+    /// existing routes.
+    pub fn include_router(&mut self, resolver: AsyncAppSyncResolver) -> &mut Self {
+        let AsyncAppSyncResolver {
+            routes,
+            batch_routes,
+        } = resolver;
+
+        self.routes.extend(routes);
+        self.batch_routes.extend(batch_routes);
+        self
     }
 
     /// Dispatches an `AppSync` direct resolver event to a registered async route.
@@ -774,6 +804,44 @@ mod tests {
     }
 
     #[test]
+    fn include_router_merges_routes_and_batch_routes() {
+        let mut child = AppSyncResolver::new();
+        child.query("getOrder", |_| json!({"source": "child"}));
+        child.query_batch("relatedPosts", |_| vec![json!("child-batch")]);
+
+        let mut resolver = AppSyncResolver::new();
+        resolver.include_router(child);
+
+        let response = resolver
+            .handle(&event("Query", "getOrder", &Value::Null))
+            .expect("included route should match");
+        let batch_response = resolver
+            .handle_batch([event("Query", "relatedPosts", &Value::Null)])
+            .expect("included batch route should match");
+
+        assert_eq!(resolver.routes().len(), 1);
+        assert_eq!(resolver.batch_routes().len(), 1);
+        assert_eq!(response, json!({"source": "child"}));
+        assert_eq!(batch_response, vec![json!("child-batch")]);
+    }
+
+    #[test]
+    fn included_route_can_override_existing_route() {
+        let mut child = AppSyncResolver::new();
+        child.query("getOrder", |_| json!("child"));
+
+        let mut resolver = AppSyncResolver::new();
+        resolver.query("getOrder", |_| json!("parent"));
+        resolver.include_router(child);
+
+        let response = resolver
+            .handle(&event("Query", "getOrder", &Value::Null))
+            .expect("included route should match");
+
+        assert_eq!(response, json!("child"));
+    }
+
+    #[test]
     fn missing_route_returns_type_and_field() {
         let resolver = AppSyncResolver::new();
 
@@ -899,6 +967,35 @@ mod tests {
         .expect("batch route should match");
 
         assert_eq!(response, vec![json!("batch")]);
+    }
+
+    #[test]
+    fn async_include_router_merges_routes_and_batch_routes() {
+        let mut child = AsyncAppSyncResolver::new();
+        child.query("getOrder", |_| {
+            Box::pin(async { json!({"source": "child"}) })
+        });
+        child.query_batch("relatedPosts", |_| {
+            Box::pin(async { vec![json!("child-batch")] })
+        });
+
+        let mut resolver = AsyncAppSyncResolver::new();
+        resolver.include_router(child);
+
+        let single_event = event("Query", "getOrder", &Value::Null);
+        let response = futures_executor::block_on(resolver.handle(&single_event))
+            .expect("included route should match");
+        let batch_response = futures_executor::block_on(resolver.handle_batch([event(
+            "Query",
+            "relatedPosts",
+            &Value::Null,
+        )]))
+        .expect("included batch route should match");
+
+        assert_eq!(resolver.routes().len(), 1);
+        assert_eq!(resolver.batch_routes().len(), 1);
+        assert_eq!(response, json!({"source": "child"}));
+        assert_eq!(batch_response, vec![json!("child-batch")]);
     }
 
     #[test]
