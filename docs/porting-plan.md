@@ -9,9 +9,10 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
   a `release-lambda` profile, and CI for fmt, clippy, test, and check.
 - Crates: one umbrella crate, `aws-lambda-powertools`, plus utility crates under `crates/`.
 - Feature flags: the umbrella crate exposes `logger`, `logger-tracing`, `metrics`, `tracer`, `parameters`,
-  `parameters-appconfig`, `parameters-secrets`, `parameters-ssm`, `parser`, `parser-aws-lambda-events`, `batch`,
-  `batch-aws-lambda-events`, `idempotency`, `validation`, `validation-jsonschema`, `event-handler`,
-  `event-handler-compression`, `event-handler-aws-lambda-events`, and `all`.
+  `parameters-appconfig`, `parameters-dynamodb`, `parameters-secrets`, `parameters-ssm`, `parser`,
+  `parser-aws-lambda-events`, `batch`, `batch-aws-lambda-events`, `idempotency`, `validation`,
+  `validation-jsonschema`, `event-handler`, `event-handler-compression`, `event-handler-aws-lambda-events`, and
+  `all`.
 - Examples: `examples/basic-lambda` builds against the umbrella crate with all current utility features enabled, and
   `examples/snippets/logger` plus `examples/snippets/metrics` provide buildable docs snippets.
 - Publishing: no crates.io release is documented yet. Local examples use path dependencies.
@@ -45,7 +46,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Logger | `LoggerConfig`, `LogLevel`, `Logger`, `LogEntry`, `LogValue`, `LogFormatter`, `LogRedactor`, `JsonLogFormatter`, `LambdaContextFields`, `LoggerLayer`, JSON rendering, persistent fields, temporary fields, event rendering toggle, level filtering, debug sampling, correlation ID helpers, Lambda context fields, key redaction, custom formatter/redaction hook APIs, optional `tracing` subscriber integration, stdout emission, and initial docs/snippet | Broader handler examples |
 | Metrics | `MetricsConfig`, `Metric`, `MetricUnit`, `MetricResolution`, `MetadataValue`, EMF JSON renderer, request dimensions, default dimensions, metadata, name/value validation, service dimension, cold-start metric, high-resolution metric definitions, stdout flush API, explicit timestamp rendering/writing, opt-in overflow flush helpers, async capture helpers, CloudWatch limits, and initial docs/snippet | Broader handler examples |
 | Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing, `TraceSegment`, `TraceValue` | Real `tracing` spans, OpenTelemetry, X-Ray propagation/export |
-| Parameters | `ParameterProvider`, `AsyncParameterProvider`, `Parameters`, `AsyncParameters`, `Parameter`, `CachePolicy`, async provider/retrieval errors, in-memory provider, optional SSM single-parameter, by-name, and path providers with decryption plus set operations, optional Secrets Manager and AppConfig providers, force-fetch support, JSON transforms, and base64 binary transforms | DynamoDB provider |
+| Parameters | `ParameterProvider`, `AsyncParameterProvider`, `Parameters`, `AsyncParameters`, `Parameter`, `CachePolicy`, async provider/retrieval errors, in-memory provider, optional SSM single-parameter, by-name, and path providers with decryption plus set operations, optional Secrets Manager, AppConfig, and DynamoDB providers, force-fetch support, JSON transforms, and base64 binary transforms | Broader provider docs/examples |
 | Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, optional `aws_lambda_events` API Gateway REST/HTTP API body, ALB target group body, Lambda Function URL body, VPC Lattice v1/v2 body, EventBridge detail, SQS body, SNS message, CloudWatch Logs message, Kinesis record data, and Firehose record data envelopes | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, sequential and concurrent generic processing, stream checkpoint helpers, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior | Parser-integrated processors and larger examples |
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, inbound/outbound validation wrappers, optional local JSON Schema backend, and compiled schema cache | Handler middleware/docs integration |
@@ -76,7 +77,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-logger` | Structured logs | JSON renderer, sampling, correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, optional `tracing` subscriber layer, and initial docs/snippet exist; next work is broader handler examples |
 | `aws-lambda-powertools-metrics` | CloudWatch EMF metrics | Renderer, flush API, high-resolution metrics, default dimensions, explicit timestamps, overflow flush helpers, async capture helpers, and initial docs/snippet exist; next work is broader handler examples |
 | `aws-lambda-powertools-tracer` | Tracing facade | Segment records exist; next work is integration with Rust tracing/export pipelines |
-| `aws-lambda-powertools-parameters` | Parameter retrieval | Sync and async traits, cache facades, async provider/retrieval errors, in-memory provider, optional SSM single-parameter, by-name, and path providers plus set operations, optional Secrets Manager and AppConfig providers, force-fetch support, and JSON/base64 transforms exist; the DynamoDB provider is next |
+| `aws-lambda-powertools-parameters` | Parameter retrieval | Sync and async traits, cache facades, async provider/retrieval errors, in-memory provider, optional SSM single-parameter, by-name, and path providers plus set operations, optional Secrets Manager, AppConfig, and DynamoDB providers, force-fetch support, and JSON/base64 transforms exist; broader examples are next |
 | `aws-lambda-powertools-parser` | Event parsing | serde JSON facade plus API Gateway, ALB, Lambda Function URL, VPC Lattice, SQS, SNS, EventBridge, CloudWatch Logs, Kinesis, and Firehose `aws_lambda_events` envelopes exist; broader envelope coverage and fixtures are next |
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential/concurrent processing, stream checkpoint helpers, and SQS, Kinesis, and DynamoDB stream adapters exist; parser-integrated processors and examples are next |
 | `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, handler workflow, replay, records, and stores exist; DynamoDB persistence is next |
@@ -97,6 +98,7 @@ Implemented umbrella features:
 - `tracer`
 - `parameters`
 - `parameters-appconfig`
+- `parameters-dynamodb`
 - `parameters-secrets`
 - `parameters-ssm`
 - `parser`
@@ -113,7 +115,6 @@ Implemented umbrella features:
 
 Likely future provider and integration features:
 
-- `parameters-dynamodb`
 - `idempotency-dynamodb`
 - `idempotency-redis`
 - `parser-serde`
@@ -178,7 +179,8 @@ Powertools conventions.
 - [x] Add SSM set-parameter helper behind a feature flag.
 - [x] Add Secrets Manager provider behind a feature flag.
 - [x] Add AppConfig provider behind a feature flag.
-- [ ] Implement remaining AWS-backed parameter providers behind feature flags.
+- [x] Add DynamoDB parameter provider behind a feature flag.
+- [x] Implement remaining AWS-backed parameter providers behind feature flags.
 - [x] Add initial SQS, SNS, and EventBridge parser envelopes based on `aws_lambda_events`.
 - [x] Add API Gateway REST API and HTTP API parser body envelopes based on `aws_lambda_events`.
 - [x] Add ALB target group parser body envelope based on `aws_lambda_events`.

@@ -4,6 +4,8 @@
 mod appconfig;
 mod async_parameter;
 mod cache;
+#[cfg(feature = "dynamodb")]
+mod dynamodb;
 mod parameter;
 mod provider;
 #[cfg(feature = "secrets")]
@@ -19,6 +21,8 @@ pub use async_parameter::{
     ParameterFuture, ParameterProviderError, ParameterProviderResult,
 };
 pub use cache::CachePolicy;
+#[cfg(feature = "dynamodb")]
+pub use dynamodb::DynamoDbParameterProvider;
 pub use parameter::{Parameter, Parameters};
 pub use provider::{InMemoryParameterProvider, ParameterProvider};
 #[cfg(feature = "secrets")]

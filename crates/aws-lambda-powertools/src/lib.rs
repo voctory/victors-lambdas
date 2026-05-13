@@ -110,6 +110,9 @@ pub mod prelude {
     #[cfg(feature = "parameters-appconfig")]
     pub use aws_lambda_powertools_parameters::AppConfigProvider;
 
+    #[cfg(feature = "parameters-dynamodb")]
+    pub use aws_lambda_powertools_parameters::DynamoDbParameterProvider;
+
     #[cfg(feature = "parameters-secrets")]
     pub use aws_lambda_powertools_parameters::SecretsManagerProvider;
 
