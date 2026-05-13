@@ -36,8 +36,8 @@ first implementation tranche has landed:
 - feature flag schema parsing, sync/async store traits, in-memory and optional AppConfig stores, boolean and JSON-valued
   evaluation, enabled-feature listing, configuration cache policies, common context comparators, modulo range matching,
   and time-window rules
-- tracer configuration, X-Ray header context parsing/rendering, trace segment records, JSON-compatible trace values, and
-  optional `tracing` span integration
+- tracer configuration, X-Ray header context parsing/rendering, trace segment records, JSON-compatible trace values,
+  optional X-Ray-compatible subsegment document rendering, and optional `tracing` span integration
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
   multi-method route registration, built-in HTTP errors, unsupported-method `405` adapter responses, custom not-found
   and fallible route error handlers, typed fallible route error handlers, router composition with path prefixes,
@@ -47,8 +47,9 @@ first implementation tranche has landed:
   composition, Bedrock Agent OpenAPI adapter, and sync/async Bedrock Agent function-details resolver
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
-Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, richer idempotency examples, OpenTelemetry or
-X-Ray tracing integration, additional event-handler adapters, crates.io publishing, and remaining feature docs. See
+Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, richer idempotency examples, OpenTelemetry
+tracing integration, X-Ray daemon transport, additional event-handler adapters, crates.io publishing, and remaining
+feature docs. See
 [docs/porting-plan.md](docs/porting-plan.md) for the current backlog.
 
 ## Workspace

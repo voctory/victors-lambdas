@@ -258,7 +258,7 @@ pub(crate) fn normalize_key(key: impl Into<String>) -> Option<String> {
     }
 }
 
-fn write_json_string(value: &str, output: &mut String) {
+pub(crate) fn write_json_string(value: &str, output: &mut String) {
     output.push('"');
     for character in value.chars() {
         match character {
