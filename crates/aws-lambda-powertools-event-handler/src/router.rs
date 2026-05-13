@@ -2,7 +2,7 @@
 
 use std::{cmp::Ordering, fmt};
 
-use crate::{Method, Request, Response, Route};
+use crate::{CorsConfig, Method, Request, Response, Route};
 
 /// Stores HTTP route handlers and selects the most specific matching route.
 ///
@@ -12,13 +12,36 @@ use crate::{Method, Request, Response, Route};
 #[derive(Default)]
 pub struct Router {
     routes: Vec<Route>,
+    cors: Option<CorsConfig>,
 }
 
 impl Router {
     /// Creates an empty router.
     #[must_use]
     pub const fn new() -> Self {
-        Self { routes: Vec::new() }
+        Self {
+            routes: Vec::new(),
+            cors: None,
+        }
+    }
+
+    /// Enables CORS handling with the provided configuration.
+    pub fn enable_cors(&mut self, cors: CorsConfig) -> &mut Self {
+        self.cors = Some(cors);
+        self
+    }
+
+    /// Returns a copy of this router with CORS enabled.
+    #[must_use]
+    pub fn with_cors(mut self, cors: CorsConfig) -> Self {
+        self.cors = Some(cors);
+        self
+    }
+
+    /// Returns the CORS configuration when enabled.
+    #[must_use]
+    pub const fn cors(&self) -> Option<&CorsConfig> {
+        self.cors.as_ref()
     }
 
     /// Adds a route handler.
@@ -134,13 +157,19 @@ impl Router {
     /// Handles a request with the matching route or returns `404 Not Found`.
     #[must_use]
     pub fn handle(&self, mut request: Request) -> Response {
+        if let Some(cors) = &self.cors {
+            if cors.is_preflight_request(&request) {
+                return cors.preflight_response();
+            }
+        }
+
         let Some(route_match) = self.find(&request) else {
-            return Response::not_found();
+            return self.apply_cors(Response::not_found());
         };
         let route = route_match.route;
 
         request.set_path_params(route_match.path_params);
-        route.handle(&request)
+        self.apply_cors(route.handle(&request))
     }
 
     /// Returns registered routes in registration order.
@@ -160,6 +189,14 @@ impl Router {
     pub fn is_empty(&self) -> bool {
         self.routes.is_empty()
     }
+
+    fn apply_cors(&self, response: Response) -> Response {
+        if let Some(cors) = &self.cors {
+            cors.apply(response)
+        } else {
+            response
+        }
+    }
 }
 
 impl fmt::Debug for Router {
@@ -167,6 +204,7 @@ impl fmt::Debug for Router {
         formatter
             .debug_struct("Router")
             .field("routes", &self.routes)
+            .field("cors", &self.cors)
             .finish()
     }
 }
@@ -227,7 +265,7 @@ fn route_takes_precedence(
 
 #[cfg(test)]
 mod tests {
-    use crate::{Method, Request, Response, Router};
+    use crate::{CorsConfig, Method, Request, Response, Router};
 
     #[test]
     fn static_route_precedes_dynamic_peer_even_when_registered_later() {
@@ -299,5 +337,51 @@ mod tests {
 
         assert_eq!(response.status_code(), 404);
         assert_eq!(response.body(), b"Not Found");
+    }
+
+    #[test]
+    fn cors_headers_are_added_to_routed_and_not_found_responses() {
+        let mut router = Router::new().with_cors(CorsConfig::new("https://example.com"));
+        router.get("/orders", |_| Response::ok("orders"));
+
+        let orders_response = router.handle(Request::new(Method::Get, "/orders"));
+        let not_found = router.handle(Request::new(Method::Get, "/missing"));
+
+        assert_eq!(
+            orders_response.header("access-control-allow-origin"),
+            Some("https://example.com")
+        );
+        assert_eq!(
+            not_found.header("access-control-allow-origin"),
+            Some("https://example.com")
+        );
+        assert_eq!(not_found.status_code(), 404);
+    }
+
+    #[test]
+    fn cors_preflight_request_returns_no_content_without_route() {
+        let router = Router::new().with_cors(CorsConfig::default());
+        let request = Request::new(Method::Options, "/orders")
+            .with_header("Access-Control-Request-Method", "POST");
+
+        let response = router.handle(request);
+
+        assert_eq!(response.status_code(), 204);
+        assert_eq!(response.header("access-control-allow-origin"), Some("*"));
+        assert_eq!(
+            response.header("access-control-allow-methods"),
+            Some("GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS")
+        );
+    }
+
+    #[test]
+    fn enable_cors_updates_router_configuration() {
+        let mut router = Router::new();
+        router.enable_cors(CorsConfig::new("https://example.com"));
+
+        assert_eq!(
+            router.cors().map(CorsConfig::allow_origin),
+            Some("https://example.com")
+        );
     }
 }
