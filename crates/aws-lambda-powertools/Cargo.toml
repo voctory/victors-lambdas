@@ -17,6 +17,7 @@ all = [
     "batch",
     "event-handler",
     "event-handler-appsync-events",
+    "event-handler-bedrock-agent-functions",
     "event-handler-compression",
     "event-handler-validation",
     "feature-flags",
@@ -36,6 +37,10 @@ event-handler-appsync-events = [
     "event-handler",
     "parser",
     "aws-lambda-powertools-event-handler/appsync-events",
+]
+event-handler-bedrock-agent-functions = [
+    "event-handler",
+    "aws-lambda-powertools-event-handler/bedrock-agent-functions",
 ]
 event-handler-aws-lambda-events = [
     "event-handler",

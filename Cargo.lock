@@ -113,6 +113,7 @@ dependencies = [
  "flate2",
  "futures-executor",
  "http 1.4.0",
+ "serde",
  "serde_json",
 ]
 

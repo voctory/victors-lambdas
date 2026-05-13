@@ -10,6 +10,8 @@ mod appsync;
 mod appsync_events;
 #[cfg(feature = "aws-lambda-events")]
 mod bedrock;
+#[cfg(feature = "bedrock-agent-functions")]
+mod bedrock_function;
 #[cfg(feature = "compression")]
 mod compression;
 mod cors;
@@ -49,6 +51,15 @@ pub use appsync_events::{
 pub use bedrock::{
     BedrockAgentAdapterError, BedrockAgentAdapterResult, request_from_bedrock_agent,
     response_to_bedrock_agent,
+};
+#[cfg(feature = "bedrock-agent-functions")]
+pub use bedrock_function::{
+    BedrockAgentFunctionAgent, BedrockAgentFunctionEvent, BedrockAgentFunctionHandler,
+    BedrockAgentFunctionHandlerError, BedrockAgentFunctionHandlerResult,
+    BedrockAgentFunctionParameter, BedrockAgentFunctionParameterValue,
+    BedrockAgentFunctionParameters, BedrockAgentFunctionResolver,
+    BedrockAgentFunctionResponseState, BedrockFunctionResponse, BedrockFunctionResult,
+    BedrockFunctionRoute,
 };
 #[cfg(feature = "compression")]
 pub use compression::{
