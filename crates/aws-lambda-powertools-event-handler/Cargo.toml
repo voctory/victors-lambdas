@@ -20,6 +20,7 @@ aws-lambda-events = [
     "dep:serde_json",
     "aws_lambda_events/apigw",
     "aws_lambda_events/appsync",
+    "aws_lambda_events/bedrock_agent_runtime",
 ]
 
 [dependencies]

@@ -4,6 +4,8 @@
 mod apigateway;
 #[cfg(feature = "aws-lambda-events")]
 mod appsync;
+#[cfg(feature = "aws-lambda-events")]
+mod bedrock;
 #[cfg(feature = "compression")]
 mod compression;
 mod cors;
@@ -22,6 +24,11 @@ pub use apigateway::{
 pub use appsync::{
     AppSyncEvent, AppSyncHandler, AppSyncResolver, AppSyncResolverError, AppSyncResolverResult,
     AppSyncRoute,
+};
+#[cfg(feature = "aws-lambda-events")]
+pub use bedrock::{
+    BedrockAgentAdapterError, BedrockAgentAdapterResult, request_from_bedrock_agent,
+    response_to_bedrock_agent,
 };
 #[cfg(feature = "compression")]
 pub use compression::{

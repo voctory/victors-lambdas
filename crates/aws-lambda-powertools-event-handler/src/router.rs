@@ -224,7 +224,7 @@ impl Router {
         };
         let route = route_match.route;
 
-        request.set_path_params(route_match.path_params);
+        request.set_path_params(&route_match.path_params);
         let response = self.apply_response_middleware(&request, route.handle(&request));
         self.apply_cors(response)
     }
@@ -457,7 +457,7 @@ impl AsyncRouter {
         };
         let route = route_match.route;
 
-        request.set_path_params(route_match.path_params);
+        request.set_path_params(&route_match.path_params);
         let response = self.apply_response_middleware(&request, route.handle(&request).await);
         self.apply_cors(response)
     }

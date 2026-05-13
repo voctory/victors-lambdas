@@ -120,7 +120,13 @@ impl Request {
         self
     }
 
-    pub(crate) fn set_path_params(&mut self, path_params: PathParams) {
-        self.path_params = path_params;
+    pub(crate) fn set_path_params(&mut self, path_params: &PathParams) {
+        let mut merged = self.path_params.clone();
+        for (name, value) in path_params.iter() {
+            if merged.get(name).is_none() {
+                merged.push(name, value);
+            }
+        }
+        self.path_params = merged;
     }
 }
