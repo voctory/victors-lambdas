@@ -16,6 +16,84 @@ pub struct CognitoUserPoolCallerContext {
     pub client_id: String,
 }
 
+/// Trigger source for Amazon `Cognito` migrate-user events.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub enum CognitoMigrateUserTriggerSource {
+    /// User migration at sign-in.
+    #[serde(rename = "UserMigration_Authentication")]
+    Authentication,
+    /// User migration during the forgot-password flow.
+    #[serde(rename = "UserMigration_ForgotPassword")]
+    ForgotPassword,
+}
+
+/// Request payload for Amazon `Cognito` migrate-user events.
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CognitoMigrateUserRequest {
+    /// Password supplied by the user during sign-in.
+    pub password: String,
+    /// Validation data supplied by the client request.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub validation_data: BTreeMap<String, String>,
+    /// Client metadata passed through supported Amazon `Cognito` API calls.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub client_metadata: BTreeMap<String, String>,
+}
+
+/// Response payload for Amazon `Cognito` migrate-user events.
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CognitoMigrateUserResponse {
+    /// User attributes to set on the migrated user.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_attributes: Option<BTreeMap<String, String>>,
+    /// Final user status after migration.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub final_user_status: Option<String>,
+    /// Message action for the migration flow.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message_action: Option<String>,
+    /// Delivery mediums for the migration flow.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub desired_delivery_mediums: Option<Vec<String>>,
+    /// Whether aliases should be force-created for the migrated user.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub force_alias_creation: Option<bool>,
+    /// Whether SMS MFA should be enabled for the migrated user.
+    #[serde(
+        default,
+        rename = "enableSMSMFA",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub enable_sms_mfa: Option<bool>,
+}
+
+/// Amazon `Cognito` migrate-user trigger event.
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CognitoMigrateUserTriggerEvent {
+    /// Event schema version.
+    pub version: String,
+    /// Trigger source that caused Amazon `Cognito` to migrate the user.
+    pub trigger_source: CognitoMigrateUserTriggerSource,
+    /// AWS Region of the user pool.
+    pub region: String,
+    /// User pool ID.
+    pub user_pool_id: String,
+    /// User name to migrate.
+    pub user_name: String,
+    /// Caller context supplied by Amazon `Cognito`.
+    pub caller_context: CognitoUserPoolCallerContext,
+    /// Migrate-user request payload.
+    pub request: CognitoMigrateUserRequest,
+    /// Migrate-user response payload.
+    pub response: CognitoMigrateUserResponse,
+}
+
+/// Compatibility alias for the migrate-user trigger model name.
+pub type CognitoMigrateUserTriggerModel = CognitoMigrateUserTriggerEvent;
+
 /// Trigger source for Amazon `Cognito` custom email sender events.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum CognitoCustomEmailSenderTriggerSource {
@@ -172,7 +250,84 @@ mod tests {
         CognitoCustomEmailSenderTriggerEvent, CognitoCustomEmailSenderTriggerSource,
         CognitoCustomSMSSenderTriggerModel, CognitoCustomSenderRequestType,
         CognitoCustomSmsSenderTriggerEvent, CognitoCustomSmsSenderTriggerSource,
+        CognitoMigrateUserTriggerEvent, CognitoMigrateUserTriggerModel,
+        CognitoMigrateUserTriggerSource,
     };
+
+    #[test]
+    fn parses_migrate_user_event_with_sms_mfa() {
+        let event = serde_json::from_value::<CognitoMigrateUserTriggerEvent>(json!({
+            "version": "1",
+            "triggerSource": "UserMigration_Authentication",
+            "region": "us-east-1",
+            "userPoolId": "us-east-1_ABC123",
+            "userName": "johndoe",
+            "callerContext": {
+                "awsSdkVersion": "2.814.0",
+                "clientId": "client123"
+            },
+            "request": {
+                "password": "correct horse battery staple",
+                "validationData": {
+                    "tenant": "example"
+                },
+                "clientMetadata": {
+                    "source": "legacy"
+                }
+            },
+            "response": {
+                "userAttributes": {
+                    "email": "user@example.com"
+                },
+                "finalUserStatus": "CONFIRMED",
+                "messageAction": "SUPPRESS",
+                "desiredDeliveryMediums": ["EMAIL"],
+                "forceAliasCreation": true,
+                "enableSMSMFA": true
+            }
+        }))
+        .expect("migrate-user event should parse");
+
+        assert_eq!(
+            event.trigger_source,
+            CognitoMigrateUserTriggerSource::Authentication
+        );
+        assert_eq!(event.user_name, "johndoe");
+        assert_eq!(event.request.validation_data["tenant"], "example");
+        assert_eq!(
+            event.response.final_user_status.as_deref(),
+            Some("CONFIRMED")
+        );
+        assert_eq!(event.response.enable_sms_mfa, Some(true));
+    }
+
+    #[test]
+    fn parses_minimal_migrate_user_response() {
+        let event = serde_json::from_value::<CognitoMigrateUserTriggerModel>(json!({
+            "version": "1",
+            "triggerSource": "UserMigration_ForgotPassword",
+            "region": "us-east-1",
+            "userPoolId": "us-east-1_ABC123",
+            "userName": "johndoe",
+            "callerContext": {
+                "awsSdkVersion": "2.814.0",
+                "clientId": "client123"
+            },
+            "request": {
+                "password": "correct horse battery staple"
+            },
+            "response": {}
+        }))
+        .expect("minimal migrate-user event should parse");
+
+        assert_eq!(
+            event.trigger_source,
+            CognitoMigrateUserTriggerSource::ForgotPassword
+        );
+        assert!(event.request.client_metadata.is_empty());
+        assert_eq!(event.response.user_attributes, None);
+        assert_eq!(event.response.enable_sms_mfa, None);
+    }
 
     #[test]
     fn parses_custom_email_sender_event() {
@@ -313,5 +468,32 @@ mod tests {
         assert_eq!(encoded["callerContext"]["awsSdkVersion"], "2.814.0");
         assert_eq!(encoded["request"]["type"], "customEmailSenderRequestV1");
         assert!(encoded["request"].get("clientMetadata").is_none());
+    }
+
+    #[test]
+    fn serializes_migrate_user_sms_mfa_field_name() {
+        let event = serde_json::from_value::<CognitoMigrateUserTriggerEvent>(json!({
+            "version": "1",
+            "triggerSource": "UserMigration_Authentication",
+            "region": "us-east-1",
+            "userPoolId": "us-east-1_ABC123",
+            "userName": "johndoe",
+            "callerContext": {
+                "awsSdkVersion": "2.814.0",
+                "clientId": "client123"
+            },
+            "request": {
+                "password": "correct horse battery staple"
+            },
+            "response": {
+                "enableSMSMFA": true
+            }
+        }))
+        .expect("migrate-user event should parse");
+
+        let encoded = serde_json::to_value(event).expect("event should serialize");
+
+        assert_eq!(encoded["response"]["enableSMSMFA"], true);
+        assert!(encoded["response"].get("forceAliasCreation").is_none());
     }
 }

@@ -13,7 +13,9 @@ pub use cognito::{
     CognitoCustomEmailSenderTriggerEvent, CognitoCustomEmailSenderTriggerModel,
     CognitoCustomEmailSenderTriggerSource, CognitoCustomSMSSenderTriggerModel,
     CognitoCustomSenderRequest, CognitoCustomSenderRequestType, CognitoCustomSmsSenderTriggerEvent,
-    CognitoCustomSmsSenderTriggerSource, CognitoUserPoolCallerContext,
+    CognitoCustomSmsSenderTriggerSource, CognitoMigrateUserRequest, CognitoMigrateUserResponse,
+    CognitoMigrateUserTriggerEvent, CognitoMigrateUserTriggerModel,
+    CognitoMigrateUserTriggerSource, CognitoUserPoolCallerContext,
 };
 pub use dynamodb::{
     DynamoDbStreamBatchInfo, DynamoDbStreamOnFailureDestination, DynamoDbStreamRequestContext,

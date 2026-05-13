@@ -154,6 +154,8 @@ pub mod prelude {
         CognitoCustomEmailSenderTriggerSource, CognitoCustomSMSSenderTriggerModel,
         CognitoCustomSenderRequest, CognitoCustomSenderRequestType,
         CognitoCustomSmsSenderTriggerEvent, CognitoCustomSmsSenderTriggerSource,
+        CognitoMigrateUserRequest, CognitoMigrateUserResponse, CognitoMigrateUserTriggerEvent,
+        CognitoMigrateUserTriggerModel, CognitoMigrateUserTriggerSource,
         CognitoUserPoolCallerContext, DynamoDbStreamBatchInfo, DynamoDbStreamOnFailureDestination,
         DynamoDbStreamRequestContext, DynamoDbStreamResponseContext, EventParser,
         IoTCoreAddOrDeleteFromThingGroupEvent, IoTCoreAddOrRemoveFromThingGroupEvent,
