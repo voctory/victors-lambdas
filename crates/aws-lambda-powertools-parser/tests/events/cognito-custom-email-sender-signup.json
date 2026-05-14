@@ -1,0 +1,22 @@
+{
+  "version": "1",
+  "triggerSource": "CustomEmailSender_SignUp",
+  "region": "us-east-1",
+  "userPoolId": "us-east-1_ABC123",
+  "userName": "orders-user",
+  "callerContext": {
+    "awsSdkVersion": "2.814.0",
+    "clientId": "client123"
+  },
+  "request": {
+    "type": "customEmailSenderRequestV1",
+    "code": "encrypted-code",
+    "clientMetadata": {
+      "campaign": "welcome"
+    },
+    "userAttributes": {
+      "email": "user@example.com",
+      "email_verified": true
+    }
+  }
+}

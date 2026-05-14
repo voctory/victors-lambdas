@@ -1,0 +1,11 @@
+{
+  "eventType": "THING_GROUP_HIERARCHY_EVENT",
+  "eventId": "event-iot-thing-group-hierarchy-1",
+  "timestamp": 1234567890123,
+  "operation": "ADDED",
+  "accountId": "123456789012",
+  "thingGroupId": "thing-group-root-1",
+  "thingGroupName": "RootGroup",
+  "childGroupId": "thing-group-orders-child-1",
+  "childGroupName": "OrdersChildGroup"
+}

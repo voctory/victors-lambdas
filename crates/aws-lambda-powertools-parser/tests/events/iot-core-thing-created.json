@@ -1,0 +1,15 @@
+{
+  "eventType": "THING_EVENT",
+  "eventId": "event-iot-thing-1",
+  "timestamp": 1234567890123,
+  "operation": "CREATED",
+  "accountId": "123456789012",
+  "thingId": "thing-orders-1",
+  "thingName": "OrdersDevice",
+  "versionNumber": 1,
+  "thingTypeName": null,
+  "attributes": {
+    "tenant": "orders",
+    "environment": "test"
+  }
+}

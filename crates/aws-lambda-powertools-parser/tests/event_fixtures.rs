@@ -15,12 +15,19 @@ use aws_lambda_powertools_parser::{
     AppSyncEventsEvent, AppSyncResolverEvent, CloudFormationCustomResourceCreate,
     CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
     CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
-    CloudFormationCustomResourceUpdate, CloudWatchLogsModel, CognitoPreSignupTriggerModel,
-    DynamoDbStreamModel, EventBridgeModel, EventParser, KafkaMskEventModel,
-    KafkaSelfManagedEventModel, KinesisDataStreamModel, KinesisFirehoseModel,
+    CloudFormationCustomResourceUpdate, CloudWatchLogsModel, CognitoCustomEmailSenderTriggerModel,
+    CognitoCustomEmailSenderTriggerSource, CognitoCustomSMSSenderTriggerModel,
+    CognitoCustomSenderRequestType, CognitoCustomSmsSenderTriggerSource,
+    CognitoMigrateUserTriggerModel, CognitoMigrateUserTriggerSource, CognitoPreSignupTriggerModel,
+    DynamoDbStreamModel, DynamoDbStreamOnFailureDestination, EventBridgeModel, EventParser,
+    IoTCoreRegistryCrudOperation, IoTCoreRegistryEventType, IoTCoreRegistryMembershipOperation,
+    IoTCoreThingEvent, IoTCoreThingGroupEvent, IoTCoreThingGroupHierarchyEvent,
+    IoTCoreThingGroupMembershipEvent, IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent,
+    KafkaMskEventModel, KafkaSelfManagedEventModel, KinesisDataStreamModel, KinesisFirehoseModel,
     KinesisFirehoseSqsModel, LambdaFunctionUrlModel, RabbitMqModel, S3BatchOperationModel,
-    S3EventNotificationModel, S3Model, S3ObjectLambdaEvent, S3SqsEventNotificationModel, SesModel,
-    SnsModel, SqsModel, VpcLatticeModel, VpcLatticeV2Model,
+    S3EventNotificationEventBridgeModel, S3EventNotificationModel, S3Model, S3ObjectLambdaEvent,
+    S3SqsEventNotificationModel, SesModel, SnsModel, SqsModel, TransferFamilyAuthorizerEvent,
+    TransferFamilyProtocol, VpcLatticeModel, VpcLatticeV2Model,
 };
 use aws_lambda_powertools_testing::load_json_fixture;
 use serde::Deserialize;
@@ -344,6 +351,20 @@ fn parses_bedrock_agent_input_fixture() {
 }
 
 #[test]
+fn parses_transfer_family_authorizer_fixture() {
+    let event = load_json_fixture::<TransferFamilyAuthorizerEvent>(fixture(
+        "transfer-family-authorizer-sftp.json",
+    ))
+    .expect("Transfer Family authorizer fixture should decode");
+
+    assert_eq!(event.username, "orders-user");
+    assert_eq!(event.password.as_deref(), Some("example-password"));
+    assert_eq!(event.protocol, TransferFamilyProtocol::Sftp);
+    assert_eq!(event.server_id, "s-0123456789abcdef0");
+    assert_eq!(event.source_ip.to_string(), "203.0.113.10");
+}
+
+#[test]
 fn parses_cognito_pre_signup_user_attributes_fixture() {
     let event =
         load_json_fixture::<CognitoPreSignupTriggerModel>(fixture("cognito-pre-signup-user.json"))
@@ -356,6 +377,53 @@ fn parses_cognito_pre_signup_user_attributes_fixture() {
     assert_eq!(parsed.payload().sub, "user-cognito-1");
     assert_eq!(parsed.payload().email, "user@example.com");
     assert_eq!(parsed.payload().custom_tenant, "orders");
+}
+
+#[test]
+fn parses_cognito_custom_event_fixtures() {
+    let migrate = load_json_fixture::<CognitoMigrateUserTriggerModel>(fixture(
+        "cognito-migrate-user-authentication.json",
+    ))
+    .expect("Cognito migrate-user fixture should decode");
+    let email = load_json_fixture::<CognitoCustomEmailSenderTriggerModel>(fixture(
+        "cognito-custom-email-sender-signup.json",
+    ))
+    .expect("Cognito custom email sender fixture should decode");
+    let sms = load_json_fixture::<CognitoCustomSMSSenderTriggerModel>(fixture(
+        "cognito-custom-sms-sender-authentication.json",
+    ))
+    .expect("Cognito custom SMS sender fixture should decode");
+
+    assert_eq!(
+        migrate.trigger_source,
+        CognitoMigrateUserTriggerSource::Authentication
+    );
+    assert_eq!(migrate.request.validation_data["tenant"], "orders");
+    assert_eq!(
+        migrate.response.final_user_status.as_deref(),
+        Some("CONFIRMED")
+    );
+    assert_eq!(migrate.response.enable_sms_mfa, Some(true));
+
+    assert_eq!(
+        email.trigger_source,
+        CognitoCustomEmailSenderTriggerSource::SignUp
+    );
+    assert_eq!(
+        email.request.request_type,
+        CognitoCustomSenderRequestType::CustomEmailSenderRequestV1
+    );
+    assert_eq!(email.request.user_attributes["email"], "user@example.com");
+
+    assert_eq!(
+        sms.trigger_source,
+        CognitoCustomSmsSenderTriggerSource::Authentication
+    );
+    assert_eq!(
+        sms.request.request_type,
+        CognitoCustomSenderRequestType::CustomSmsSenderRequestV1
+    );
+    assert_eq!(sms.request.user_attributes["phone_number"], "+15555550100");
 }
 
 #[test]
@@ -507,6 +575,24 @@ fn parses_s3_intelligent_tiering_fixture() {
             .and_then(Value::as_str),
         Some("archive/order-s3-intelligent-tiering-1.json")
     );
+}
+
+#[test]
+fn parses_s3_eventbridge_fixture() {
+    let event = load_json_fixture::<S3EventNotificationEventBridgeModel>(fixture(
+        "s3-eventbridge-object-created.json",
+    ))
+    .expect("S3 EventBridge fixture should decode");
+
+    assert_eq!(event.detail_type, "Object Created");
+    assert_eq!(event.source, "aws.s3");
+    assert_eq!(event.detail.bucket.name, "orders");
+    assert_eq!(
+        event.detail.object.key,
+        "orders/order-s3-eventbridge-1.json"
+    );
+    assert_eq!(event.detail.object.size, Some(184_662));
+    assert_eq!(event.detail.reason.as_deref(), Some("PutObject"));
 }
 
 #[test]
@@ -782,6 +868,24 @@ fn parses_dynamodb_image_pair_fixture() {
 }
 
 #[test]
+fn parses_dynamodb_stream_on_failure_destination_fixture() {
+    let event = load_json_fixture::<DynamoDbStreamOnFailureDestination>(fixture(
+        "dynamodb-stream-on-failure.json",
+    ))
+    .expect("DynamoDB stream on-failure fixture should decode");
+
+    assert_eq!(event.version, "1.0");
+    assert_eq!(event.request_context.condition, "RetryAttemptsExhausted");
+    assert_eq!(event.request_context.approximate_invoke_count, 2);
+    assert_eq!(event.response_context.function_error, "Unhandled");
+    assert_eq!(event.ddb_stream_batch_info.batch_size, 1);
+    assert_eq!(
+        event.payload.as_deref(),
+        Some(r#"{"Records":[{"eventID":"record-1"}]}"#)
+    );
+}
+
+#[test]
 fn parses_kinesis_dynamodb_new_image_fixture() {
     let event =
         load_json_fixture::<KinesisDataStreamModel>(fixture("kinesis-dynamodb-orders.json"))
@@ -794,6 +898,75 @@ fn parses_kinesis_dynamodb_new_image_fixture() {
     assert_eq!(parsed.len(), 1);
     assert_eq!(parsed[0].payload().order_id, "order-kinesis-dynamodb-1");
     assert_eq!(parsed[0].payload().quantity, 19);
+}
+
+#[test]
+fn parses_iot_core_registry_fixtures() {
+    let thing = load_json_fixture::<IoTCoreThingEvent>(fixture("iot-core-thing-created.json"))
+        .expect("IoT Core thing fixture should decode");
+    let thing_type =
+        load_json_fixture::<IoTCoreThingTypeEvent>(fixture("iot-core-thing-type-updated.json"))
+            .expect("IoT Core thing type fixture should decode");
+    let association = load_json_fixture::<IoTCoreThingTypeAssociationEvent>(fixture(
+        "iot-core-thing-type-association-added.json",
+    ))
+    .expect("IoT Core thing type association fixture should decode");
+    let group =
+        load_json_fixture::<IoTCoreThingGroupEvent>(fixture("iot-core-thing-group-updated.json"))
+            .expect("IoT Core thing group fixture should decode");
+    let membership = load_json_fixture::<IoTCoreThingGroupMembershipEvent>(fixture(
+        "iot-core-thing-group-membership-removed.json",
+    ))
+    .expect("IoT Core thing group membership fixture should decode");
+    let hierarchy = load_json_fixture::<IoTCoreThingGroupHierarchyEvent>(fixture(
+        "iot-core-thing-group-hierarchy-added.json",
+    ))
+    .expect("IoT Core thing group hierarchy fixture should decode");
+
+    assert_eq!(thing.event_type, IoTCoreRegistryEventType::Thing);
+    assert_eq!(thing.operation, IoTCoreRegistryCrudOperation::Created);
+    assert_eq!(thing.thing_name, "OrdersDevice");
+    assert_eq!(thing.attributes["tenant"], "orders");
+
+    assert_eq!(thing_type.event_type, IoTCoreRegistryEventType::ThingType);
+    assert_eq!(thing_type.operation, IoTCoreRegistryCrudOperation::Updated);
+    assert_eq!(thing_type.thing_type_name, "OrderDeviceType");
+    assert_eq!(thing_type.propagating_attributes.len(), 2);
+
+    assert_eq!(
+        association.event_type,
+        IoTCoreRegistryEventType::ThingTypeAssociation
+    );
+    assert_eq!(
+        association.operation,
+        IoTCoreRegistryMembershipOperation::Added
+    );
+    assert_eq!(association.thing_type_name, "OrderDeviceType");
+
+    assert_eq!(group.event_type, IoTCoreRegistryEventType::ThingGroup);
+    assert_eq!(group.operation, IoTCoreRegistryCrudOperation::Updated);
+    assert_eq!(group.thing_group_name, "OrdersGroup");
+    assert_eq!(group.root_to_parent_thing_groups.len(), 1);
+
+    assert_eq!(
+        membership.event_type,
+        IoTCoreRegistryEventType::ThingGroupMembership
+    );
+    assert_eq!(
+        membership.operation,
+        IoTCoreRegistryMembershipOperation::Removed
+    );
+    assert_eq!(membership.membership_id, "membership-orders-1");
+
+    assert_eq!(
+        hierarchy.event_type,
+        IoTCoreRegistryEventType::ThingGroupHierarchy
+    );
+    assert_eq!(
+        hierarchy.operation,
+        IoTCoreRegistryMembershipOperation::Added
+    );
+    assert_eq!(hierarchy.child_group_name, "OrdersChildGroup");
 }
 
 #[test]

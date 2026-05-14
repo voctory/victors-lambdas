@@ -1,0 +1,23 @@
+{
+  "eventType": "THING_GROUP_EVENT",
+  "eventId": "event-iot-thing-group-1",
+  "timestamp": 1603995417409,
+  "operation": "UPDATED",
+  "accountId": "123456789012",
+  "thingGroupId": "thing-group-orders-1",
+  "thingGroupName": "OrdersGroup",
+  "versionNumber": 3,
+  "parentGroupName": "RootGroup",
+  "parentGroupId": "thing-group-root-1",
+  "description": "Order devices",
+  "rootToParentThingGroups": [
+    {
+      "groupArn": "arn:aws:iot:us-west-2:123456789012:thinggroup/RootGroup",
+      "groupId": "thing-group-root-1"
+    }
+  ],
+  "attributes": {
+    "tenant": "orders"
+  },
+  "dynamicGroupMappingId": null
+}

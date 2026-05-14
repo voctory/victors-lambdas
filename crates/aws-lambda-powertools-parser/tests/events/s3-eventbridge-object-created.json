@@ -1,0 +1,28 @@
+{
+  "version": "0",
+  "id": "event-s3-eventbridge-1",
+  "detail-type": "Object Created",
+  "source": "aws.s3",
+  "account": "123456789012",
+  "time": "2023-03-08T17:50:14Z",
+  "region": "us-west-2",
+  "resources": [
+    "arn:aws:s3:::orders"
+  ],
+  "detail": {
+    "version": "0",
+    "bucket": {
+      "name": "orders"
+    },
+    "object": {
+      "key": "orders/order-s3-eventbridge-1.json",
+      "size": 184662,
+      "etag": "4e68adba0abe2dc8653dc3354e14c01d",
+      "sequencer": "006408CAD69598B05E"
+    },
+    "request-id": "request-s3-eventbridge-1",
+    "requester": "123456789012",
+    "source-ip-address": "203.0.113.20",
+    "reason": "PutObject"
+  }
+}

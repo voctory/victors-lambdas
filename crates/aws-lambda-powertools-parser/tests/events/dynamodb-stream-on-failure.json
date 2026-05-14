@@ -1,0 +1,25 @@
+{
+  "requestContext": {
+    "requestId": "request-dynamodb-failure-1",
+    "functionArn": "arn:aws:lambda:us-west-2:123456789012:function:orders",
+    "condition": "RetryAttemptsExhausted",
+    "approximateInvokeCount": 2
+  },
+  "responseContext": {
+    "statusCode": 200,
+    "executedVersion": "$LATEST",
+    "functionError": "Unhandled"
+  },
+  "version": "1.0",
+  "timestamp": "2019-11-14T00:13:49.717Z",
+  "DDBStreamBatchInfo": {
+    "shardId": "shardId-00000001573689847184-864758bb",
+    "startSequenceNumber": "800000000003126276362",
+    "endSequenceNumber": "800000000003126276362",
+    "approximateArrivalOfFirstRecord": "2019-11-14T00:13:19Z",
+    "approximateArrivalOfLastRecord": "2019-11-14T00:13:19Z",
+    "batchSize": 1,
+    "streamArn": "arn:aws:dynamodb:us-west-2:123456789012:table/orders/stream/2019-11-14T00:04:06.388"
+  },
+  "payload": "{\"Records\":[{\"eventID\":\"record-1\"}]}"
+}

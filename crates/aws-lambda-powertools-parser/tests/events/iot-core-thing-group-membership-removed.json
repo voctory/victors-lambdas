@@ -1,0 +1,12 @@
+{
+  "eventType": "THING_GROUP_MEMBERSHIP_EVENT",
+  "eventId": "event-iot-thing-group-membership-1",
+  "timestamp": 1234567890123,
+  "operation": "REMOVED",
+  "accountId": "123456789012",
+  "groupArn": "arn:aws:iot:us-west-2:123456789012:thinggroup/OrdersGroup",
+  "groupId": "thing-group-orders-1",
+  "thingArn": "arn:aws:iot:us-west-2:123456789012:thing/OrdersDevice",
+  "thingId": "thing-orders-1",
+  "membershipId": "membership-orders-1"
+}

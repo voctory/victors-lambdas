@@ -1,0 +1,9 @@
+{
+  "eventType": "THING_TYPE_ASSOCIATION_EVENT",
+  "eventId": "event-iot-thing-type-association-1",
+  "timestamp": 1234567890123,
+  "operation": "ADDED",
+  "thingId": "thing-orders-1",
+  "thingName": "OrdersDevice",
+  "thingTypeName": "OrderDeviceType"
+}

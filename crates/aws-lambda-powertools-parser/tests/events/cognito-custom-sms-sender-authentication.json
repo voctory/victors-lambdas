@@ -1,0 +1,18 @@
+{
+  "version": "1",
+  "triggerSource": "CustomSMSSender_Authentication",
+  "region": "us-east-1",
+  "userPoolId": "us-east-1_ABC123",
+  "callerContext": {
+    "awsSdkVersion": "2.814.0",
+    "clientId": "client123"
+  },
+  "request": {
+    "type": "customSMSSenderRequestV1",
+    "code": "encrypted-code",
+    "userAttributes": {
+      "phone_number": "+15555550100",
+      "phone_number_verified": false
+    }
+  }
+}

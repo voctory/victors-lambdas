@@ -1,0 +1,32 @@
+{
+  "version": "1",
+  "triggerSource": "UserMigration_Authentication",
+  "region": "us-east-1",
+  "userPoolId": "us-east-1_ABC123",
+  "userName": "orders-user",
+  "callerContext": {
+    "awsSdkVersion": "2.814.0",
+    "clientId": "client123"
+  },
+  "request": {
+    "password": "correct horse battery staple",
+    "validationData": {
+      "tenant": "orders"
+    },
+    "clientMetadata": {
+      "source": "legacy"
+    }
+  },
+  "response": {
+    "userAttributes": {
+      "email": "user@example.com"
+    },
+    "finalUserStatus": "CONFIRMED",
+    "messageAction": "SUPPRESS",
+    "desiredDeliveryMediums": [
+      "EMAIL"
+    ],
+    "forceAliasCreation": true,
+    "enableSMSMFA": true
+  }
+}

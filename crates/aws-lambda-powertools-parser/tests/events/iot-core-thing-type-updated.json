@@ -1,0 +1,26 @@
+{
+  "eventType": "THING_TYPE_EVENT",
+  "eventId": "event-iot-thing-type-1",
+  "timestamp": 1234567890123,
+  "operation": "UPDATED",
+  "accountId": "123456789012",
+  "thingTypeId": "thing-type-orders-1",
+  "thingTypeName": "OrderDeviceType",
+  "isDeprecated": false,
+  "deprecationDate": null,
+  "searchableAttributes": [
+    "tenant",
+    "environment"
+  ],
+  "propagatingAttributes": [
+    {
+      "userPropertyKey": "tenant",
+      "thingAttribute": "tenant"
+    },
+    {
+      "userPropertyKey": "client",
+      "connectionAttribute": "iot:ClientId"
+    }
+  ],
+  "description": "Order processing device"
+}

@@ -1,0 +1,7 @@
+{
+  "username": "orders-user",
+  "password": "example-password",
+  "protocol": "SFTP",
+  "serverId": "s-0123456789abcdef0",
+  "sourceIp": "203.0.113.10"
+}
