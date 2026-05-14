@@ -20,7 +20,7 @@ pub use payload::{hash_payload, key_from_json_pointer, key_from_payload};
 pub use record::IdempotencyRecord;
 pub use status::IdempotencyStatus;
 pub use store::{
-    AsyncIdempotencyStore, IdempotencyStore, IdempotencyStoreError, IdempotencyStoreFuture,
-    IdempotencyStoreResult, InMemoryIdempotencyStore,
+    AsyncIdempotencyStore, CachedIdempotencyStore, IdempotencyStore, IdempotencyStoreError,
+    IdempotencyStoreFuture, IdempotencyStoreResult, InMemoryIdempotencyStore,
 };
 pub use workflow::{AsyncIdempotency, Idempotency, IdempotencyOutcome};

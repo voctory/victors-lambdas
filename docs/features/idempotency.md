@@ -33,6 +33,17 @@ aws-lambda-powertools = { version = "0.1", features = ["idempotency-dynamodb"] }
 The DynamoDB store defaults to a string partition key named `id`; composite-key tables can set a sort key attribute and
 static partition key value.
 
+Wrap a durable store in `CachedIdempotencyStore` to keep recently read and written records in the current Lambda
+execution environment:
+
+```rust
+# use aws_lambda_powertools::prelude::{CachedIdempotencyStore, InMemoryIdempotencyStore};
+let store = CachedIdempotencyStore::new(InMemoryIdempotencyStore::new());
+```
+
+The local cache is an optimization only. Use a persistent backing store for correctness across concurrent invocations,
+cold starts, and different execution environments.
+
 ## Supported Behavior
 
 - Sync and async idempotency workflows.
@@ -43,12 +54,13 @@ static partition key value.
 - Handler failure cleanup so later retries can proceed.
 - Lambda remaining-time based in-progress expiry.
 - In-memory and optional DynamoDB stores.
+- Optional local cache wrapper for sync and async stores.
 
 ## Snippet
 
 The buildable snippet in [examples/snippets/idempotency/src/main.rs](../../examples/snippets/idempotency/src/main.rs)
-uses a JSON Pointer to derive the idempotency key, executes the first request, and replays the stored response for the
-second request.
+uses a JSON Pointer to derive the idempotency key, executes the first request, stores the record through a local cache
+wrapper, and replays the stored response for the second request.
 
 Run it locally with:
 

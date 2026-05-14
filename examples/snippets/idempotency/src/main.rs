@@ -3,7 +3,8 @@
 use std::{convert::Infallible, error::Error};
 
 use aws_lambda_powertools::prelude::{
-    Idempotency, IdempotencyConfig, InMemoryIdempotencyStore, key_from_json_pointer,
+    CachedIdempotencyStore, Idempotency, IdempotencyConfig, InMemoryIdempotencyStore,
+    key_from_json_pointer,
 };
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +22,8 @@ struct CheckoutResponse {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let config = IdempotencyConfig::from_env().with_key_prefix("checkout");
-    let mut idempotency = Idempotency::with_config(InMemoryIdempotencyStore::new(), config);
+    let store = CachedIdempotencyStore::new(InMemoryIdempotencyStore::new());
+    let mut idempotency = Idempotency::with_config(store, config);
 
     let request = CheckoutRequest {
         request_id: "request-123".to_owned(),
@@ -44,6 +46,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         })
     })?;
     assert!(second.is_replayed());
+    assert_eq!(idempotency.store().cache_len()?, 1);
     assert_eq!(
         second.value(),
         &CheckoutResponse {
