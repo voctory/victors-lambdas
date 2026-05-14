@@ -297,6 +297,9 @@ pub mod prelude {
         StreamingError, StreamingErrorKind, StreamingResult,
     };
 
+    #[cfg(feature = "streaming-s3")]
+    pub use aws_lambda_powertools_streaming::{AwsSdkS3ObjectClient, AwsSdkS3RangeReader};
+
     #[cfg(feature = "streaming-csv")]
     pub use aws_lambda_powertools_streaming::{csv_reader, csv_reader_with_builder};
 

@@ -1,6 +1,9 @@
 //! Streaming transforms.
 
-use std::io::{Read, Seek};
+#[cfg(any(feature = "csv", feature = "gzip", feature = "zip"))]
+use std::io::Read;
+#[cfg(feature = "zip")]
+use std::io::Seek;
 
 /// Wraps a reader in a gzip decoder.
 #[cfg(feature = "gzip")]

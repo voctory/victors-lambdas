@@ -7,6 +7,8 @@ mod stream;
 mod transform;
 
 pub use error::{StreamingError, StreamingErrorKind, StreamingResult};
+#[cfg(feature = "s3")]
+pub use s3::{AwsSdkS3ObjectClient, AwsSdkS3RangeReader};
 pub use s3::{
     S3GetObjectRangeRequest, S3HeadObjectOutput, S3HeadObjectRequest, S3ObjectClient,
     S3ObjectIdentifier, S3RangeSource,

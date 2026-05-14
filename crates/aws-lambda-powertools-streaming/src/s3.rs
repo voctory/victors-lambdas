@@ -2,7 +2,24 @@
 
 use std::io::Read;
 
+#[cfg(feature = "s3")]
+use std::{
+    future::Future,
+    io::{self, Cursor},
+    sync::mpsc::{self, Receiver, SyncSender},
+};
+
+#[cfg(feature = "s3")]
+use aws_sdk_s3::{Client as AwsSdkS3Client, primitives::ByteStream};
+#[cfg(feature = "s3")]
+use tokio::io::AsyncReadExt as _;
+
 use crate::{RangeSource, StreamingResult};
+#[cfg(feature = "s3")]
+use crate::{StreamingError, StreamingErrorKind};
+
+#[cfg(feature = "s3")]
+const S3_READER_CHUNK_SIZE: usize = 8 * 1024;
 
 /// Identifies an S3 object.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -148,6 +165,258 @@ pub trait S3ObjectClient {
         &mut self,
         request: S3GetObjectRangeRequest,
     ) -> StreamingResult<Self::Reader>;
+}
+
+/// AWS SDK-backed client abstraction for S3 range reads.
+///
+/// This adapter accepts a configured [`aws_sdk_s3::Client`] instead of loading
+/// AWS SDK configuration itself. Range readers are backed by a small background
+/// Tokio runtime so the public [`Read`] interface can stream chunks without
+/// collecting the rest of the object into memory.
+#[cfg(feature = "s3")]
+#[derive(Clone, Debug)]
+pub struct AwsSdkS3ObjectClient {
+    client: AwsSdkS3Client,
+}
+
+#[cfg(feature = "s3")]
+impl AwsSdkS3ObjectClient {
+    /// Creates an AWS SDK-backed S3 object client.
+    #[must_use]
+    pub fn new(client: AwsSdkS3Client) -> Self {
+        Self { client }
+    }
+
+    /// Returns the underlying AWS SDK S3 client.
+    #[must_use]
+    pub const fn client(&self) -> &AwsSdkS3Client {
+        &self.client
+    }
+}
+
+#[cfg(feature = "s3")]
+impl S3ObjectClient for AwsSdkS3ObjectClient {
+    type Reader = AwsSdkS3RangeReader;
+
+    fn head_object(&mut self, request: S3HeadObjectRequest) -> StreamingResult<S3HeadObjectOutput> {
+        let client = self.client.clone();
+        let object = request.object().clone();
+
+        run_s3_request(async move {
+            let mut request = client
+                .head_object()
+                .bucket(object.bucket().to_owned())
+                .key(object.key().to_owned());
+            if let Some(version_id) = object.version_id() {
+                request = request.version_id(version_id.to_owned());
+            }
+
+            let output = request
+                .send()
+                .await
+                .map_err(|error| sdk_error("head_object", error))?;
+            let content_length = output.content_length().unwrap_or_default();
+            let content_length = u64::try_from(content_length).map_err(|_| {
+                StreamingError::new(
+                    StreamingErrorKind::Io,
+                    "S3 head_object returned a negative content length",
+                )
+            })?;
+
+            Ok(S3HeadObjectOutput::new(content_length))
+        })
+    }
+
+    fn get_object_range(
+        &mut self,
+        request: S3GetObjectRangeRequest,
+    ) -> StreamingResult<Self::Reader> {
+        open_s3_range_reader(
+            self.client.clone(),
+            request.object().clone(),
+            request.range_header().to_owned(),
+        )
+    }
+}
+
+/// Synchronous reader over an AWS SDK S3 object body.
+#[cfg(feature = "s3")]
+pub struct AwsSdkS3RangeReader {
+    receiver: Receiver<io::Result<Vec<u8>>>,
+    current: Cursor<Vec<u8>>,
+    done: bool,
+}
+
+#[cfg(feature = "s3")]
+impl AwsSdkS3RangeReader {
+    fn new(receiver: Receiver<io::Result<Vec<u8>>>) -> Self {
+        Self {
+            receiver,
+            current: Cursor::new(Vec::new()),
+            done: false,
+        }
+    }
+
+    #[cfg(test)]
+    fn from_body(body: ByteStream) -> StreamingResult<Self> {
+        let (sender, receiver) = mpsc::sync_channel(1);
+        std::thread::Builder::new()
+            .name("powertools-s3-range-reader".to_owned())
+            .spawn(move || run_s3_body_worker(body, sender))
+            .map_err(StreamingError::io)?;
+
+        Ok(Self::new(receiver))
+    }
+}
+
+#[cfg(feature = "s3")]
+impl Read for AwsSdkS3RangeReader {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        loop {
+            let read = Read::read(&mut self.current, buffer)?;
+            if read > 0 {
+                return Ok(read);
+            }
+
+            if self.done {
+                return Ok(0);
+            }
+
+            match self.receiver.recv() {
+                Ok(Ok(chunk)) => {
+                    self.current = Cursor::new(chunk);
+                }
+                Ok(Err(error)) => {
+                    self.done = true;
+                    return Err(error);
+                }
+                Err(_) => {
+                    self.done = true;
+                    return Ok(0);
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "s3")]
+fn open_s3_range_reader(
+    client: AwsSdkS3Client,
+    object: S3ObjectIdentifier,
+    range_header: String,
+) -> StreamingResult<AwsSdkS3RangeReader> {
+    let (init_sender, init_receiver) = mpsc::sync_channel(1);
+    let (chunk_sender, chunk_receiver) = mpsc::sync_channel(1);
+
+    std::thread::Builder::new()
+        .name("powertools-s3-range-reader".to_owned())
+        .spawn(move || {
+            let runtime = match s3_runtime() {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    let _ = init_sender.send(Err(error));
+                    return;
+                }
+            };
+
+            runtime.block_on(async move {
+                let mut request = client
+                    .get_object()
+                    .bucket(object.bucket().to_owned())
+                    .key(object.key().to_owned())
+                    .range(range_header);
+                if let Some(version_id) = object.version_id() {
+                    request = request.version_id(version_id.to_owned());
+                }
+
+                let output = match request.send().await {
+                    Ok(output) => output,
+                    Err(error) => {
+                        let _ = init_sender.send(Err(sdk_error("get_object", error)));
+                        return;
+                    }
+                };
+
+                if init_sender.send(Ok(())).is_err() {
+                    return;
+                }
+
+                stream_s3_body(output.body, chunk_sender).await;
+            });
+        })
+        .map_err(StreamingError::io)?;
+
+    match init_receiver.recv() {
+        Ok(Ok(())) => Ok(AwsSdkS3RangeReader::new(chunk_receiver)),
+        Ok(Err(error)) => Err(error),
+        Err(error) => Err(StreamingError::io(io::Error::other(error))),
+    }
+}
+
+#[cfg(feature = "s3")]
+fn run_s3_request<F, T>(future: F) -> StreamingResult<T>
+where
+    F: Future<Output = StreamingResult<T>> + Send + 'static,
+    T: Send + 'static,
+{
+    let worker = std::thread::Builder::new()
+        .name("powertools-s3-request".to_owned())
+        .spawn(move || {
+            let runtime = s3_runtime()?;
+            runtime.block_on(future)
+        })
+        .map_err(StreamingError::io)?;
+
+    worker.join().map_err(|_| {
+        StreamingError::new(StreamingErrorKind::Io, "S3 request worker thread panicked")
+    })?
+}
+
+#[cfg(all(feature = "s3", test))]
+fn run_s3_body_worker(body: ByteStream, sender: SyncSender<io::Result<Vec<u8>>>) {
+    match s3_runtime() {
+        Ok(runtime) => runtime.block_on(stream_s3_body(body, sender)),
+        Err(error) => {
+            let _ = sender.send(Err(error.into_io_error()));
+        }
+    }
+}
+
+#[cfg(feature = "s3")]
+async fn stream_s3_body(body: ByteStream, sender: SyncSender<io::Result<Vec<u8>>>) {
+    let mut reader = body.into_async_read();
+    let mut buffer = vec![0; S3_READER_CHUNK_SIZE];
+
+    loop {
+        match reader.read(&mut buffer).await {
+            Ok(0) => break,
+            Ok(read) => {
+                if sender.send(Ok(buffer[..read].to_vec())).is_err() {
+                    break;
+                }
+            }
+            Err(error) => {
+                let _ = sender.send(Err(error));
+                break;
+            }
+        }
+    }
+}
+
+#[cfg(feature = "s3")]
+fn s3_runtime() -> StreamingResult<tokio::runtime::Runtime> {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(StreamingError::io)
+}
+
+#[cfg(feature = "s3")]
+fn sdk_error(operation: &str, error: impl std::fmt::Display) -> StreamingError {
+    StreamingError::new(
+        StreamingErrorKind::Io,
+        format!("S3 {operation} request failed: {error}"),
+    )
 }
 
 /// Range source for an S3 object.
@@ -355,5 +624,51 @@ mod tests {
         assert_eq!(range_object.bucket(), "bucket");
         assert_eq!(range_object.key(), "key");
         assert_eq!(range_object.version_id(), Some("version-1"));
+    }
+
+    #[cfg(feature = "s3")]
+    #[test]
+    fn aws_sdk_client_keeps_configured_client() {
+        let client = aws_sdk_s3_client();
+        let adapter = AwsSdkS3ObjectClient::new(client);
+
+        assert!(adapter.client().config().region().is_some());
+    }
+
+    #[cfg(feature = "s3")]
+    #[test]
+    fn aws_sdk_range_reader_streams_byte_stream() {
+        let body = ByteStream::from_static(b"abcdef");
+        let mut reader =
+            AwsSdkS3RangeReader::from_body(body).expect("range reader should be created");
+        let mut output = String::new();
+
+        reader
+            .read_to_string(&mut output)
+            .expect("range body should read");
+
+        assert_eq!(output, "abcdef");
+    }
+
+    #[cfg(feature = "s3")]
+    fn aws_sdk_s3_client() -> AwsSdkS3Client {
+        use aws_sdk_s3::{
+            Config,
+            config::{BehaviorVersion, Credentials, Region},
+        };
+
+        let config = Config::builder()
+            .behavior_version(BehaviorVersion::latest())
+            .region(Region::new("us-east-1"))
+            .credentials_provider(Credentials::new(
+                "access-key",
+                "secret-key",
+                None,
+                None,
+                "test",
+            ))
+            .build();
+
+        AwsSdkS3Client::from_conf(config)
     }
 }
