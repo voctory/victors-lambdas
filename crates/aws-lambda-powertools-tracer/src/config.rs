@@ -37,7 +37,7 @@ impl TracerConfig {
     pub fn from_env_source(mut source: impl FnMut(&str) -> Option<String>) -> Self {
         Self {
             service: ServiceConfig::from_env_source(&mut source),
-            enabled: bool_from_source(&mut source, env::POWERTOOLS_TRACE_ENABLED, true),
+            enabled: trace_enabled_from_source(&mut source),
             capture_response: bool_from_source(
                 &mut source,
                 env::POWERTOOLS_TRACER_CAPTURE_RESPONSE,
@@ -103,6 +103,13 @@ impl Default for TracerConfig {
     }
 }
 
+fn trace_enabled_from_source(source: &mut impl FnMut(&str) -> Option<String>) -> bool {
+    let enabled = bool_from_source(source, env::POWERTOOLS_TRACE_ENABLED, true);
+    let disabled = bool_from_source(source, env::POWERTOOLS_TRACE_DISABLED, false);
+
+    enabled && !disabled
+}
+
 fn bool_from_source(
     source: &mut impl FnMut(&str) -> Option<String>,
     name: &str,
@@ -161,11 +168,39 @@ mod tests {
     }
 
     #[test]
+    fn from_env_source_supports_trace_disabled_flag() {
+        let config = TracerConfig::from_env_source(|name| match name {
+            env::POWERTOOLS_SERVICE_NAME => Some("payments".to_owned()),
+            env::POWERTOOLS_TRACE_DISABLED => Some("true".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(config.service().service_name(), "payments");
+        assert!(!config.enabled());
+        assert!(config.capture_response());
+        assert!(config.capture_error());
+    }
+
+    #[test]
+    fn trace_disabled_flag_overrides_trace_enabled_flag() {
+        let config = TracerConfig::from_env_source(|name| match name {
+            env::POWERTOOLS_TRACE_ENABLED | env::POWERTOOLS_TRACE_DISABLED => {
+                Some("true".to_owned())
+            }
+            _ => None,
+        });
+
+        assert!(!config.enabled());
+    }
+
+    #[test]
     fn from_env_source_uses_defaults_for_empty_or_invalid_flags() {
         let config = TracerConfig::from_env_source(|name| match name {
             env::POWERTOOLS_SERVICE_NAME => Some("orders".to_owned()),
             env::POWERTOOLS_TRACE_ENABLED => Some("   ".to_owned()),
-            env::POWERTOOLS_TRACER_CAPTURE_RESPONSE => Some("maybe".to_owned()),
+            env::POWERTOOLS_TRACE_DISABLED | env::POWERTOOLS_TRACER_CAPTURE_RESPONSE => {
+                Some("maybe".to_owned())
+            }
             _ => None,
         });
 

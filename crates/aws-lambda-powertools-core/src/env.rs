@@ -26,6 +26,9 @@ pub const POWERTOOLS_METRICS_FUNCTION_NAME: &str = "POWERTOOLS_METRICS_FUNCTION_
 /// Whether tracing is enabled.
 pub const POWERTOOLS_TRACE_ENABLED: &str = "POWERTOOLS_TRACE_ENABLED";
 
+/// Whether tracing is disabled.
+pub const POWERTOOLS_TRACE_DISABLED: &str = "POWERTOOLS_TRACE_DISABLED";
+
 /// Whether tracer utilities should capture handler responses.
 pub const POWERTOOLS_TRACER_CAPTURE_RESPONSE: &str = "POWERTOOLS_TRACER_CAPTURE_RESPONSE";
 

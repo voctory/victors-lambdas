@@ -16,6 +16,7 @@ environment variables.
 | --- | --- |
 | `POWERTOOLS_SERVICE_NAME` | Sets the service namespace used by tracer-created segments. |
 | `POWERTOOLS_TRACE_ENABLED` | Enables or disables trace data collection. |
+| `POWERTOOLS_TRACE_DISABLED` | Disables trace data collection when set to a truthy value. |
 | `POWERTOOLS_TRACER_CAPTURE_RESPONSE` | Enables captured handler responses. |
 | `POWERTOOLS_TRACER_CAPTURE_ERROR` | Enables captured handler errors. |
 | `AWS_XRAY_DAEMON_ADDRESS` | Sets the UDP daemon address used by `tracer-xray-daemon`. |
