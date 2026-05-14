@@ -1,0 +1,23 @@
+{
+  "version": "2.0",
+  "path": "/orders",
+  "method": "POST",
+  "headers": {
+    "content-type": [
+      "application/json"
+    ],
+    "user-agent": [
+      "fixture-client"
+    ]
+  },
+  "queryStringParameters": {},
+  "body": "{\"order_id\":\"order-vpc-lattice-v2-1\",\"quantity\":17}",
+  "isBase64Encoded": false,
+  "requestContext": {
+    "serviceNetworkArn": "arn:aws:vpc-lattice:us-east-1:123456789012:servicenetwork/sn-orders",
+    "serviceArn": "arn:aws:vpc-lattice:us-east-1:123456789012:service/svc-orders",
+    "targetGroupArn": "arn:aws:vpc-lattice:us-east-1:123456789012:targetgroup/tg-orders",
+    "region": "us-east-1",
+    "timeEpoch": "1767225600000"
+  }
+}

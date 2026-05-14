@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use aws_lambda_events::event::{
     alb::AlbTargetGroupRequest,
-    apigw::ApiGatewayV2httpRequest,
+    apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
     cloudformation::CloudFormationCustomResourceRequest,
     cloudwatch_logs::LogsEvent,
     dynamodb::Event as DynamoDbEvent,
@@ -18,6 +18,7 @@ use aws_lambda_events::event::{
     ses::SimpleEmailEvent,
     sns::SnsEvent,
     sqs::SqsEvent,
+    vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
 };
 use aws_lambda_powertools_parser::EventParser;
 use aws_lambda_powertools_testing::load_json_fixture;
@@ -62,6 +63,59 @@ fn parses_api_gateway_v2_body_fixture() {
             quantity: 2,
         }
     );
+}
+
+#[test]
+fn parses_api_gateway_v1_body_fixture() {
+    let event = load_json_fixture::<ApiGatewayProxyRequest>(fixture("apigw-v1-order.json"))
+        .expect("API Gateway v1 fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_apigw_v1_body::<OrderEvent>(event)
+        .expect("fixture API Gateway v1 body should parse");
+
+    assert_eq!(parsed.payload().order_id, "order-apigw-v1-1");
+    assert_eq!(parsed.payload().quantity, 14);
+}
+
+#[test]
+fn parses_api_gateway_websocket_body_fixture() {
+    let event =
+        load_json_fixture::<ApiGatewayWebsocketProxyRequest>(fixture("apigw-websocket-order.json"))
+            .expect("API Gateway WebSocket fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_apigw_websocket_body::<OrderEvent>(event)
+        .expect("fixture API Gateway WebSocket body should parse");
+
+    assert_eq!(parsed.payload().order_id, "order-apigw-websocket-1");
+    assert_eq!(parsed.payload().quantity, 15);
+}
+
+#[test]
+fn parses_vpc_lattice_body_fixture() {
+    let event = load_json_fixture::<VpcLatticeRequestV1>(fixture("vpc-lattice-v1-order.json"))
+        .expect("VPC Lattice v1 fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_vpc_lattice_body::<OrderEvent>(event)
+        .expect("fixture VPC Lattice v1 body should parse");
+
+    assert_eq!(parsed.payload().order_id, "order-vpc-lattice-v1-1");
+    assert_eq!(parsed.payload().quantity, 16);
+}
+
+#[test]
+fn parses_vpc_lattice_v2_body_fixture() {
+    let event = load_json_fixture::<VpcLatticeRequestV2>(fixture("vpc-lattice-v2-order.json"))
+        .expect("VPC Lattice v2 fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_vpc_lattice_v2_body::<OrderEvent>(event)
+        .expect("fixture VPC Lattice v2 body should parse");
+
+    assert_eq!(parsed.payload().order_id, "order-vpc-lattice-v2-1");
+    assert_eq!(parsed.payload().quantity, 17);
 }
 
 #[test]

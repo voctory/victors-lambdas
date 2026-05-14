@@ -1,0 +1,35 @@
+{
+  "resource": "/$default",
+  "path": "/orders",
+  "headers": {
+    "content-type": "application/json"
+  },
+  "multiValueHeaders": {},
+  "queryStringParameters": {},
+  "multiValueQueryStringParameters": {},
+  "pathParameters": {},
+  "stageVariables": {},
+  "requestContext": {
+    "accountId": "123456789012",
+    "resourceId": "resource-orders",
+    "stage": "prod",
+    "requestId": "request-apigw-websocket-1",
+    "identity": {
+      "sourceIp": "203.0.113.12",
+      "userAgent": "fixture-client"
+    },
+    "resourcePath": "/$default",
+    "apiId": "api-id",
+    "connectedAt": 1767225600000,
+    "connectionId": "connection-apigw-websocket-1",
+    "domainName": "api-id.execute-api.us-east-1.amazonaws.com",
+    "eventType": "MESSAGE",
+    "messageDirection": "IN",
+    "messageId": "message-apigw-websocket-1",
+    "requestTime": "01/Jan/2026:00:00:00 +0000",
+    "requestTimeEpoch": 1767225600000,
+    "routeKey": "$default"
+  },
+  "body": "{\"order_id\":\"order-apigw-websocket-1\",\"quantity\":15}",
+  "isBase64Encoded": false
+}
