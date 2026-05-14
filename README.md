@@ -19,9 +19,9 @@ first implementation tranche has landed:
   suffix-based auto transforms
 - JMESPath extraction with reusable compiled expressions, typed extraction, common Lambda event envelope constants, and
   Powertools decode functions for JSON, base64, and base64-gzip payloads
-- data masking for JSON payloads with whole-value erasure, field masking by JSON Pointer or dot path, fixed/dynamic,
-  custom, and regex masking strategies, provider encryption/decryption, an optional direct AWS KMS provider, and
-  configurable missing-field behavior
+- data masking for JSON payloads with whole-value erasure, field masking by JSON Pointer, dot path, and common
+  JSONPath-style selectors, fixed/dynamic, custom, and regex masking strategies, provider encryption/decryption, an
+  optional direct AWS KMS provider, and configurable missing-field behavior
 - Kafka consumer record materialization that flattens Lambda Kafka event records, decodes primitive or JSON base64 keys
   and values, supports schema-aware key/value decoder configuration with Event Source Mapping metadata, provides
   optional Avro and Protobuf decode helpers, decodes headers, and preserves original encoded fields

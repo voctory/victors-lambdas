@@ -18,12 +18,15 @@ aws-lambda-powertools = { version = "0.1", features = ["data-masking-kms"] }
 - Replace a whole `serde_json::Value` with the default `*****` mask.
 - Replace selected fields by JSON Pointer paths such as `/customer/password`.
 - Replace selected fields by dot paths such as `customer.password` or `items.0.card`.
+- Replace selected fields by common JSONPath-style selectors such as `$..password`,
+  `items[*].card`, quoted segments, and simple comparison filters.
 - Use fixed, dynamic, custom, or regex masking strategies.
 - Encrypt and decrypt JSON payloads through a `DataMaskingProvider`.
 - Optional `data-masking-kms` exposes `KmsDataMaskingProvider` for direct AWS KMS encrypt/decrypt calls.
 - Configure whether missing field paths return errors or are ignored.
 
-AWS Encryption SDK envelope encryption/cached data keys and full JSONPath update expressions are not implemented yet.
+AWS Encryption SDK envelope encryption/cached data keys and advanced JSONPath operators beyond the supported selector
+subset are not implemented yet.
 
 ## Snippet
 

@@ -5,7 +5,7 @@ use serde_json::Value;
 use crate::{
     DataMaskingError, DataMaskingProvider, DataMaskingResult, EncryptionContext, MaskingOptions,
     mask::mask_value,
-    path::to_json_pointer,
+    path::matching_json_pointers,
     provider::{decode_ciphertext, encode_ciphertext},
 };
 
@@ -96,8 +96,8 @@ impl DataMasking {
 
     /// Replaces selected fields with the default mask.
     ///
-    /// Field paths may be JSON Pointers such as `/customer/password` or dot paths such as
-    /// `customer.password`.
+    /// Field paths may be JSON Pointers such as `/customer/password`, dot paths such as
+    /// `customer.password`, or JSONPath-style selectors such as `$..password`.
     ///
     /// # Errors
     ///
@@ -109,8 +109,8 @@ impl DataMasking {
 
     /// Applies a masking strategy to selected fields.
     ///
-    /// Field paths may be JSON Pointers such as `/customer/password` or dot paths such as
-    /// `customer.password`.
+    /// Field paths may be JSON Pointers such as `/customer/password`, dot paths such as
+    /// `customer.password`, or JSONPath-style selectors such as `$..password`.
     ///
     /// # Errors
     ///
@@ -128,16 +128,25 @@ impl DataMasking {
         }
 
         for field in fields {
-            let pointer = to_json_pointer(field)?;
-            match data.pointer_mut(&pointer) {
-                Some(value) => {
-                    let masked = mask_value(value.take(), options)?;
-                    *value = masked;
-                }
-                None if self.config.raise_on_missing_field() => {
+            let pointers = matching_json_pointers(&data, field)?;
+            if pointers.is_empty() {
+                if self.config.raise_on_missing_field() {
                     return Err(DataMaskingError::missing_field(field));
                 }
-                None => {}
+                continue;
+            }
+
+            for pointer in pointers {
+                match data.pointer_mut(&pointer) {
+                    Some(value) => {
+                        let masked = mask_value(value.take(), options)?;
+                        *value = masked;
+                    }
+                    None if self.config.raise_on_missing_field() => {
+                        return Err(DataMaskingError::missing_field(field));
+                    }
+                    None => {}
+                }
             }
         }
 
@@ -329,6 +338,62 @@ mod tests {
             .expect("field should be masked");
 
         assert_eq!(masked["customer"]["card"], json!("************1111"));
+    }
+
+    #[test]
+    fn erases_fields_by_jsonpath_wildcard() {
+        let data = json!({
+            "customer": {
+                "cards": [
+                    {"number": "4111111111111111"},
+                    {"number": "5555555555554444"}
+                ]
+            }
+        });
+
+        let masked = DataMasking::new()
+            .erase_fields(data, &["$.customer.cards[*].number"])
+            .expect("matching fields should be masked");
+
+        assert_eq!(masked["customer"]["cards"][0]["number"], json!("*****"));
+        assert_eq!(masked["customer"]["cards"][1]["number"], json!("*****"));
+    }
+
+    #[test]
+    fn erases_fields_by_jsonpath_recursive_descent() {
+        let data = json!({
+            "headers": {"authorization": "top-secret"},
+            "records": [
+                {"payload": {"authorization": "nested-secret"}}
+            ]
+        });
+
+        let masked = DataMasking::new()
+            .erase_fields(data, &["$..authorization"])
+            .expect("matching fields should be masked");
+
+        assert_eq!(masked["headers"]["authorization"], json!("*****"));
+        assert_eq!(
+            masked["records"][0]["payload"]["authorization"],
+            json!("*****")
+        );
+    }
+
+    #[test]
+    fn erases_fields_by_jsonpath_filter() {
+        let data = json!({
+            "addresses": [
+                {"postcode": 90210, "line": "private"},
+                {"postcode": 1000, "line": "public"}
+            ]
+        });
+
+        let masked = DataMasking::new()
+            .erase_fields(data, &["$.addresses[?(@.postcode > 12000)].line"])
+            .expect("matching fields should be masked");
+
+        assert_eq!(masked["addresses"][0]["line"], json!("*****"));
+        assert_eq!(masked["addresses"][1]["line"], json!("public"));
     }
 
     #[test]
