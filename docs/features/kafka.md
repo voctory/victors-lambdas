@@ -13,13 +13,15 @@ aws-lambda-powertools = { version = "0.1", features = ["kafka"] }
 - Preserve original base64-encoded keys and values alongside decoded fields.
 - Decode primitive keys and values as base64 `UTF-8` text.
 - Decode `JSON` keys and values into caller-provided Rust types.
+- Configure schema-aware key and value decoders with `KafkaSchemaConfig` and `KafkaSchemaConsumer`.
+- Capture `keySchemaMetadata` and `valueSchemaMetadata` supplied by Lambda Event Source Mapping Schema Registry
+  integration.
 - Decode Kafka headers from byte arrays into `UTF-8` strings while preserving the original byte arrays.
 - Optional Avro base64 datum decoding behind `kafka-avro`.
 - Optional Protobuf base64 message decoding behind `kafka-protobuf`, with plain, AWS Glue Schema Registry, and Confluent
   message-index framing helpers.
 
-Schema registry-backed consumer configuration is not implemented yet; schema helpers can be used on individual record
-fields after materialization.
+Avro and Protobuf schema-aware consumer decoders are available when `kafka-avro` and `kafka-protobuf` are enabled.
 
 ## Snippet
 

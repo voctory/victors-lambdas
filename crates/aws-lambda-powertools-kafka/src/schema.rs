@@ -1,7 +1,9 @@
 //! Schema-backed Kafka field deserializers.
 
+#[cfg(any(feature = "avro", feature = "protobuf"))]
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
+#[cfg(any(feature = "avro", feature = "protobuf"))]
 use crate::{KafkaConsumerError, KafkaConsumerResult};
 
 /// Decodes base64 bytes as an Avro datum using a parsed Avro schema.
@@ -16,13 +18,25 @@ pub fn decode_base64_avro<T>(encoded: &str, schema: &apache_avro::Schema) -> Kaf
 where
     T: serde::de::DeserializeOwned,
 {
-    let bytes = decode_base64_schema_field("value", encoded)?;
+    decode_base64_avro_field("value", encoded, schema)
+}
+
+#[cfg(feature = "avro")]
+pub(crate) fn decode_base64_avro_field<T>(
+    field: &'static str,
+    encoded: &str,
+    schema: &apache_avro::Schema,
+) -> KafkaConsumerResult<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    let bytes = decode_base64_schema_field(field, encoded)?;
     let mut reader = bytes.as_slice();
     let value = apache_avro::from_avro_datum(schema, &mut reader, None)
-        .map_err(|error| KafkaConsumerError::schema("value", "Avro", error))?;
+        .map_err(|error| KafkaConsumerError::schema(field, "Avro", error))?;
 
     apache_avro::from_value::<T>(&value)
-        .map_err(|error| KafkaConsumerError::schema("value", "Avro", error))
+        .map_err(|error| KafkaConsumerError::schema(field, "Avro", error))
 }
 
 /// Schema registry framing used by a Protobuf Kafka field.
@@ -68,37 +82,54 @@ pub fn decode_base64_protobuf_with_format<M>(
 where
     M: prost::Message + Default,
 {
-    let bytes = decode_base64_schema_field("value", encoded)?;
+    decode_base64_protobuf_with_format_field("value", encoded, format)
+}
+
+#[cfg(feature = "protobuf")]
+pub(crate) fn decode_base64_protobuf_with_format_field<M>(
+    field: &'static str,
+    encoded: &str,
+    format: ProtobufWireFormat,
+) -> KafkaConsumerResult<M>
+where
+    M: prost::Message + Default,
+{
+    let bytes = decode_base64_schema_field(field, encoded)?;
     let payload = match format {
         ProtobufWireFormat::Plain => bytes,
         ProtobufWireFormat::GlueSchemaRegistry => bytes
             .get(1..)
             .ok_or_else(|| {
-                KafkaConsumerError::schema(
-                    "value",
-                    "Protobuf",
-                    "missing Glue schema registry prefix",
-                )
+                KafkaConsumerError::schema(field, "Protobuf", "missing Glue schema registry prefix")
             })?
             .to_vec(),
-        ProtobufWireFormat::ConfluentSchemaRegistry => remove_confluent_message_indexes(&bytes)?,
+        ProtobufWireFormat::ConfluentSchemaRegistry => {
+            remove_confluent_message_indexes(field, &bytes)?
+        }
     };
 
     M::decode(payload.as_slice())
-        .map_err(|error| KafkaConsumerError::schema("value", "Protobuf", error))
+        .map_err(|error| KafkaConsumerError::schema(field, "Protobuf", error))
 }
 
-fn decode_base64_schema_field(field: &'static str, encoded: &str) -> KafkaConsumerResult<Vec<u8>> {
+#[cfg(any(feature = "avro", feature = "protobuf"))]
+pub(crate) fn decode_base64_schema_field(
+    field: &'static str,
+    encoded: &str,
+) -> KafkaConsumerResult<Vec<u8>> {
     STANDARD
         .decode(encoded)
         .map_err(|error| KafkaConsumerError::base64(field, error))
 }
 
 #[cfg(feature = "protobuf")]
-fn remove_confluent_message_indexes(bytes: &[u8]) -> KafkaConsumerResult<Vec<u8>> {
-    let (index_count, mut position) = decode_unsigned_varint(bytes)?;
+fn remove_confluent_message_indexes(
+    field: &'static str,
+    bytes: &[u8],
+) -> KafkaConsumerResult<Vec<u8>> {
+    let (index_count, mut position) = decode_unsigned_varint(field, bytes)?;
     for _ in 0..index_count {
-        let (_, next_position) = decode_unsigned_varint(&bytes[position..])?;
+        let (_, next_position) = decode_unsigned_varint(field, &bytes[position..])?;
         position += next_position;
     }
 
@@ -106,18 +137,18 @@ fn remove_confluent_message_indexes(bytes: &[u8]) -> KafkaConsumerResult<Vec<u8>
 }
 
 #[cfg(feature = "protobuf")]
-fn decode_unsigned_varint(bytes: &[u8]) -> KafkaConsumerResult<(u64, usize)> {
+fn decode_unsigned_varint(field: &'static str, bytes: &[u8]) -> KafkaConsumerResult<(u64, usize)> {
     let mut value = 0_u64;
 
     for (index, byte) in bytes.iter().enumerate() {
         let shift = u32::try_from(index)
             .ok()
             .and_then(|index| index.checked_mul(7))
-            .ok_or_else(|| KafkaConsumerError::schema("value", "Protobuf", "varint is too long"))?;
+            .ok_or_else(|| KafkaConsumerError::schema(field, "Protobuf", "varint is too long"))?;
 
         if shift >= u64::BITS {
             return Err(KafkaConsumerError::schema(
-                "value",
+                field,
                 "Protobuf",
                 "varint is too long",
             ));
@@ -130,7 +161,7 @@ fn decode_unsigned_varint(bytes: &[u8]) -> KafkaConsumerResult<(u64, usize)> {
     }
 
     Err(KafkaConsumerError::schema(
-        "value",
+        field,
         "Protobuf",
         "unterminated varint",
     ))

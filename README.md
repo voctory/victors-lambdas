@@ -23,7 +23,8 @@ first implementation tranche has landed:
   custom, and regex masking strategies, provider encryption/decryption, an optional direct AWS KMS provider, and
   configurable missing-field behavior
 - Kafka consumer record materialization that flattens Lambda Kafka event records, decodes primitive or JSON base64 keys
-  and values, provides optional Avro and Protobuf decode helpers, decodes headers, and preserves original encoded fields
+  and values, supports schema-aware key/value decoder configuration with Event Source Mapping metadata, provides
+  optional Avro and Protobuf decode helpers, decodes headers, and preserves original encoded fields
 - sync and async seekable streaming over byte-range and AWS SDK-backed S3 object range sources with optional gzip, CSV,
   and ZIP transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway

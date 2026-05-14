@@ -182,17 +182,20 @@ pub mod prelude {
 
     #[cfg(feature = "kafka")]
     pub use aws_lambda_powertools_kafka::{
-        ConsumerRecord, ConsumerRecords, KafkaConsumer, KafkaConsumerConfig, KafkaConsumerError,
-        KafkaConsumerErrorKind, KafkaConsumerResult, KafkaFieldDeserializer, consumer_records,
-        decode_base64_json, decode_base64_string,
+        ConsumerRecord, ConsumerRecords, JsonKafkaFieldDecoder, KafkaConsumer, KafkaConsumerConfig,
+        KafkaConsumerError, KafkaConsumerErrorKind, KafkaConsumerResult, KafkaField,
+        KafkaFieldDecoder, KafkaFieldDeserializer, KafkaSchemaConfig, KafkaSchemaConsumer,
+        KafkaSchemaMetadata, KafkaSchemaType, PrimitiveKafkaFieldDecoder, consumer_records,
+        decode_base64_json, decode_base64_string, schema_consumer_records,
     };
 
     #[cfg(feature = "kafka-avro")]
-    pub use aws_lambda_powertools_kafka::decode_base64_avro;
+    pub use aws_lambda_powertools_kafka::{AvroKafkaFieldDecoder, decode_base64_avro};
 
     #[cfg(feature = "kafka-protobuf")]
     pub use aws_lambda_powertools_kafka::{
-        ProtobufWireFormat, decode_base64_protobuf, decode_base64_protobuf_with_format,
+        ProtobufKafkaFieldDecoder, ProtobufWireFormat, decode_base64_protobuf,
+        decode_base64_protobuf_with_format,
     };
 
     #[cfg(feature = "logger")]

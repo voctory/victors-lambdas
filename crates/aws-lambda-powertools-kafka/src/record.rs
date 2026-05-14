@@ -8,7 +8,8 @@ use chrono::{DateTime, Utc};
 use serde::de::DeserializeOwned;
 
 use crate::{
-    KafkaConsumerConfig, KafkaConsumerError, KafkaConsumerResult, config::KafkaFieldDeserializer,
+    KafkaConsumerConfig, KafkaConsumerError, KafkaConsumerResult, KafkaField, KafkaFieldDecoder,
+    KafkaSchemaConfig, KafkaSchemaMetadata, config::KafkaFieldDeserializer,
 };
 
 /// A flattened Kafka record with decoded key, value, and headers.
@@ -34,6 +35,10 @@ pub struct ConsumerRecord<K, V> {
     pub original_key: Option<String>,
     /// Original base64-encoded value, if present.
     pub original_value: Option<String>,
+    /// Schema metadata for the key supplied by Lambda Event Source Mapping.
+    pub key_schema_metadata: Option<KafkaSchemaMetadata>,
+    /// Schema metadata for the value supplied by Lambda Event Source Mapping.
+    pub value_schema_metadata: Option<KafkaSchemaMetadata>,
     /// Headers decoded from byte arrays into `UTF-8` strings.
     pub headers: Vec<HashMap<String, String>>,
     /// Original header byte arrays from the Lambda event.
@@ -95,6 +100,35 @@ impl<'records, K, V> IntoIterator for &'records ConsumerRecords<K, V> {
 pub struct KafkaConsumer<K, V> {
     config: KafkaConsumerConfig,
     marker: PhantomData<fn() -> (K, V)>,
+}
+
+/// Schema-aware Kafka consumer helper that decodes Lambda Kafka event records.
+#[derive(Clone, Debug)]
+pub struct KafkaSchemaConsumer<K, V> {
+    config: KafkaSchemaConfig<K, V>,
+}
+
+impl<K, V> KafkaSchemaConsumer<K, V> {
+    /// Creates a schema-aware Kafka consumer helper.
+    #[must_use]
+    pub const fn new(config: KafkaSchemaConfig<K, V>) -> Self {
+        Self { config }
+    }
+
+    /// Returns the configured Kafka schema decoders.
+    #[must_use]
+    pub const fn config(&self) -> &KafkaSchemaConfig<K, V> {
+        &self.config
+    }
+
+    /// Decodes and flattens records from a Lambda Kafka event with schema-aware decoders.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a configured key, value, or header cannot be decoded.
+    pub fn records(&self, event: KafkaEvent) -> KafkaConsumerResult<ConsumerRecords<K, V>> {
+        schema_consumer_records(event, &self.config)
+    }
 }
 
 impl<K, V> Default for KafkaConsumer<K, V> {
@@ -171,6 +205,31 @@ where
     K: DeserializeOwned,
     V: DeserializeOwned,
 {
+    flatten_records(event, |source_key, record| {
+        decode_record(source_key, record, config)
+    })
+}
+
+/// Decodes and flattens records from a Lambda Kafka event with schema-aware decoders.
+///
+/// Records are flattened in sorted source-key order and keep their order within each source-key group.
+///
+/// # Errors
+///
+/// Returns an error when a configured key, value, or header cannot be decoded.
+pub fn schema_consumer_records<K, V>(
+    event: KafkaEvent,
+    config: &KafkaSchemaConfig<K, V>,
+) -> KafkaConsumerResult<ConsumerRecords<K, V>> {
+    flatten_records(event, |source_key, record| {
+        decode_record_with_schema(source_key, record, config)
+    })
+}
+
+fn flatten_records<K, V>(
+    event: KafkaEvent,
+    mut decode: impl FnMut(String, LambdaKafkaRecord) -> KafkaConsumerResult<ConsumerRecord<K, V>>,
+) -> KafkaConsumerResult<ConsumerRecords<K, V>> {
     let KafkaEvent {
         event_source,
         event_source_arn,
@@ -186,7 +245,7 @@ where
     for (source_key, records) in grouped_records {
         flattened.reserve(records.len());
         for record in records {
-            flattened.push(decode_record(source_key.clone(), record, config)?);
+            flattened.push(decode(source_key.clone(), record)?);
         }
     }
 
@@ -207,6 +266,8 @@ where
     K: DeserializeOwned,
     V: DeserializeOwned,
 {
+    let key_schema_metadata = schema_metadata(&record, "keySchemaMetadata");
+    let value_schema_metadata = schema_metadata(&record, "valueSchemaMetadata");
     let key = deserialize_optional_field(record.key.as_deref(), config.key_deserializer(), "key")?;
     let value = deserialize_optional_field(
         record.value.as_deref(),
@@ -226,9 +287,69 @@ where
         value,
         original_key: record.key,
         original_value: record.value,
+        key_schema_metadata,
+        value_schema_metadata,
         headers,
         original_headers: record.headers,
     })
+}
+
+fn decode_record_with_schema<K, V>(
+    source_key: String,
+    record: LambdaKafkaRecord,
+    config: &KafkaSchemaConfig<K, V>,
+) -> KafkaConsumerResult<ConsumerRecord<K, V>> {
+    let key_schema_metadata = schema_metadata(&record, "keySchemaMetadata");
+    let value_schema_metadata = schema_metadata(&record, "valueSchemaMetadata");
+    let key = decode_optional_with_decoder(
+        record.key.as_deref(),
+        config.key_decoder(),
+        key_schema_metadata.as_ref(),
+        KafkaField::Key,
+    )?;
+    let value = decode_optional_with_decoder(
+        record.value.as_deref(),
+        config.value_decoder(),
+        value_schema_metadata.as_ref(),
+        KafkaField::Value,
+    )?;
+    let headers = decode_headers(&record.headers)?;
+
+    Ok(ConsumerRecord {
+        source_key,
+        topic: record.topic,
+        partition: record.partition,
+        offset: record.offset,
+        timestamp: record.timestamp.0,
+        timestamp_type: record.timestamp_type,
+        key,
+        value,
+        original_key: record.key,
+        original_value: record.value,
+        key_schema_metadata,
+        value_schema_metadata,
+        headers,
+        original_headers: record.headers,
+    })
+}
+
+fn schema_metadata(record: &LambdaKafkaRecord, field: &str) -> Option<KafkaSchemaMetadata> {
+    record
+        .other
+        .get(field)
+        .and_then(KafkaSchemaMetadata::from_value)
+}
+
+fn decode_optional_with_decoder<T>(
+    encoded: Option<&str>,
+    decoder: &dyn KafkaFieldDecoder<T>,
+    metadata: Option<&KafkaSchemaMetadata>,
+    field: KafkaField,
+) -> KafkaConsumerResult<Option<T>> {
+    match encoded {
+        Some(value) if !value.is_empty() => decoder.decode(value, metadata, field).map(Some),
+        _ => Ok(None),
+    }
 }
 
 fn deserialize_optional_field<T>(
@@ -263,12 +384,18 @@ where
     }
 }
 
-fn decode_base64_string_field(field: &'static str, encoded: &str) -> KafkaConsumerResult<String> {
+pub(crate) fn decode_base64_string_field(
+    field: &'static str,
+    encoded: &str,
+) -> KafkaConsumerResult<String> {
     let bytes = decode_base64_field(field, encoded)?;
     String::from_utf8(bytes).map_err(|error| KafkaConsumerError::utf8(field, error))
 }
 
-fn decode_base64_json_field<T>(field: &'static str, encoded: &str) -> KafkaConsumerResult<T>
+pub(crate) fn decode_base64_json_field<T>(
+    field: &'static str,
+    encoded: &str,
+) -> KafkaConsumerResult<T>
 where
     T: DeserializeOwned,
 {
@@ -276,7 +403,10 @@ where
     serde_json::from_slice(&bytes).map_err(|error| KafkaConsumerError::json(field, error))
 }
 
-fn decode_base64_field(field: &'static str, encoded: &str) -> KafkaConsumerResult<Vec<u8>> {
+pub(crate) fn decode_base64_field(
+    field: &'static str,
+    encoded: &str,
+) -> KafkaConsumerResult<Vec<u8>> {
     STANDARD
         .decode(encoded)
         .map_err(|error| KafkaConsumerError::base64(field, error))
@@ -305,14 +435,31 @@ fn decode_headers(
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "protobuf")]
+    use prost::Message;
     use serde::Deserialize;
     use serde_json::json;
+
+    #[cfg(feature = "avro")]
+    use crate::AvroKafkaFieldDecoder;
+    #[cfg(feature = "protobuf")]
+    use crate::ProtobufKafkaFieldDecoder;
+    use crate::{JsonKafkaFieldDecoder, PrimitiveKafkaFieldDecoder};
 
     use super::*;
 
     #[derive(Debug, Deserialize, PartialEq)]
     struct Order {
         order_id: String,
+        quantity: u32,
+    }
+
+    #[cfg(feature = "protobuf")]
+    #[derive(Clone, PartialEq, prost::Message)]
+    struct ProtoOrder {
+        #[prost(string, tag = "1")]
+        order_id: String,
+        #[prost(uint32, tag = "2")]
         quantity: u32,
     }
 
@@ -426,6 +573,179 @@ mod tests {
         assert_eq!(record.value, None);
         assert_eq!(record.original_key.as_deref(), Some(""));
         assert_eq!(record.original_value, None);
+    }
+
+    #[test]
+    fn schema_consumer_decodes_json_values_and_captures_metadata() {
+        let key = STANDARD.encode("customer-1");
+        let value = STANDARD.encode(r#"{"order_id":"order-1","quantity":2}"#);
+        let event = kafka_event(&json!({
+            "orders-0": [{
+                "topic": "orders",
+                "partition": 0,
+                "offset": 18,
+                "timestamp": 1_690_900_003_000_i64,
+                "timestampType": "CREATE_TIME",
+                "key": key,
+                "value": value,
+                "valueSchemaMetadata": {
+                    "dataFormat": "JSON",
+                    "schemaId": "json-value-schema"
+                },
+                "headers": []
+            }]
+        }));
+        let config =
+            KafkaSchemaConfig::<String, Order>::new().with_value_decoder(JsonKafkaFieldDecoder);
+
+        let records = KafkaSchemaConsumer::new(config)
+            .records(event)
+            .expect("record should decode");
+        let record = records.records.first().expect("record should exist");
+
+        assert_eq!(record.key.as_deref(), Some("customer-1"));
+        assert_eq!(
+            record.value.as_ref(),
+            Some(&Order {
+                order_id: "order-1".to_string(),
+                quantity: 2,
+            })
+        );
+        assert_eq!(
+            record
+                .value_schema_metadata
+                .as_ref()
+                .and_then(KafkaSchemaMetadata::data_format),
+            Some("JSON")
+        );
+        assert_eq!(
+            record
+                .value_schema_metadata
+                .as_ref()
+                .and_then(KafkaSchemaMetadata::schema_id),
+            Some("json-value-schema")
+        );
+    }
+
+    #[test]
+    fn schema_consumer_rejects_schema_format_mismatches() {
+        let value = STANDARD.encode(r#"{"order_id":"order-1","quantity":2}"#);
+        let event = kafka_event(&json!({
+            "orders-0": [{
+                "topic": "orders",
+                "partition": 0,
+                "offset": 19,
+                "timestamp": 1_690_900_004_000_i64,
+                "timestampType": "CREATE_TIME",
+                "key": null,
+                "value": value,
+                "valueSchemaMetadata": {
+                    "dataFormat": "AVRO",
+                    "schemaId": "avro-value-schema"
+                },
+                "headers": []
+            }]
+        }));
+        let config =
+            KafkaSchemaConfig::<String, Order>::new().with_value_decoder(JsonKafkaFieldDecoder);
+
+        let error = KafkaSchemaConsumer::new(config)
+            .records(event)
+            .expect_err("metadata mismatch should fail");
+
+        assert_eq!(error.kind(), crate::KafkaConsumerErrorKind::Schema);
+    }
+
+    #[cfg(feature = "avro")]
+    #[test]
+    fn schema_consumer_decodes_avro_values() {
+        let schema = r#"{
+            "type": "record",
+            "name": "Order",
+            "fields": [
+                {"name": "order_id", "type": "string"},
+                {"name": "quantity", "type": "int"}
+            ]
+        }"#;
+        let parsed_schema = apache_avro::Schema::parse_str(schema).expect("schema should parse");
+        let value = apache_avro::types::Value::Record(vec![
+            (
+                "order_id".to_string(),
+                apache_avro::types::Value::String("order-1".to_string()),
+            ),
+            ("quantity".to_string(), apache_avro::types::Value::Int(2)),
+        ]);
+        let encoded =
+            STANDARD.encode(apache_avro::to_avro_datum(&parsed_schema, value).expect("datum"));
+        let event = kafka_event(&json!({
+            "orders-0": [{
+                "topic": "orders",
+                "partition": 0,
+                "offset": 20,
+                "timestamp": 1_690_900_005_000_i64,
+                "timestampType": "CREATE_TIME",
+                "key": null,
+                "value": encoded,
+                "valueSchemaMetadata": {
+                    "dataFormat": "AVRO",
+                    "schemaId": "avro-value-schema"
+                },
+                "headers": []
+            }]
+        }));
+        let config = KafkaSchemaConfig::<String, Order>::new()
+            .with_value_decoder(AvroKafkaFieldDecoder::new(schema).expect("decoder"));
+
+        let records = KafkaSchemaConsumer::new(config)
+            .records(event)
+            .expect("record should decode");
+        let record = records.records.first().expect("record should exist");
+
+        assert_eq!(
+            record.value.as_ref(),
+            Some(&Order {
+                order_id: "order-1".to_string(),
+                quantity: 2,
+            })
+        );
+    }
+
+    #[cfg(feature = "protobuf")]
+    #[test]
+    fn schema_consumer_decodes_protobuf_values_from_schema_metadata() {
+        let order = ProtoOrder {
+            order_id: "order-1".to_string(),
+            quantity: 2,
+        };
+        let mut bytes = vec![0];
+        bytes.extend(order.encode_to_vec());
+        let event = kafka_event(&json!({
+            "orders-0": [{
+                "topic": "orders",
+                "partition": 0,
+                "offset": 21,
+                "timestamp": 1_690_900_006_000_i64,
+                "timestampType": "CREATE_TIME",
+                "key": null,
+                "value": STANDARD.encode(bytes),
+                "valueSchemaMetadata": {
+                    "dataFormat": "PROTOBUF",
+                    "schemaId": "7d55d475-2244-4485-8341-f74468c1e058"
+                },
+                "headers": []
+            }]
+        }));
+        let config = KafkaSchemaConfig::<String, ProtoOrder>::from_decoders(
+            PrimitiveKafkaFieldDecoder,
+            ProtobufKafkaFieldDecoder::from_schema_metadata(),
+        );
+
+        let records = KafkaSchemaConsumer::new(config)
+            .records(event)
+            .expect("record should decode");
+        let record = records.records.first().expect("record should exist");
+
+        assert_eq!(record.value.as_ref(), Some(&order));
     }
 
     fn kafka_event(records: &serde_json::Value) -> KafkaEvent {
