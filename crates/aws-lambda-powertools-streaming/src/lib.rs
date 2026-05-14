@@ -1,11 +1,16 @@
 //! Seekable streaming utility.
 
 mod error;
+mod s3;
 mod source;
 mod stream;
 mod transform;
 
 pub use error::{StreamingError, StreamingErrorKind, StreamingResult};
+pub use s3::{
+    S3GetObjectRangeRequest, S3HeadObjectOutput, S3HeadObjectRequest, S3ObjectClient,
+    S3ObjectIdentifier, S3RangeSource,
+};
 pub use source::{BytesRangeSource, RangeSource};
 pub use stream::SeekableStream;
 

@@ -292,8 +292,9 @@ pub mod prelude {
 
     #[cfg(feature = "streaming")]
     pub use aws_lambda_powertools_streaming::{
-        BytesRangeSource, RangeSource, SeekableStream, StreamingError, StreamingErrorKind,
-        StreamingResult,
+        BytesRangeSource, RangeSource, S3GetObjectRangeRequest, S3HeadObjectOutput,
+        S3HeadObjectRequest, S3ObjectClient, S3ObjectIdentifier, S3RangeSource, SeekableStream,
+        StreamingError, StreamingErrorKind, StreamingResult,
     };
 
     #[cfg(feature = "streaming-csv")]
