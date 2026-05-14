@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "type": "REQUEST",
+  "methodArn": "arn:aws:execute-api:us-west-2:123456789012:api-id/prod/GET/orders/123",
+  "identitySource": "Bearer allow",
+  "authorizationToken": "Bearer allow",
+  "resource": "/orders/{orderId}",
+  "path": "/orders/123",
+  "httpMethod": "GET",
+  "headers": {
+    "Authorization": "Bearer allow"
+  },
+  "queryStringParameters": {
+    "expand": "items"
+  },
+  "pathParameters": {
+    "orderId": "123"
+  },
+  "stageVariables": {
+    "env": "test"
+  },
+  "requestContext": {
+    "path": "/orders/123",
+    "accountId": "123456789012",
+    "resourceId": "resource-id",
+    "stage": "prod",
+    "requestId": "request-id",
+    "identity": {
+      "sourceIp": "203.0.113.1"
+    },
+    "resourcePath": "/orders/{orderId}",
+    "httpMethod": "GET",
+    "apiId": "api-id"
+  }
+}

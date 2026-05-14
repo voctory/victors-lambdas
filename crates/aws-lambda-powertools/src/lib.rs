@@ -206,6 +206,13 @@ pub mod prelude {
         TransferFamilyResponseError, TransferFamilyResponseResult,
     };
 
+    #[cfg(feature = "parser-aws-lambda-events")]
+    pub use aws_lambda_powertools_parser::{
+        ApiGatewayAuthorizerHttpApiV1Request, ApiGatewayAuthorizerIamPolicyResponse,
+        ApiGatewayAuthorizerRequest, ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
+        ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken,
+    };
+
     #[cfg(feature = "tracer")]
     pub use aws_lambda_powertools_tracer::{
         TraceContext, TraceFields, TraceSegment, TraceValue, Tracer, TracerConfig,

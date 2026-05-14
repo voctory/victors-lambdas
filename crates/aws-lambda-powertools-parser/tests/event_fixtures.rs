@@ -26,7 +26,11 @@ use aws_lambda_events::event::{
     sqs::SqsEvent,
     vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
 };
-use aws_lambda_powertools_parser::{AppSyncEventsEvent, EventParser};
+use aws_lambda_powertools_parser::{
+    ApiGatewayAuthorizerHttpApiV1Request, ApiGatewayAuthorizerIamPolicyResponse,
+    ApiGatewayAuthorizerRequest, ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
+    ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, AppSyncEventsEvent, EventParser,
+};
 use aws_lambda_powertools_testing::load_json_fixture;
 use serde::Deserialize;
 use serde_json::Value;
@@ -104,6 +108,81 @@ fn parses_api_gateway_websocket_body_fixture() {
 
     assert_eq!(parsed.payload().order_id, "order-apigw-websocket-1");
     assert_eq!(parsed.payload().quantity, 15);
+}
+
+#[test]
+fn parses_api_gateway_token_authorizer_fixture() {
+    let event =
+        load_json_fixture::<ApiGatewayAuthorizerToken>(fixture("apigw-authorizer-token.json"))
+            .expect("API Gateway TOKEN authorizer fixture should decode");
+
+    assert_eq!(event.type_.as_deref(), Some("TOKEN"));
+    assert_eq!(event.authorization_token.as_deref(), Some("allow"));
+    assert_eq!(
+        event.method_arn.as_deref(),
+        Some("arn:aws:execute-api:us-west-2:123456789012:api-id/prod/GET/orders")
+    );
+}
+
+#[test]
+fn parses_api_gateway_request_authorizer_fixture() {
+    let event =
+        load_json_fixture::<ApiGatewayAuthorizerRequest>(fixture("apigw-authorizer-request.json"))
+            .expect("API Gateway REQUEST authorizer fixture should decode");
+
+    assert_eq!(event.type_.as_deref(), Some("REQUEST"));
+    assert_eq!(event.path.as_deref(), Some("/orders/123"));
+    assert_eq!(
+        event.request_context.account_id.as_deref(),
+        Some("123456789012")
+    );
+}
+
+#[test]
+fn parses_api_gateway_http_api_v1_authorizer_fixture() {
+    let event = load_json_fixture::<ApiGatewayAuthorizerHttpApiV1Request>(fixture(
+        "apigw-authorizer-http-api-v1-request.json",
+    ))
+    .expect("API Gateway HTTP API v1 authorizer fixture should decode");
+
+    assert_eq!(event.version.as_deref(), Some("1.0"));
+    assert_eq!(event.identity_source.as_deref(), Some("Bearer allow"));
+    assert_eq!(event.request_context.http_method.as_str(), "GET");
+}
+
+#[test]
+fn parses_api_gateway_v2_authorizer_fixture() {
+    let event = load_json_fixture::<ApiGatewayAuthorizerRequestV2>(fixture(
+        "apigw-authorizer-v2-request.json",
+    ))
+    .expect("API Gateway v2 authorizer fixture should decode");
+
+    assert_eq!(event.version.as_deref(), Some("2.0"));
+    assert_eq!(
+        event.route_arn.as_deref(),
+        Some("arn:aws:execute-api:us-west-2:123456789012:api-id/prod/GET/orders/123")
+    );
+    assert_eq!(event.request_context.http.method.as_str(), "GET");
+}
+
+#[test]
+fn parses_api_gateway_authorizer_response_fixtures() {
+    let response = load_json_fixture::<ApiGatewayAuthorizerResponse>(fixture(
+        "apigw-authorizer-iam-response.json",
+    ))
+    .expect("API Gateway authorizer IAM response fixture should decode");
+    let http_api_response = load_json_fixture::<ApiGatewayAuthorizerIamPolicyResponse>(fixture(
+        "apigw-authorizer-iam-response.json",
+    ))
+    .expect("API Gateway HTTP API IAM response fixture should decode");
+    let simple_response = load_json_fixture::<ApiGatewayAuthorizerSimpleResponse>(fixture(
+        "apigw-authorizer-simple-response.json",
+    ))
+    .expect("API Gateway HTTP API simple response fixture should decode");
+
+    assert_eq!(response.principal_id.as_deref(), Some("user-123"));
+    assert_eq!(http_api_response.principal_id.as_deref(), Some("user-123"));
+    assert!(simple_response.is_authorized);
 }
 
 #[test]

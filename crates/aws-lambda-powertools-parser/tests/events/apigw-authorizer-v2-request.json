@@ -1,0 +1,39 @@
+{
+  "version": "2.0",
+  "type": "REQUEST",
+  "routeArn": "arn:aws:execute-api:us-west-2:123456789012:api-id/prod/GET/orders/123",
+  "identitySource": ["$request.header.Authorization"],
+  "routeKey": "GET /orders/{orderId}",
+  "rawPath": "/orders/123",
+  "rawQueryString": "expand=items",
+  "headers": {
+    "authorization": "Bearer allow"
+  },
+  "queryStringParameters": {
+    "expand": "items"
+  },
+  "requestContext": {
+    "accountId": "123456789012",
+    "apiId": "api-id",
+    "domainName": "api.example.test",
+    "domainPrefix": "api",
+    "http": {
+      "method": "GET",
+      "path": "/orders/123",
+      "protocol": "HTTP/1.1",
+      "sourceIp": "203.0.113.1",
+      "userAgent": "fixture"
+    },
+    "requestId": "request-id",
+    "routeKey": "GET /orders/{orderId}",
+    "stage": "prod",
+    "time": "01/Jan/2025:00:00:00 +0000",
+    "timeEpoch": 1735689600000
+  },
+  "pathParameters": {
+    "orderId": "123"
+  },
+  "stageVariables": {
+    "env": "test"
+  }
+}

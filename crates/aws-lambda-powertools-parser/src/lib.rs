@@ -18,6 +18,27 @@ pub use appsync_events::{
     AppSyncEventsIncomingEvent, AppSyncEventsInfo, AppSyncEventsLambdaIdentity, AppSyncEventsModel,
     AppSyncEventsOidcIdentity, AppSyncEventsOperation, AppSyncEventsRequest,
 };
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayCustomAuthorizerRequest as ApiGatewayAuthorizerToken;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayCustomAuthorizerRequestTypeRequest as ApiGatewayAuthorizerRequest;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayCustomAuthorizerResponse as ApiGatewayAuthorizerResponse;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerIamPolicyResponse as ApiGatewayAuthorizerIamPolicyResponse;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerSimpleResponse as ApiGatewayAuthorizerSimpleResponse;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerV1Request as ApiGatewayAuthorizerHttpApiV1Request;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerV2Request as ApiGatewayAuthorizerRequestV2;
 pub use bedrock_agent::{
     BedrockAgentEvent, BedrockAgentEventModel, BedrockAgentFunctionAgent,
     BedrockAgentFunctionEvent, BedrockAgentFunctionEventModel, BedrockAgentFunctionParameter,
