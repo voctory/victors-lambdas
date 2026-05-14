@@ -9,6 +9,9 @@ publish = false
 
 [dependencies]
 aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["tracer-opentelemetry", "tracer-xray-daemon"] }
+opentelemetry = { version = "0.32.0", default-features = false, features = ["trace"] }
+opentelemetry-stdout = { version = "0.32.0", default-features = false, features = ["trace"] }
+opentelemetry_sdk = { version = "0.32.0", default-features = false, features = ["trace"] }
 
 [lints]
 workspace = true

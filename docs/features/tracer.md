@@ -45,6 +45,9 @@ aws-lambda-powertools = { version = "0.1", features = ["tracer-opentelemetry"] }
 global provider or choose an OTLP exporter; wire the returned values into the OpenTelemetry SDK/exporter that fits your
 Lambda runtime setup.
 
+The buildable tracer snippet shows this boundary with `opentelemetry_sdk` and the stdout span exporter. Use it as a
+shape for OTLP or vendor exporters by replacing the exporter passed to `SdkTracerProvider::builder`.
+
 ## X-Ray Documents
 
 Enable `tracer-xray` to render a segment as an X-Ray-compatible subsegment document:
@@ -73,7 +76,7 @@ rendered document, or `send_subsegment` to render a `TraceSegment` and send it i
 
 The buildable snippet in [examples/snippets/tracer/src/main.rs](../../examples/snippets/tracer/src/main.rs) parses an
 X-Ray header, records annotations and metadata, captures a response, renders a subsegment document, converts the segment
-into an OpenTelemetry span builder, and configures the daemon client.
+into an OpenTelemetry SDK span with a stdout exporter, and configures the daemon client.
 
 Run it locally with:
 
