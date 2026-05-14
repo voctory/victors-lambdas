@@ -91,7 +91,7 @@ pub use request::Request;
 pub use response::Response;
 pub use route::{
     AsyncFallibleHandler, AsyncHandler, AsyncRoute, FallibleHandler, FallibleResponseFuture,
-    Handler, PathParams, ResponseFuture, Route, RouteError, RouteResult,
+    Handler, MatchedRoute, PathParams, ResponseFuture, Route, RouteError, RouteResult,
 };
 pub use router::{
     AsyncErrorHandler, AsyncRouteMatch, AsyncRouter, ErrorHandler, RequestMiddleware,

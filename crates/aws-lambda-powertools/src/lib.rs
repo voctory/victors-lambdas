@@ -104,9 +104,9 @@ pub mod prelude {
     pub use aws_lambda_powertools_event_handler::{
         AsyncErrorHandler, AsyncFallibleHandler, AsyncHandler, AsyncRoute, AsyncRouteMatch,
         AsyncRouter, CorsConfig, ErrorHandler, Extensions, FallibleHandler, FallibleResponseFuture,
-        Handler, HttpError, Method, ParseMethodError, PathParams, Request, RequestMiddleware,
-        Response, ResponseFuture, ResponseMiddleware, Route, RouteError, RouteMatch, RouteResult,
-        Router,
+        Handler, HttpError, MatchedRoute, Method, ParseMethodError, PathParams, Request,
+        RequestMiddleware, Response, ResponseFuture, ResponseMiddleware, Route, RouteError,
+        RouteMatch, RouteResult, Router,
     };
 
     #[cfg(feature = "event-handler-validation")]

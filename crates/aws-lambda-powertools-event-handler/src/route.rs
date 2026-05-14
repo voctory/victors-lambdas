@@ -91,6 +91,40 @@ impl PathParams {
     }
 }
 
+/// Route metadata for the route selected by a router.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MatchedRoute {
+    method: Method,
+    path: String,
+}
+
+impl MatchedRoute {
+    pub(crate) fn new(method: Method, path: impl Into<String>) -> Self {
+        Self {
+            method,
+            path: path.into(),
+        }
+    }
+
+    /// Returns the matched route method.
+    #[must_use]
+    pub const fn method(&self) -> Method {
+        self.method
+    }
+
+    /// Returns the matched route path pattern.
+    #[must_use]
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    /// Returns a stable route label such as `GET /orders/{id}`.
+    #[must_use]
+    pub fn label(&self) -> String {
+        format!("{} {}", self.method.as_str(), self.path)
+    }
+}
+
 /// Registered HTTP route.
 ///
 /// Dynamic path parameters use whole path segments wrapped in braces, such as

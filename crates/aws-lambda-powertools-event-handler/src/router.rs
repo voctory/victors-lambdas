@@ -668,6 +668,7 @@ impl Router {
         };
         let route = route_match.route;
 
+        request.set_matched_route(route.method(), route.path());
         request.set_path_params(&route_match.path_params);
         request = route.apply_request_middleware(request);
         #[cfg(feature = "validation")]
@@ -1362,6 +1363,7 @@ impl AsyncRouter {
         };
         let route = route_match.route;
 
+        request.set_matched_route(route.method(), route.path());
         request.set_path_params(&route_match.path_params);
         request = route.apply_request_middleware(request);
         #[cfg(feature = "validation")]
@@ -1857,6 +1859,44 @@ mod tests {
         assert_eq!(route_match.path_param("order_id"), Some("order-1"));
         assert_eq!(route_match.path_param("item_id"), Some("item-7"));
         assert_eq!(response.body(), b"order-1:item-7");
+    }
+
+    #[test]
+    fn matched_route_is_available_to_handlers_and_response_middleware() {
+        let mut router = Router::new();
+        router.add_response_middleware(|request, response| {
+            let route = request
+                .matched_route()
+                .map_or_else(|| "NOT_FOUND".to_owned(), crate::MatchedRoute::label);
+            response.with_header("x-route", route)
+        });
+        router.get("/orders/{order_id}", |request| {
+            let route = request.matched_route().expect("route is matched");
+
+            assert_eq!(route.method(), Method::Get);
+            assert_eq!(route.path(), "/orders/{order_id}");
+
+            Response::ok(route.label())
+        });
+
+        let response = router.handle(Request::new(Method::Get, "/orders/order-1"));
+
+        assert_eq!(response.body(), b"GET /orders/{order_id}");
+        assert_eq!(response.header("x-route"), Some("GET /orders/{order_id}"));
+    }
+
+    #[test]
+    fn unmatched_requests_do_not_have_matched_route_metadata() {
+        let mut router = Router::new();
+        router.add_response_middleware(|request, response| {
+            assert!(request.matched_route().is_none());
+            response.with_header("x-route", "NOT_FOUND")
+        });
+
+        let response = router.handle(Request::new(Method::Get, "/missing"));
+
+        assert_eq!(response.status_code(), 404);
+        assert_eq!(response.header("x-route"), Some("NOT_FOUND"));
     }
 
     #[test]
@@ -2479,6 +2519,32 @@ mod tests {
 
         assert_eq!(route_match.path_param("id"), Some("order-1"));
         assert_eq!(response.body(), b"order:order-1");
+    }
+
+    #[test]
+    fn async_router_exposes_matched_route_metadata() {
+        let mut router = AsyncRouter::new();
+        router.add_response_middleware(|request, response| {
+            let route = request
+                .matched_route()
+                .map_or_else(|| "NOT_FOUND".to_owned(), crate::MatchedRoute::label);
+            response.with_header("x-route", route)
+        });
+        router.get("/jobs/{id}", |request| {
+            async_response(async move {
+                let route = request.matched_route().expect("route is matched");
+
+                assert_eq!(route.method(), Method::Get);
+                assert_eq!(route.path(), "/jobs/{id}");
+
+                Response::ok(route.label())
+            })
+        });
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/jobs/job-1")));
+
+        assert_eq!(response.body(), b"GET /jobs/{id}");
+        assert_eq!(response.header("x-route"), Some("GET /jobs/{id}"));
     }
 
     #[test]

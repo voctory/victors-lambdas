@@ -1,6 +1,6 @@
 //! HTTP request type.
 
-use crate::{Extensions, Method, PathParams};
+use crate::{Extensions, MatchedRoute, Method, PathParams};
 
 /// Dependency-free HTTP request passed to route handlers.
 ///
@@ -13,6 +13,7 @@ pub struct Request {
     headers: Vec<(String, String)>,
     query_string_parameters: Vec<(String, String)>,
     path_params: PathParams,
+    matched_route: Option<MatchedRoute>,
     extensions: Extensions,
     shared_extensions: Extensions,
     body: Vec<u8>,
@@ -28,6 +29,7 @@ impl Request {
             headers: Vec::new(),
             query_string_parameters: Vec::new(),
             path_params: PathParams::new(),
+            matched_route: None,
             extensions: Extensions::new(),
             shared_extensions: Extensions::new(),
             body: Vec::new(),
@@ -86,6 +88,12 @@ impl Request {
     #[must_use]
     pub fn path_param(&self, name: &str) -> Option<&str> {
         self.path_params.get(name)
+    }
+
+    /// Returns the route selected by the router, if this request has been routed.
+    #[must_use]
+    pub const fn matched_route(&self) -> Option<&MatchedRoute> {
+        self.matched_route.as_ref()
     }
 
     /// Returns the request body bytes.
@@ -190,6 +198,10 @@ impl Request {
             }
         }
         self.path_params = merged;
+    }
+
+    pub(crate) fn set_matched_route(&mut self, method: Method, path: impl Into<String>) {
+        self.matched_route = Some(MatchedRoute::new(method, path));
     }
 
     pub(crate) fn set_shared_extensions(&mut self, shared_extensions: Extensions) {

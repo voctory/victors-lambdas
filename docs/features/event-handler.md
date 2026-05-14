@@ -17,6 +17,7 @@ aws-lambda-powertools = { version = "0.1", features = ["event-handler"] }
 - Router-level and route-specific request/response middleware.
 - Request-scoped typed extensions for middleware-to-handler data, and router shared typed extensions for values reused
   across requests.
+- Matched-route metadata on routed requests so handlers and response middleware can label observations by route pattern.
 - Optional CORS preflight handling and response headers with request `Origin` matching, wildcard/additional origins,
   AWS-friendly default request headers, and credential headers for non-wildcard origins.
 - Optional AppSync GraphQL scalar helpers for `ID`, `AWSDate`, `AWSTime`, `AWSDateTime`, and `AWSTimestamp`.
