@@ -21,6 +21,7 @@ aws-lambda-powertools = { version = "0.1", features = ["data-masking-kms"] }
 - Replace selected fields by common JSONPath-style selectors such as `$..password`,
   `items[*].card`, quoted segments, and simple comparison filters.
 - Use fixed, dynamic, custom, or regex masking strategies.
+- Apply per-field masking rules when different fields need different masking strategies.
 - Encrypt and decrypt JSON payloads through a `DataMaskingProvider`.
 - Optional `data-masking-kms` exposes `KmsDataMaskingProvider` for direct AWS KMS encrypt/decrypt calls.
 - Configure whether missing field paths return errors or are ignored.

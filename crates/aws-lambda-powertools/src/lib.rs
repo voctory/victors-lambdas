@@ -94,7 +94,7 @@ pub mod prelude {
     pub use aws_lambda_powertools_data_masking::{
         DATA_MASKING_STRING, DataMasking, DataMaskingConfig, DataMaskingError,
         DataMaskingErrorKind, DataMaskingProvider, DataMaskingResult, EncryptionContext,
-        MaskingOptions, MaskingStrategy, erase, erase_fields,
+        MaskingOptions, MaskingStrategy, erase, erase_fields, erase_fields_with_rules,
     };
 
     #[cfg(feature = "data-masking-kms")]

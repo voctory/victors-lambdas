@@ -107,6 +107,33 @@ impl DataMasking {
         self.erase_fields_with(data, fields, &MaskingOptions::fixed())
     }
 
+    /// Applies per-field masking strategies to selected fields.
+    ///
+    /// Each rule pairs a field path with the masking options used for matches at that path. Field
+    /// paths may be JSON Pointers such as `/customer/password`, dot paths such as
+    /// `customer.password`, or JSONPath-style selectors such as `$..password`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when no rules are provided, when a field path is invalid, when a field is
+    /// missing and the missing-field policy is enabled, or when a regex masking rule has an
+    /// invalid pattern.
+    pub fn erase_fields_with_rules(
+        &self,
+        mut data: Value,
+        rules: &[(&str, MaskingOptions)],
+    ) -> DataMaskingResult<Value> {
+        if rules.is_empty() {
+            return Err(DataMaskingError::invalid_path(""));
+        }
+
+        for (field, options) in rules {
+            self.mask_field(&mut data, field, options)?;
+        }
+
+        Ok(data)
+    }
+
     /// Applies a masking strategy to selected fields.
     ///
     /// Field paths may be JSON Pointers such as `/customer/password`, dot paths such as
@@ -128,29 +155,40 @@ impl DataMasking {
         }
 
         for field in fields {
-            let pointers = matching_json_pointers(&data, field)?;
-            if pointers.is_empty() {
-                if self.config.raise_on_missing_field() {
-                    return Err(DataMaskingError::missing_field(field));
-                }
-                continue;
-            }
-
-            for pointer in pointers {
-                match data.pointer_mut(&pointer) {
-                    Some(value) => {
-                        let masked = mask_value(value.take(), options)?;
-                        *value = masked;
-                    }
-                    None if self.config.raise_on_missing_field() => {
-                        return Err(DataMaskingError::missing_field(field));
-                    }
-                    None => {}
-                }
-            }
+            self.mask_field(&mut data, field, options)?;
         }
 
         Ok(data)
+    }
+
+    fn mask_field(
+        self,
+        data: &mut Value,
+        field: &str,
+        options: &MaskingOptions,
+    ) -> DataMaskingResult<()> {
+        let pointers = matching_json_pointers(data, field)?;
+        if pointers.is_empty() {
+            if self.config.raise_on_missing_field() {
+                return Err(DataMaskingError::missing_field(field));
+            }
+            return Ok(());
+        }
+
+        for pointer in pointers {
+            match data.pointer_mut(&pointer) {
+                Some(value) => {
+                    let masked = mask_value(value.take(), options)?;
+                    *value = masked;
+                }
+                None if self.config.raise_on_missing_field() => {
+                    return Err(DataMaskingError::missing_field(field));
+                }
+                None => {}
+            }
+        }
+
+        Ok(())
     }
 
     /// Parses a JSON string and replaces selected fields with the default mask.
@@ -242,6 +280,19 @@ pub fn erase(data: Value) -> Value {
 /// Returns an error when a field path is invalid or when a field is missing.
 pub fn erase_fields(data: Value, fields: &[&str]) -> DataMaskingResult<Value> {
     DataMasking::new().erase_fields(data, fields)
+}
+
+/// Applies per-field masking strategies to selected fields.
+///
+/// # Errors
+///
+/// Returns an error when no rules are provided, a field path is invalid, a field is missing, or a
+/// regex masking rule has an invalid pattern.
+pub fn erase_fields_with_rules(
+    data: Value,
+    rules: &[(&str, MaskingOptions)],
+) -> DataMaskingResult<Value> {
+    DataMasking::new().erase_fields_with_rules(data, rules)
 }
 
 #[cfg(test)]
@@ -338,6 +389,55 @@ mod tests {
             .expect("field should be masked");
 
         assert_eq!(masked["customer"]["card"], json!("************1111"));
+    }
+
+    #[test]
+    fn applies_per_field_masking_rules() {
+        let data = json!({
+            "customer": {
+                "name": "Ada",
+                "password": "secret",
+                "phone": "555-0100",
+                "cards": [
+                    {"number": "4111111111111111"},
+                    {"number": "5555555555554444"}
+                ]
+            }
+        });
+        let rules = [
+            ("customer.password", MaskingOptions::fixed()),
+            ("customer.phone", MaskingOptions::dynamic()),
+            ("customer.name", MaskingOptions::custom("REDACTED")),
+            (
+                "$.customer.cards[*].number",
+                MaskingOptions::regex(r"\d{12}(\d{4})", "************$1"),
+            ),
+        ];
+
+        let masked = DataMasking::new()
+            .erase_fields_with_rules(data, &rules)
+            .expect("rules should be applied");
+
+        assert_eq!(masked["customer"]["password"], json!("*****"));
+        assert_eq!(masked["customer"]["phone"], json!("***-****"));
+        assert_eq!(masked["customer"]["name"], json!("RED"));
+        assert_eq!(
+            masked["customer"]["cards"][0]["number"],
+            json!("************1111")
+        );
+        assert_eq!(
+            masked["customer"]["cards"][1]["number"],
+            json!("************4444")
+        );
+    }
+
+    #[test]
+    fn empty_per_field_masking_rules_error() {
+        let error = DataMasking::new()
+            .erase_fields_with_rules(json!({}), &[])
+            .expect_err("empty rules should fail");
+
+        assert_eq!(error.kind(), crate::DataMaskingErrorKind::InvalidPath);
     }
 
     #[test]
