@@ -2,6 +2,8 @@
 
 mod config;
 mod context;
+#[cfg(feature = "opentelemetry")]
+mod otel;
 mod segment;
 mod tracer;
 #[cfg(feature = "tracing")]
@@ -22,4 +24,6 @@ pub use xray::{XrayDocumentError, XrayDocumentResult};
 #[cfg(feature = "xray-daemon")]
 pub use xray_daemon::{XrayDaemonClient, XrayDaemonConfig, XrayDaemonError};
 
-pub(crate) use value::{normalize_key, write_json_string};
+pub(crate) use value::normalize_key;
+#[cfg(feature = "xray")]
+pub(crate) use value::write_json_string;

@@ -27,8 +27,23 @@ environment variables.
 - Optional response and error capture.
 - JSON-compatible trace values with deterministic field ordering.
 - Optional `tracing` span creation through `tracer-tracing`.
+- Optional OpenTelemetry span builder and attribute export through `tracer-opentelemetry`.
 - Optional X-Ray-compatible subsegment document rendering through `tracer-xray`.
 - Optional X-Ray daemon UDP transport through `tracer-xray-daemon`.
+
+## OpenTelemetry Export Helpers
+
+Enable `tracer-opentelemetry` to convert a segment into OpenTelemetry types:
+
+```toml
+aws-lambda-powertools = { version = "0.1", features = ["tracer-opentelemetry"] }
+```
+
+`TraceSegment::to_otel_span_builder` creates an OpenTelemetry `SpanBuilder` with the segment name and attributes.
+`TraceSegment::to_otel_attributes` returns the same attributes as `KeyValue` pairs, and
+`TraceSegment::record_otel_attributes` records them onto an existing OpenTelemetry span. The crate does not install a
+global provider or choose an OTLP exporter; wire the returned values into the OpenTelemetry SDK/exporter that fits your
+Lambda runtime setup.
 
 ## X-Ray Documents
 
@@ -57,8 +72,8 @@ rendered document, or `send_subsegment` to render a `TraceSegment` and send it i
 ## Snippet
 
 The buildable snippet in [examples/snippets/tracer/src/main.rs](../../examples/snippets/tracer/src/main.rs) parses an
-X-Ray header, records annotations and metadata, captures a response, renders a subsegment document, and configures the
-daemon client.
+X-Ray header, records annotations and metadata, captures a response, renders a subsegment document, converts the segment
+into an OpenTelemetry span builder, and configures the daemon client.
 
 Run it locally with:
 
