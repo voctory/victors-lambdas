@@ -28,7 +28,29 @@ environment variables.
 - Correlation ID and Lambda context fields.
 - Recursive key redaction.
 - Custom formatter and redaction hooks.
+- Bounded request-keyed log buffering with oldest-line eviction.
 - Optional `tracing` subscriber integration through the `logger-tracing` feature.
+
+## Log Buffering
+
+Use `LogBuffer` to keep verbose rendered log lines under a request, trace, or invocation key and flush them later when
+an error path needs more context:
+
+```rust
+use aws_lambda_powertools::prelude::{LogBuffer, LogBufferConfig, LogLevel, Logger, LoggerConfig};
+
+let logger = Logger::with_config(LoggerConfig::new("checkout").with_level(LogLevel::Debug));
+let mut buffer = LogBuffer::new(LogBufferConfig::new().with_max_bytes(20 * 1024));
+
+logger
+    .debug("validated cart")
+    .buffer_to(&mut buffer, "request-1")
+    .expect("buffered log");
+
+for line in buffer.flush("request-1") {
+    println!("{line}");
+}
+```
 
 ## Snippet
 

@@ -2,7 +2,10 @@
 
 use std::io::{self, Write};
 
-use crate::{LogFields, LogFormatter, LogLevel, LogRedactor, LogValue, Logger, normalize_key};
+use crate::{
+    LogBuffer, LogBufferError, LogFields, LogFormatter, LogLevel, LogRedactor, LogValue, Logger,
+    normalize_key,
+};
 
 /// A structured log entry being prepared for rendering or emission.
 #[derive(Clone, Debug)]
@@ -147,5 +150,22 @@ impl<'logger> LogEntry<'logger> {
         } else {
             Ok(false)
         }
+    }
+
+    /// Buffers this entry under a request, trace, or invocation key.
+    ///
+    /// Returns `Ok(false)` when the entry is filtered by the logger level or is
+    /// more severe than the configured buffer verbosity.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LogBufferError`] when the rendered line is larger than the
+    /// configured per-key buffer capacity.
+    pub fn buffer_to(
+        &self,
+        buffer: &mut LogBuffer,
+        key: impl Into<String>,
+    ) -> Result<bool, LogBufferError> {
+        buffer.record(key, self)
     }
 }

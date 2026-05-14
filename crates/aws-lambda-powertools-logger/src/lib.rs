@@ -1,5 +1,6 @@
 //! Structured logging utility.
 
+mod buffer;
 mod config;
 mod context;
 mod entry;
@@ -9,6 +10,7 @@ mod logger;
 mod tracing_layer;
 mod value;
 
+pub use buffer::{DEFAULT_LOG_BUFFER_KEY, LogBuffer, LogBufferConfig, LogBufferError};
 pub use config::LoggerConfig;
 pub use context::{LambdaContextFields, LambdaLogContext};
 pub use entry::LogEntry;
