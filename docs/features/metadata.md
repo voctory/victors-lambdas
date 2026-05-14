@@ -9,13 +9,13 @@ without making a network request. Successful endpoint responses are cached for t
 ## Install
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["metadata"] }
+victors-lambdas = { version = "0.1", features = ["metadata"] }
 ```
 
 ## Usage
 
 ```rust
-use aws_lambda_powertools::metadata::get_lambda_metadata;
+use victors_lambdas::metadata::get_lambda_metadata;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let metadata = get_lambda_metadata()?;

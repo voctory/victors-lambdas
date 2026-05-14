@@ -2,8 +2,8 @@
 
 use std::io::{Read as _, Seek as _, SeekFrom};
 
-use aws_lambda_powertools::streaming::{BytesRangeSource, SeekableStream, csv_reader};
 use serde::Deserialize;
+use victors_lambdas::streaming::{BytesRangeSource, SeekableStream, csv_reader};
 
 #[derive(Debug, Deserialize)]
 struct Order {

@@ -7,7 +7,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["streaming", "streaming-csv"] }
+victors-lambdas = { path = "../../../crates/victors-lambdas", features = ["streaming", "streaming-csv"] }
 serde = { version = "1.0", features = ["derive"] }
 
 [lints]

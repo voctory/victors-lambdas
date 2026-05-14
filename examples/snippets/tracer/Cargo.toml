@@ -1,6 +1,6 @@
 [package]
 name = "tracer-snippet"
-description = "Buildable tracer snippet for Powertools Lambda Rust docs."
+description = "Buildable tracer snippet for Victor's Lambdas docs."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["tracer-opentelemetry", "tracer-xray-daemon"] }
+victors-lambdas = { path = "../../../crates/victors-lambdas", features = ["tracer-opentelemetry", "tracer-xray-daemon"] }
 opentelemetry = { version = "0.32.0", default-features = false, features = ["trace"] }
 opentelemetry-otlp = { version = "0.32.0", default-features = false, features = ["http-proto", "reqwest-blocking-client", "trace"] }
 opentelemetry-stdout = { version = "0.32.0", default-features = false, features = ["trace"] }

@@ -1,8 +1,8 @@
 //! Buildable `JMESPath` utility snippet.
 
-use aws_lambda_powertools::jmespath::{API_GATEWAY_REST, extract_data_from_envelope, search};
 use serde::Deserialize;
 use serde_json::json;
+use victors_lambdas::jmespath::{API_GATEWAY_REST, extract_data_from_envelope, search};
 
 #[derive(Debug, Deserialize)]
 struct Order {

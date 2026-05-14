@@ -4,7 +4,7 @@ The tracer utility records trace context, annotations, metadata, captured respon
 segment value. It is exposed through the `tracer` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["tracer"] }
+victors-lambdas = { version = "0.1", features = ["tracer"] }
 ```
 
 ## Configuration
@@ -37,7 +37,7 @@ environment variables.
 Enable `tracer-opentelemetry` to convert a segment into OpenTelemetry types:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["tracer-opentelemetry"] }
+victors-lambdas = { version = "0.1", features = ["tracer-opentelemetry"] }
 ```
 
 `TraceSegment::to_otel_span_builder` creates an OpenTelemetry `SpanBuilder` with the segment name and attributes.
@@ -64,7 +64,7 @@ collector.
 Enable `tracer-xray` to render a segment as an X-Ray-compatible subsegment document:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["tracer-xray"] }
+victors-lambdas = { version = "0.1", features = ["tracer-xray"] }
 ```
 
 The renderer requires a trace id and parent id from the active X-Ray header. The caller supplies the subsegment id and
@@ -76,7 +76,7 @@ process-wide clock.
 Enable `tracer-xray-daemon` to send rendered X-Ray documents to the local daemon over UDP:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["tracer-xray-daemon"] }
+victors-lambdas = { version = "0.1", features = ["tracer-xray-daemon"] }
 ```
 
 `XrayDaemonClient::from_env` reads `AWS_XRAY_DAEMON_ADDRESS` and falls back to `127.0.0.1:2000`. Addresses in X-Ray SDK

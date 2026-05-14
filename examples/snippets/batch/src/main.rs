@@ -8,9 +8,9 @@ use aws_lambda_events::event::{
     kinesis::{KinesisEvent, KinesisEventRecord},
     sqs::{SqsEvent, SqsMessage},
 };
-use aws_lambda_powertools::prelude::{BatchProcessor, BatchRecord, EventParser};
 use serde::Deserialize;
 use serde_json::json;
+use victors_lambdas::prelude::{BatchProcessor, BatchRecord, EventParser};
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
 struct OrderEvent {

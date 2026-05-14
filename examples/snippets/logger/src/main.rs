@@ -1,8 +1,6 @@
 //! Logger snippet for documentation.
 
-use aws_lambda_powertools::prelude::{
-    LambdaContextFields, LogLevel, LogValue, Logger, LoggerConfig,
-};
+use victors_lambdas::prelude::{LambdaContextFields, LogLevel, LogValue, Logger, LoggerConfig};
 
 fn main() {
     let context = LambdaContextFields::new("request-1", "checkout-fn")

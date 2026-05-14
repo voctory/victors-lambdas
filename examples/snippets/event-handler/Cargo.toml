@@ -1,6 +1,6 @@
 [package]
 name = "event-handler-snippet"
-description = "Buildable event-handler snippet for Powertools Lambda Rust docs."
+description = "Buildable event-handler snippet for Victor's Lambdas docs."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["event-handler"] }
+victors-lambdas = { path = "../../../crates/victors-lambdas", features = ["event-handler"] }
 
 [lints]
 workspace = true

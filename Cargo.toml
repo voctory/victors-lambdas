@@ -11,30 +11,30 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85.0"
 license = "MIT-0"
-repository = "https://github.com/voctory/powertools-lambda-rust"
-homepage = "https://github.com/voctory/powertools-lambda-rust"
+repository = "https://github.com/voctory/victors-lambdas"
+homepage = "https://github.com/voctory/victors-lambdas"
 readme = "README.md"
-keywords = ["aws", "lambda", "powertools", "serverless", "observability"]
+keywords = ["aws", "lambda", "serverless", "observability", "tracing"]
 categories = ["development-tools", "web-programming"]
 
 [workspace.dependencies]
-aws-lambda-powertools-core = { path = "crates/aws-lambda-powertools-core", version = "0.1.0" }
-aws-lambda-powertools-data-masking = { path = "crates/aws-lambda-powertools-data-masking", version = "0.1.0" }
-aws-lambda-powertools-logger = { path = "crates/aws-lambda-powertools-logger", version = "0.1.0" }
-aws-lambda-powertools-metadata = { path = "crates/aws-lambda-powertools-metadata", version = "0.1.0" }
-aws-lambda-powertools-metrics = { path = "crates/aws-lambda-powertools-metrics", version = "0.1.0" }
-aws-lambda-powertools-tracer = { path = "crates/aws-lambda-powertools-tracer", version = "0.1.0" }
-aws-lambda-powertools-parameters = { path = "crates/aws-lambda-powertools-parameters", version = "0.1.0" }
-aws-lambda-powertools-parser = { path = "crates/aws-lambda-powertools-parser", version = "0.1.0" }
-aws-lambda-powertools-streaming = { path = "crates/aws-lambda-powertools-streaming", version = "0.1.0" }
-aws-lambda-powertools-batch = { path = "crates/aws-lambda-powertools-batch", version = "0.1.0" }
-aws-lambda-powertools-idempotency = { path = "crates/aws-lambda-powertools-idempotency", version = "0.1.0" }
-aws-lambda-powertools-validation = { path = "crates/aws-lambda-powertools-validation", version = "0.1.0" }
-aws-lambda-powertools-event-handler = { path = "crates/aws-lambda-powertools-event-handler", version = "0.1.0" }
-aws-lambda-powertools-feature-flags = { path = "crates/aws-lambda-powertools-feature-flags", version = "0.1.0" }
-aws-lambda-powertools-jmespath = { path = "crates/aws-lambda-powertools-jmespath", version = "0.1.0" }
-aws-lambda-powertools-kafka = { path = "crates/aws-lambda-powertools-kafka", version = "0.1.0" }
-aws-lambda-powertools-testing = { path = "crates/aws-lambda-powertools-testing", version = "0.1.0" }
+victors-lambdas-core = { path = "crates/victors-lambdas-core", version = "0.1.0" }
+victors-lambdas-data-masking = { path = "crates/victors-lambdas-data-masking", version = "0.1.0" }
+victors-lambdas-logger = { path = "crates/victors-lambdas-logger", version = "0.1.0" }
+victors-lambdas-metadata = { path = "crates/victors-lambdas-metadata", version = "0.1.0" }
+victors-lambdas-metrics = { path = "crates/victors-lambdas-metrics", version = "0.1.0" }
+victors-lambdas-tracer = { path = "crates/victors-lambdas-tracer", version = "0.1.0" }
+victors-lambdas-parameters = { path = "crates/victors-lambdas-parameters", version = "0.1.0" }
+victors-lambdas-parser = { path = "crates/victors-lambdas-parser", version = "0.1.0" }
+victors-lambdas-streaming = { path = "crates/victors-lambdas-streaming", version = "0.1.0" }
+victors-lambdas-batch = { path = "crates/victors-lambdas-batch", version = "0.1.0" }
+victors-lambdas-idempotency = { path = "crates/victors-lambdas-idempotency", version = "0.1.0" }
+victors-lambdas-validation = { path = "crates/victors-lambdas-validation", version = "0.1.0" }
+victors-lambdas-event-handler = { path = "crates/victors-lambdas-event-handler", version = "0.1.0" }
+victors-lambdas-feature-flags = { path = "crates/victors-lambdas-feature-flags", version = "0.1.0" }
+victors-lambdas-jmespath = { path = "crates/victors-lambdas-jmespath", version = "0.1.0" }
+victors-lambdas-kafka = { path = "crates/victors-lambdas-kafka", version = "0.1.0" }
+victors-lambdas-testing = { path = "crates/victors-lambdas-testing", version = "0.1.0" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

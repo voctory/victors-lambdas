@@ -2,10 +2,10 @@
 
 use std::{error::Error, time::Duration};
 
-use aws_lambda_powertools::prelude::{
+use serde::Deserialize;
+use victors_lambdas::prelude::{
     CachePolicy, InMemoryParameterProvider, ParameterTransform, Parameters,
 };
-use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
 struct DatabaseConfig {

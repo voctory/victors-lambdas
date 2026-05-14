@@ -4,7 +4,7 @@ The metrics utility renders CloudWatch Embedded Metric Format JSON and can write
 through the `metrics` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["metrics"] }
+victors-lambdas = { version = "0.1", features = ["metrics"] }
 ```
 
 ## Configuration

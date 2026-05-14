@@ -4,19 +4,19 @@ The streaming utility provides a seekable reader over byte-range sources, includ
 exposed through the `streaming` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["streaming"] }
+victors-lambdas = { version = "0.1", features = ["streaming"] }
 ```
 
 Use `streaming-s3` to enable the AWS SDK-backed S3 adapter:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["streaming-s3"] }
+victors-lambdas = { version = "0.1", features = ["streaming-s3"] }
 ```
 
 Use `streaming-async` for the Tokio `AsyncRead`/`AsyncSeek` facade without the AWS SDK adapter:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["streaming-async"] }
+victors-lambdas = { version = "0.1", features = ["streaming-async"] }
 ```
 
 ## Supported Behavior

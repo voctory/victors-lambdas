@@ -7,7 +7,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["kafka"] }
+victors-lambdas = { path = "../../../crates/victors-lambdas", features = ["kafka"] }
 aws_lambda_events = { version = "1.2.0", default-features = false, features = ["kafka"] }
 base64 = "0.22"
 serde = { version = "1.0", features = ["derive"] }

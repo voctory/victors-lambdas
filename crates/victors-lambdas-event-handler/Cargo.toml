@@ -1,0 +1,68 @@
+[package]
+name = "victors-lambdas-event-handler"
+description = "Event handler utility for Victor's Lambdas."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+appsync-scalars = [
+    "dep:chrono",
+    "dep:getrandom",
+    "dep:uuid",
+]
+appsync-events = [
+    "dep:victors-lambdas-parser",
+    "dep:serde_json",
+]
+bedrock-agent-functions = [
+    "dep:victors-lambdas-parser",
+    "dep:serde_json",
+]
+compression = ["dep:flate2"]
+metrics = ["dep:victors-lambdas-metrics"]
+tracer = [
+    "dep:victors-lambdas-tracer",
+    "dep:serde_json",
+]
+validation = ["dep:victors-lambdas-validation"]
+aws-lambda-events = [
+    "dep:aws_lambda_events",
+    "dep:base64",
+    "dep:http",
+    "dep:serde_json",
+    "aws_lambda_events/alb",
+    "aws_lambda_events/apigw",
+    "aws_lambda_events/appsync",
+    "aws_lambda_events/bedrock_agent_runtime",
+    "aws_lambda_events/lambda_function_urls",
+    "aws_lambda_events/vpc_lattice",
+]
+
+[dependencies]
+victors-lambdas-core.workspace = true
+victors-lambdas-metrics = { workspace = true, optional = true }
+victors-lambdas-parser = { workspace = true, optional = true }
+victors-lambdas-tracer = { workspace = true, optional = true }
+victors-lambdas-validation = { workspace = true, optional = true }
+aws_lambda_events = { version = "1.2.0", default-features = false, optional = true }
+base64 = { version = "0.22", optional = true }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"], optional = true }
+flate2 = { version = "1.1", optional = true }
+getrandom = { version = "0.2", optional = true }
+http = { version = "1.0", optional = true }
+serde_json = { version = "1.0", optional = true }
+uuid = { version = "1.18.1", default-features = false, features = ["std"], optional = true }
+
+[dev-dependencies]
+futures-executor = "0.3"
+
+[lints]
+workspace = true

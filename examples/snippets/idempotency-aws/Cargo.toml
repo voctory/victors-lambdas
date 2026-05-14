@@ -1,6 +1,6 @@
 [package]
 name = "idempotency-aws-snippet"
-description = "Buildable AWS-backed idempotency snippet for Powertools Lambda Rust docs."
+description = "Buildable AWS-backed idempotency snippet for Victor's Lambdas docs."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,7 +9,7 @@ publish = false
 
 [dependencies]
 aws-config = { version = "=1.6.3", default-features = false, features = ["default-https-client", "rt-tokio"] }
-aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["idempotency-dynamodb"] }
+victors-lambdas = { path = "../../../crates/victors-lambdas", features = ["idempotency-dynamodb"] }
 aws-sdk-dynamodb = "=1.82.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

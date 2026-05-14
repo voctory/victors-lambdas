@@ -3,19 +3,18 @@
 use std::error::Error;
 use std::time::Duration;
 
-use aws_lambda_powertools::prelude::{
-    TraceSegment, TraceValue, Tracer as PowertoolsTracer, TracerConfig, XrayDaemonClient,
-    XrayDaemonConfig,
-};
 use opentelemetry::{
     Context,
     trace::{Span as _, Tracer as _, TracerProvider as _},
 };
 use opentelemetry_otlp::{Protocol, SpanExporter, WithExportConfig};
 use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
+use victors_lambdas::prelude::{
+    TraceSegment, TraceValue, Tracer, TracerConfig, XrayDaemonClient, XrayDaemonConfig,
+};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let tracer = PowertoolsTracer::with_config(TracerConfig::new("checkout"));
+    let tracer = Tracer::with_config(TracerConfig::new("checkout"));
     let context = tracer.context_from_xray_header(
         "handler",
         "Root=1-67891233-abcdef012345678912345678;Parent=53995c3f42cd8ad8;Sampled=1",
@@ -51,7 +50,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn export_segment(provider: &SdkTracerProvider, segment: &TraceSegment) {
-    let otel_tracer = provider.tracer("powertools-lambda-rust");
+    let otel_tracer = provider.tracer("victors-lambdas");
     let mut otel_span =
         otel_tracer.build_with_context(segment.to_otel_span_builder(), &Context::current());
     otel_span.end();

@@ -1,6 +1,6 @@
 //! Event-handler snippet for documentation.
 
-use aws_lambda_powertools::prelude::{HttpError, Method, Request, Response, Router};
+use victors_lambdas::prelude::{HttpError, Method, Request, Response, Router};
 
 #[derive(Debug)]
 struct RequestId(String);

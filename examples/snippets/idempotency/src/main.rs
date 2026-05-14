@@ -2,11 +2,11 @@
 
 use std::{convert::Infallible, error::Error};
 
-use aws_lambda_powertools::prelude::{
+use serde::{Deserialize, Serialize};
+use victors_lambdas::prelude::{
     CachedIdempotencyStore, Idempotency, IdempotencyConfig, InMemoryIdempotencyStore,
     key_from_jmespath,
 };
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 struct CheckoutRequest {

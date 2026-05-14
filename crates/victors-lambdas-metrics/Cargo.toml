@@ -1,0 +1,21 @@
+[package]
+name = "victors-lambdas-metrics"
+description = "Metrics utility for Victor's Lambdas."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+victors-lambdas-core.workspace = true
+
+[dev-dependencies]
+futures-executor = "0.3"
+
+[lints]
+workspace = true

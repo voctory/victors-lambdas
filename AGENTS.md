@@ -27,8 +27,8 @@ notices and licensing files.
 - Keep the root as a virtual Cargo workspace with `resolver = "3"`.
 - Put reusable crates under `crates/<crate-name>/`.
 - Put runnable workspace examples under `examples/<example-name>/`.
-- Keep one primary umbrella crate, `aws-lambda-powertools`, and expose optional utilities through Cargo features.
-- Keep shared foundations in `aws-lambda-powertools-core`, but avoid turning it into a dumping ground.
+- Keep one primary umbrella crate, `victors-lambdas`, and expose optional utilities through Cargo features.
+- Keep shared foundations in `victors-lambdas-core`, but avoid turning it into a dumping ground.
 - Commit `Cargo.lock` for reproducible workspace checks and examples.
 - Keep `rust-toolchain.toml` aligned with `workspace.package.rust-version`, and document any MSRV change.
 

@@ -5,4 +5,4 @@ edition = "2024"
 publish = false
 
 [dependencies]
-aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["metadata"] }
+victors-lambdas = { path = "../../../crates/victors-lambdas", features = ["metadata"] }

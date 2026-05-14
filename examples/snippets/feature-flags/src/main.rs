@@ -1,11 +1,11 @@
 //! Feature flags snippet for documentation.
 
-use aws_lambda_powertools::feature_flags::{
+use serde_json::json;
+use std::time::Duration;
+use victors_lambdas::feature_flags::{
     FeatureCondition, FeatureFlag, FeatureFlagCachePolicy, FeatureFlagConfig, FeatureFlagContext,
     FeatureFlags, FeatureRule, InMemoryFeatureFlagStore, RuleAction,
 };
-use serde_json::json;
-use std::time::Duration;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = FeatureFlagConfig::new().with_feature(

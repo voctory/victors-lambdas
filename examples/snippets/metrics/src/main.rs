@@ -2,7 +2,7 @@
 
 use std::error::Error;
 
-use aws_lambda_powertools::prelude::{MetricResolution, MetricUnit, Metrics, MetricsConfig};
+use victors_lambdas::prelude::{MetricResolution, MetricUnit, Metrics, MetricsConfig};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut metrics = Metrics::with_config(MetricsConfig::new("checkout", "Orders"));

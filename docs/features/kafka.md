@@ -4,7 +4,7 @@ The Kafka utility turns Lambda Kafka events into flattened records with decoded 
 through the `kafka` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["kafka"] }
+victors-lambdas = { version = "0.1", features = ["kafka"] }
 ```
 
 ## Supported Behavior

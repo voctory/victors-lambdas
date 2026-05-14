@@ -3,8 +3,8 @@
 use std::error::Error;
 
 use aws_lambda_events::event::sqs::{SqsEvent, SqsMessage};
-use aws_lambda_powertools::prelude::{BedrockAgentEventModel, EventParser};
 use serde::Deserialize;
+use victors_lambdas::prelude::{BedrockAgentEventModel, EventParser};
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
 struct OrderEvent {

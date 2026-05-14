@@ -1,0 +1,30 @@
+[package]
+name = "victors-lambdas-feature-flags"
+description = "Feature flag evaluation utility for Victor's Lambdas."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+appconfig = ["dep:victors-lambdas-parameters", "victors-lambdas-parameters/appconfig"]
+
+[dependencies]
+victors-lambdas-parameters = { workspace = true, optional = true }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+chrono-tz = "0.10"
+indexmap = { version = "2", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+futures-executor = "0.3"
+
+[lints]
+workspace = true

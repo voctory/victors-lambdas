@@ -1,14 +1,14 @@
-# Powertools Lambda Rust
+# Victor's Lambdas
 
-Powertools Lambda Rust is an unofficial side project that brings Powertools-style utilities to Rust Lambda functions.
+Victor's Lambdas is an unofficial side project that provides operational utilities for Rust Lambda functions.
 It is not affiliated with, endorsed by, sponsored by, or owned by Amazon Web Services, AWS, or Amazon.com, Inc.
 
-The project is early-stage and APIs should be treated as pre-release. The name describes compatibility goals with
-existing Powertools conventions; it does not imply an official AWS project.
+The project is early-stage and APIs should be treated as pre-release. Some APIs preserve familiar cross-language
+utility conventions; that does not imply an official AWS project.
 
 ## What Is Included
 
-The workspace contains one umbrella crate, `aws-lambda-powertools`, plus focused utility crates under `crates/`.
+The workspace contains one umbrella crate, `victors-lambdas`, plus focused utility crates under `crates/`.
 Utilities are exposed through Cargo features so applications can opt into only the dependencies they need.
 
 Current utility areas:
@@ -27,7 +27,7 @@ The root is a virtual Cargo workspace using Rust 2024, resolver `3`, and Rust `1
 Use the umbrella crate with explicit feature flags:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["logger", "metrics"] }
+victors-lambdas = { version = "0.1", features = ["logger", "metrics"] }
 ```
 
 Local examples use path dependencies until crates are published.

@@ -4,13 +4,13 @@ The data masking utility erases sensitive values in JSON payloads before they ar
 systems. It is exposed through the `data-masking` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["data-masking"] }
+victors-lambdas = { version = "0.1", features = ["data-masking"] }
 ```
 
 Use `data-masking-kms` to enable the direct AWS KMS provider:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["data-masking-kms"] }
+victors-lambdas = { version = "0.1", features = ["data-masking-kms"] }
 ```
 
 ## Supported Behavior

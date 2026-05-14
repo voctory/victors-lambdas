@@ -1,0 +1,163 @@
+[package]
+name = "victors-lambdas"
+description = "Personal, unofficial Rust utilities for AWS Lambda functions."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+all = [
+    "batch",
+    "data-masking",
+    "data-masking-kms",
+    "event-handler",
+    "event-handler-appsync-scalars",
+    "event-handler-appsync-events",
+    "event-handler-bedrock-agent-functions",
+    "event-handler-compression",
+    "event-handler-metrics",
+    "event-handler-tracer",
+    "event-handler-validation",
+    "feature-flags",
+    "feature-flags-appconfig",
+    "idempotency",
+    "idempotency-jmespath",
+    "jmespath",
+    "kafka",
+    "kafka-avro",
+    "kafka-protobuf",
+    "logger",
+    "metadata",
+    "metrics",
+    "parameters",
+    "parser",
+    "streaming",
+    "streaming-async",
+    "streaming-csv",
+    "streaming-gzip",
+    "streaming-s3",
+    "streaming-zip",
+    "tracer",
+    "validation",
+    "validation-jmespath",
+]
+batch = ["dep:victors-lambdas-batch"]
+batch-aws-lambda-events = ["batch", "victors-lambdas-batch/aws-lambda-events"]
+batch-parser = [
+    "batch-aws-lambda-events",
+    "parser",
+    "victors-lambdas-batch/parser",
+]
+data-masking = ["dep:victors-lambdas-data-masking"]
+data-masking-kms = ["data-masking", "victors-lambdas-data-masking/kms"]
+event-handler = ["dep:victors-lambdas-event-handler"]
+event-handler-appsync-scalars = [
+    "event-handler",
+    "victors-lambdas-event-handler/appsync-scalars",
+]
+event-handler-appsync-events = [
+    "event-handler",
+    "parser",
+    "victors-lambdas-event-handler/appsync-events",
+]
+event-handler-bedrock-agent-functions = [
+    "event-handler",
+    "victors-lambdas-event-handler/bedrock-agent-functions",
+]
+event-handler-aws-lambda-events = [
+    "event-handler",
+    "victors-lambdas-event-handler/aws-lambda-events",
+]
+event-handler-compression = [
+    "event-handler",
+    "victors-lambdas-event-handler/compression",
+]
+event-handler-metrics = [
+    "event-handler",
+    "metrics",
+    "victors-lambdas-event-handler/metrics",
+]
+event-handler-tracer = [
+    "event-handler",
+    "tracer",
+    "victors-lambdas-event-handler/tracer",
+]
+event-handler-validation = [
+    "event-handler",
+    "validation",
+    "victors-lambdas-event-handler/validation",
+]
+feature-flags = ["dep:victors-lambdas-feature-flags"]
+feature-flags-appconfig = [
+    "feature-flags",
+    "parameters-appconfig",
+    "victors-lambdas-feature-flags/appconfig",
+]
+idempotency = ["dep:victors-lambdas-idempotency"]
+idempotency-dynamodb = ["idempotency", "victors-lambdas-idempotency/dynamodb"]
+idempotency-jmespath = [
+    "idempotency",
+    "jmespath",
+    "victors-lambdas-idempotency/jmespath",
+]
+jmespath = ["dep:victors-lambdas-jmespath"]
+kafka = ["dep:victors-lambdas-kafka"]
+kafka-avro = ["kafka", "victors-lambdas-kafka/avro"]
+kafka-protobuf = ["kafka", "victors-lambdas-kafka/protobuf"]
+logger = ["dep:victors-lambdas-logger"]
+logger-tracing = ["logger", "victors-lambdas-logger/tracing"]
+metadata = ["dep:victors-lambdas-metadata"]
+metrics = ["dep:victors-lambdas-metrics"]
+parameters = ["dep:victors-lambdas-parameters"]
+parameters-appconfig = ["parameters", "victors-lambdas-parameters/appconfig"]
+parameters-dynamodb = ["parameters", "victors-lambdas-parameters/dynamodb"]
+parameters-secrets = ["parameters", "victors-lambdas-parameters/secrets"]
+parameters-ssm = ["parameters", "victors-lambdas-parameters/ssm"]
+parser = ["dep:victors-lambdas-parser"]
+parser-aws-lambda-events = ["parser", "victors-lambdas-parser/aws-lambda-events"]
+streaming = ["dep:victors-lambdas-streaming"]
+streaming-async = ["streaming", "victors-lambdas-streaming/async"]
+streaming-csv = ["streaming", "victors-lambdas-streaming/csv"]
+streaming-gzip = ["streaming", "victors-lambdas-streaming/gzip"]
+streaming-s3 = ["streaming-async", "victors-lambdas-streaming/s3"]
+streaming-zip = ["streaming", "victors-lambdas-streaming/zip"]
+tracer = ["dep:victors-lambdas-tracer"]
+tracer-opentelemetry = ["tracer", "victors-lambdas-tracer/opentelemetry"]
+tracer-tracing = ["tracer", "victors-lambdas-tracer/tracing"]
+tracer-xray = ["tracer", "victors-lambdas-tracer/xray"]
+tracer-xray-daemon = ["tracer-xray", "victors-lambdas-tracer/xray-daemon"]
+validation = ["dep:victors-lambdas-validation"]
+validation-jmespath = [
+    "validation-jsonschema",
+    "jmespath",
+    "victors-lambdas-validation/jmespath",
+]
+validation-jsonschema = ["validation", "victors-lambdas-validation/jsonschema"]
+
+[dependencies]
+victors-lambdas-core.workspace = true
+victors-lambdas-batch = { workspace = true, optional = true }
+victors-lambdas-data-masking = { workspace = true, optional = true }
+victors-lambdas-event-handler = { workspace = true, optional = true }
+victors-lambdas-feature-flags = { workspace = true, optional = true }
+victors-lambdas-idempotency = { workspace = true, optional = true }
+victors-lambdas-jmespath = { workspace = true, optional = true }
+victors-lambdas-kafka = { workspace = true, optional = true }
+victors-lambdas-logger = { workspace = true, optional = true }
+victors-lambdas-metadata = { workspace = true, optional = true }
+victors-lambdas-metrics = { workspace = true, optional = true }
+victors-lambdas-parameters = { workspace = true, optional = true }
+victors-lambdas-parser = { workspace = true, optional = true }
+victors-lambdas-streaming = { workspace = true, optional = true }
+victors-lambdas-tracer = { workspace = true, optional = true }
+victors-lambdas-validation = { workspace = true, optional = true }
+
+[lints]
+workspace = true

@@ -5,7 +5,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use aws_lambda_powertools::prelude::{
+use victors_lambdas::prelude::{
     BatchProcessor, BatchRecord, CachePolicy, EventParser, IdempotencyConfig, IdempotencyKey,
     IdempotencyRecord, IdempotencyStore, InMemoryIdempotencyStore, InMemoryParameterProvider,
     LambdaContextFields, LogLevel, Logger, LoggerConfig, Method, MetricResolution, MetricUnit,

@@ -146,222 +146,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aws-lambda-powertools"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-batch",
- "aws-lambda-powertools-core",
- "aws-lambda-powertools-data-masking",
- "aws-lambda-powertools-event-handler",
- "aws-lambda-powertools-feature-flags",
- "aws-lambda-powertools-idempotency",
- "aws-lambda-powertools-jmespath",
- "aws-lambda-powertools-kafka",
- "aws-lambda-powertools-logger",
- "aws-lambda-powertools-metadata",
- "aws-lambda-powertools-metrics",
- "aws-lambda-powertools-parameters",
- "aws-lambda-powertools-parser",
- "aws-lambda-powertools-streaming",
- "aws-lambda-powertools-tracer",
- "aws-lambda-powertools-validation",
-]
-
-[[package]]
-name = "aws-lambda-powertools-batch"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-core",
- "aws-lambda-powertools-parser",
- "aws_lambda_events",
- "serde",
- "serde_dynamo",
- "serde_json",
-]
-
-[[package]]
-name = "aws-lambda-powertools-core"
-version = "0.1.0"
-
-[[package]]
-name = "aws-lambda-powertools-data-masking"
-version = "0.1.0"
-dependencies = [
- "aws-sdk-kms",
- "base64 0.22.1",
- "regex",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "aws-lambda-powertools-event-handler"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-core",
- "aws-lambda-powertools-metrics",
- "aws-lambda-powertools-parser",
- "aws-lambda-powertools-tracer",
- "aws-lambda-powertools-validation",
- "aws_lambda_events",
- "base64 0.22.1",
- "chrono",
- "flate2",
- "futures-executor",
- "getrandom 0.2.17",
- "http 1.4.0",
- "serde_json",
- "uuid",
-]
-
-[[package]]
-name = "aws-lambda-powertools-feature-flags"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-parameters",
- "chrono",
- "chrono-tz",
- "futures-executor",
- "indexmap 2.14.0",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "aws-lambda-powertools-idempotency"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-jmespath",
- "aws-sdk-dynamodb",
- "futures-executor",
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
-name = "aws-lambda-powertools-jmespath"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "flate2",
- "jmespatch",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "aws-lambda-powertools-kafka"
-version = "0.1.0"
-dependencies = [
- "apache-avro",
- "aws_lambda_events",
- "base64 0.22.1",
- "chrono",
- "prost",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "aws-lambda-powertools-logger"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-core",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "aws-lambda-powertools-metadata"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-core",
- "serde_json",
-]
-
-[[package]]
-name = "aws-lambda-powertools-metrics"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-core",
- "futures-executor",
-]
-
-[[package]]
-name = "aws-lambda-powertools-parameters"
-version = "0.1.0"
-dependencies = [
- "aws-sdk-appconfigdata",
- "aws-sdk-dynamodb",
- "aws-sdk-secretsmanager",
- "aws-sdk-ssm",
- "base64 0.22.1",
- "futures-executor",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "aws-lambda-powertools-parser"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-core",
- "aws-lambda-powertools-testing",
- "aws_lambda_events",
- "base64 0.22.1",
- "chrono",
- "serde",
- "serde_dynamo",
- "serde_json",
-]
-
-[[package]]
-name = "aws-lambda-powertools-streaming"
-version = "0.1.0"
-dependencies = [
- "aws-sdk-s3",
- "csv",
- "flate2",
- "futures-executor",
- "tokio",
- "zip",
-]
-
-[[package]]
-name = "aws-lambda-powertools-testing"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-feature-flags",
- "aws-lambda-powertools-idempotency",
- "aws-lambda-powertools-parameters",
- "aws-lambda-powertools-streaming",
- "futures-executor",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "aws-lambda-powertools-tracer"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-core",
- "opentelemetry",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "aws-lambda-powertools-validation"
-version = "0.1.0"
-dependencies = [
- "aws-lambda-powertools-core",
- "aws-lambda-powertools-jmespath",
- "jsonschema",
- "serde_json",
-]
-
-[[package]]
 name = "aws-lc-rs"
 version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -874,17 +658,17 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 name = "basic-lambda"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
+ "victors-lambdas",
 ]
 
 [[package]]
 name = "batch-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "aws_lambda_events",
  "serde",
  "serde_json",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -1218,8 +1002,8 @@ checksum = "a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8"
 name = "data-masking-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "serde_json",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -1350,7 +1134,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 name = "event-handler-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -1374,8 +1158,8 @@ checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
 name = "feature-flags-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "serde_json",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -1956,20 +1740,20 @@ name = "idempotency-aws-snippet"
 version = "0.1.0"
 dependencies = [
  "aws-config",
- "aws-lambda-powertools",
  "aws-sdk-dynamodb",
  "serde",
  "serde_json",
  "tokio",
+ "victors-lambdas",
 ]
 
 [[package]]
 name = "idempotency-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "serde",
  "serde_json",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -2059,9 +1843,9 @@ dependencies = [
 name = "jmespath-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "serde",
  "serde_json",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -2117,11 +1901,11 @@ dependencies = [
 name = "kafka-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "aws_lambda_events",
  "base64 0.22.1",
  "serde",
  "serde_json",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -2167,7 +1951,7 @@ checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 name = "logger-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -2199,14 +1983,14 @@ checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 name = "metadata-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
+ "victors-lambdas",
 ]
 
 [[package]]
 name = "metrics-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -2442,21 +2226,21 @@ name = "parameters-aws-snippet"
 version = "0.1.0"
 dependencies = [
  "aws-config",
- "aws-lambda-powertools",
  "aws-sdk-appconfigdata",
  "aws-sdk-dynamodb",
  "aws-sdk-secretsmanager",
  "aws-sdk-ssm",
  "serde",
  "tokio",
+ "victors-lambdas",
 ]
 
 [[package]]
 name = "parameters-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "serde",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -2486,10 +2270,10 @@ dependencies = [
 name = "parser-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "aws_lambda_events",
  "serde",
  "serde_json",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -3249,8 +3033,8 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 name = "streaming-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "serde",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -3492,11 +3276,11 @@ checksum = "8df9b6e13f2d32c91b9bd719c00d1958837bc7dec474d94952798cc8e69eeec3"
 name = "tracer-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry-stdout",
  "opentelemetry_sdk",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -3620,8 +3404,8 @@ dependencies = [
 name = "validation-snippet"
 version = "0.1.0"
 dependencies = [
- "aws-lambda-powertools",
  "serde_json",
+ "victors-lambdas",
 ]
 
 [[package]]
@@ -3629,6 +3413,222 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "victors-lambdas"
+version = "0.1.0"
+dependencies = [
+ "victors-lambdas-batch",
+ "victors-lambdas-core",
+ "victors-lambdas-data-masking",
+ "victors-lambdas-event-handler",
+ "victors-lambdas-feature-flags",
+ "victors-lambdas-idempotency",
+ "victors-lambdas-jmespath",
+ "victors-lambdas-kafka",
+ "victors-lambdas-logger",
+ "victors-lambdas-metadata",
+ "victors-lambdas-metrics",
+ "victors-lambdas-parameters",
+ "victors-lambdas-parser",
+ "victors-lambdas-streaming",
+ "victors-lambdas-tracer",
+ "victors-lambdas-validation",
+]
+
+[[package]]
+name = "victors-lambdas-batch"
+version = "0.1.0"
+dependencies = [
+ "aws_lambda_events",
+ "serde",
+ "serde_dynamo",
+ "serde_json",
+ "victors-lambdas-core",
+ "victors-lambdas-parser",
+]
+
+[[package]]
+name = "victors-lambdas-core"
+version = "0.1.0"
+
+[[package]]
+name = "victors-lambdas-data-masking"
+version = "0.1.0"
+dependencies = [
+ "aws-sdk-kms",
+ "base64 0.22.1",
+ "regex",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "victors-lambdas-event-handler"
+version = "0.1.0"
+dependencies = [
+ "aws_lambda_events",
+ "base64 0.22.1",
+ "chrono",
+ "flate2",
+ "futures-executor",
+ "getrandom 0.2.17",
+ "http 1.4.0",
+ "serde_json",
+ "uuid",
+ "victors-lambdas-core",
+ "victors-lambdas-metrics",
+ "victors-lambdas-parser",
+ "victors-lambdas-tracer",
+ "victors-lambdas-validation",
+]
+
+[[package]]
+name = "victors-lambdas-feature-flags"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "futures-executor",
+ "indexmap 2.14.0",
+ "serde",
+ "serde_json",
+ "victors-lambdas-parameters",
+]
+
+[[package]]
+name = "victors-lambdas-idempotency"
+version = "0.1.0"
+dependencies = [
+ "aws-sdk-dynamodb",
+ "futures-executor",
+ "serde",
+ "serde_json",
+ "sha2",
+ "victors-lambdas-jmespath",
+]
+
+[[package]]
+name = "victors-lambdas-jmespath"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "flate2",
+ "jmespatch",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "victors-lambdas-kafka"
+version = "0.1.0"
+dependencies = [
+ "apache-avro",
+ "aws_lambda_events",
+ "base64 0.22.1",
+ "chrono",
+ "prost",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "victors-lambdas-logger"
+version = "0.1.0"
+dependencies = [
+ "tracing",
+ "tracing-subscriber",
+ "victors-lambdas-core",
+]
+
+[[package]]
+name = "victors-lambdas-metadata"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "victors-lambdas-core",
+]
+
+[[package]]
+name = "victors-lambdas-metrics"
+version = "0.1.0"
+dependencies = [
+ "futures-executor",
+ "victors-lambdas-core",
+]
+
+[[package]]
+name = "victors-lambdas-parameters"
+version = "0.1.0"
+dependencies = [
+ "aws-sdk-appconfigdata",
+ "aws-sdk-dynamodb",
+ "aws-sdk-secretsmanager",
+ "aws-sdk-ssm",
+ "base64 0.22.1",
+ "futures-executor",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "victors-lambdas-parser"
+version = "0.1.0"
+dependencies = [
+ "aws_lambda_events",
+ "base64 0.22.1",
+ "chrono",
+ "serde",
+ "serde_dynamo",
+ "serde_json",
+ "victors-lambdas-core",
+ "victors-lambdas-testing",
+]
+
+[[package]]
+name = "victors-lambdas-streaming"
+version = "0.1.0"
+dependencies = [
+ "aws-sdk-s3",
+ "csv",
+ "flate2",
+ "futures-executor",
+ "tokio",
+ "zip",
+]
+
+[[package]]
+name = "victors-lambdas-testing"
+version = "0.1.0"
+dependencies = [
+ "futures-executor",
+ "serde",
+ "serde_json",
+ "victors-lambdas-feature-flags",
+ "victors-lambdas-idempotency",
+ "victors-lambdas-parameters",
+ "victors-lambdas-streaming",
+]
+
+[[package]]
+name = "victors-lambdas-tracer"
+version = "0.1.0"
+dependencies = [
+ "opentelemetry",
+ "tracing",
+ "tracing-subscriber",
+ "victors-lambdas-core",
+]
+
+[[package]]
+name = "victors-lambdas-validation"
+version = "0.1.0"
+dependencies = [
+ "jsonschema",
+ "serde_json",
+ "victors-lambdas-core",
+ "victors-lambdas-jmespath",
+]
 
 [[package]]
 name = "vsimd"

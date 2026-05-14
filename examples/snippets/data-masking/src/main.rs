@@ -1,7 +1,7 @@
 //! Buildable data masking snippet.
 
-use aws_lambda_powertools::data_masking::{DataMasking, MaskingOptions};
 use serde_json::json;
+use victors_lambdas::data_masking::{DataMasking, MaskingOptions};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let event = json!({

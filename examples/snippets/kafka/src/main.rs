@@ -1,10 +1,10 @@
 //! Buildable Kafka utility snippet.
 
 use aws_lambda_events::event::kafka::KafkaEvent;
-use aws_lambda_powertools::kafka::{KafkaConsumer, KafkaConsumerConfig};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::Deserialize;
 use serde_json::json;
+use victors_lambdas::kafka::{KafkaConsumer, KafkaConsumerConfig};
 
 #[derive(Debug, Deserialize)]
 struct Order {

@@ -4,7 +4,7 @@ The logger utility renders structured JSON log entries and can emit them to stdo
 `logger` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["logger"] }
+victors-lambdas = { version = "0.1", features = ["logger"] }
 ```
 
 ## Configuration
@@ -39,7 +39,7 @@ Use `LogBuffer` to keep verbose rendered log lines under a request, trace, or in
 an error path needs more context:
 
 ```rust
-use aws_lambda_powertools::prelude::{LogBuffer, LogBufferConfig, LogLevel, Logger, LoggerConfig};
+use victors_lambdas::prelude::{LogBuffer, LogBufferConfig, LogLevel, Logger, LoggerConfig};
 
 let logger = Logger::with_config(LoggerConfig::new("checkout").with_level(LogLevel::Debug));
 let mut buffer = LogBuffer::new(LogBufferConfig::new().with_max_bytes(20 * 1024));

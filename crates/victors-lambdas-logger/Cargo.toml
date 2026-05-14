@@ -1,0 +1,24 @@
+[package]
+name = "victors-lambdas-logger"
+description = "Structured logging utility for Victor's Lambdas."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+tracing = ["dep:tracing", "dep:tracing-subscriber"]
+
+[dependencies]
+victors-lambdas-core.workspace = true
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", default-features = false, optional = true, features = ["registry"] }
+
+[lints]
+workspace = true

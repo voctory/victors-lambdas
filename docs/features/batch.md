@@ -4,7 +4,7 @@ The batch utility helps Lambda handlers process batch records and return partial
 is exposed through the `batch` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["batch"] }
+victors-lambdas = { version = "0.1", features = ["batch"] }
 ```
 
 ## Supported Behavior
@@ -25,7 +25,7 @@ aws-lambda-powertools = { version = "0.1", features = ["batch"] }
 Enable `batch-aws-lambda-events` to process event models from the `aws_lambda_events` crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["batch-aws-lambda-events"] }
+victors-lambdas = { version = "0.1", features = ["batch-aws-lambda-events"] }
 ```
 
 The SQS adapter uses `message_id` values as failed item identifiers. Kinesis and DynamoDB adapters use sequence numbers
@@ -40,7 +40,7 @@ later records in the same batch.
 Enable `batch-parser` to combine SQS, Kinesis, and DynamoDB stream event adapters with parser-backed payload decoding:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["batch-parser"] }
+victors-lambdas = { version = "0.1", features = ["batch-parser"] }
 ```
 
 Use `process_sqs_message_bodies` when each SQS message body is JSON for a Rust type. Use `process_kinesis_records` when

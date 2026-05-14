@@ -1,0 +1,32 @@
+[package]
+name = "victors-lambdas-testing"
+description = "Testing helpers for Victor's Lambdas."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+feature-flags = ["dep:victors-lambdas-feature-flags"]
+idempotency = ["dep:victors-lambdas-idempotency"]
+streaming = ["dep:victors-lambdas-streaming"]
+
+[dependencies]
+victors-lambdas-feature-flags = { workspace = true, optional = true }
+victors-lambdas-idempotency = { workspace = true, optional = true }
+victors-lambdas-parameters.workspace = true
+victors-lambdas-streaming = { workspace = true, optional = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+futures-executor = "0.3"
+
+[lints]
+workspace = true

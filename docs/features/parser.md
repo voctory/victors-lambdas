@@ -4,7 +4,7 @@ The parser utility decodes JSON payloads and selected Lambda event envelopes int
 `parser` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["parser"] }
+victors-lambdas = { version = "0.1", features = ["parser"] }
 ```
 
 ## Supported Behavior
@@ -43,7 +43,7 @@ aws-lambda-powertools = { version = "0.1", features = ["parser"] }
 Enable `parser-aws-lambda-events` to parse payloads embedded in event models from the `aws_lambda_events` crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["parser-aws-lambda-events"] }
+victors-lambdas = { version = "0.1", features = ["parser-aws-lambda-events"] }
 ```
 
 Envelope methods consume the owning event model and return typed payloads. For batch-like sources such as SQS, SNS,

@@ -4,7 +4,7 @@ The validation utility provides local validation helpers for decoded payloads an
 exposed through the `validation` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["validation"] }
+victors-lambdas = { version = "0.1", features = ["validation"] }
 ```
 
 ## Supported Behavior
@@ -22,7 +22,7 @@ aws-lambda-powertools = { version = "0.1", features = ["validation"] }
 Enable `validation-jsonschema` to validate `serde_json::Value` payloads against in-memory JSON Schema documents:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["validation-jsonschema"] }
+victors-lambdas = { version = "0.1", features = ["validation-jsonschema"] }
 ```
 
 `JsonSchemaCache` lets Lambda handlers compile schemas once during initialization or first use and reuse them across warm
@@ -32,15 +32,15 @@ Enable `validation-jmespath` to select the JSON value to validate from a Lambda 
 Schema validation and the Powertools JMESPath helper functions:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["validation-jmespath"] }
+victors-lambdas = { version = "0.1", features = ["validation-jmespath"] }
 ```
 
 ```rust
-# use aws_lambda_powertools::prelude::Validator;
+# use victors_lambdas::prelude::Validator;
 # let schema = serde_json::json!({"type": "object"});
 # let event = serde_json::json!({"body": "{}"});
 Validator::new().json_schema_envelope(&schema, &event, "powertools_json(body)")?;
-# Ok::<(), aws_lambda_powertools::prelude::ValidationError>(())
+# Ok::<(), victors_lambdas::prelude::ValidationError>(())
 ```
 
 ## Snippet

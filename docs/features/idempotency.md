@@ -5,14 +5,14 @@ stored response instead of running the handler again. It is exposed through the 
 umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["idempotency"] }
+victors-lambdas = { version = "0.1", features = ["idempotency"] }
 ```
 
 Enable `idempotency-jmespath` when keys or payload validation hashes should come from a JMESPath expression, including
 Powertools envelope helpers:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["idempotency-jmespath"] }
+victors-lambdas = { version = "0.1", features = ["idempotency-jmespath"] }
 ```
 
 ## Configuration
@@ -33,7 +33,7 @@ outside the idempotency record. With `idempotency-jmespath`, use `with_payload_v
 business payload while ignoring retry-varying envelope fields:
 
 ```rust
-# use aws_lambda_powertools::prelude::IdempotencyConfig;
+# use victors_lambdas::prelude::IdempotencyConfig;
 let config = IdempotencyConfig::from_env()
     .with_key_prefix("checkout")
     .with_payload_validation_jmespath("powertools_json(body)");
@@ -45,7 +45,7 @@ let config = IdempotencyConfig::from_env()
 umbrella crate to use `DynamoDbIdempotencyStore` with an AWS SDK `DynamoDB` client:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["idempotency-dynamodb"] }
+victors-lambdas = { version = "0.1", features = ["idempotency-dynamodb"] }
 ```
 
 The DynamoDB store defaults to a string partition key named `id`; composite-key tables can set a sort key attribute and
@@ -58,7 +58,7 @@ Wrap a durable store in `CachedIdempotencyStore` to keep recently read and writt
 execution environment:
 
 ```rust
-# use aws_lambda_powertools::prelude::{CachedIdempotencyStore, InMemoryIdempotencyStore};
+# use victors_lambdas::prelude::{CachedIdempotencyStore, InMemoryIdempotencyStore};
 let store = CachedIdempotencyStore::new(InMemoryIdempotencyStore::new());
 ```
 

@@ -1,0 +1,30 @@
+[package]
+name = "victors-lambdas-idempotency"
+description = "Idempotency utility for Victor's Lambdas."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+dynamodb = ["dep:aws-sdk-dynamodb"]
+jmespath = ["dep:victors-lambdas-jmespath"]
+
+[dependencies]
+victors-lambdas-jmespath = { workspace = true, optional = true }
+aws-sdk-dynamodb = { version = "=1.82.0", optional = true }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+sha2 = "0.10.9"
+
+[dev-dependencies]
+futures-executor = "0.3"
+
+[lints]
+workspace = true

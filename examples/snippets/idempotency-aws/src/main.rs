@@ -3,11 +3,11 @@
 use std::{env, error::Error, time::Duration};
 
 use aws_config::BehaviorVersion;
-use aws_lambda_powertools::prelude::{
+use serde::{Deserialize, Serialize};
+use victors_lambdas::prelude::{
     AsyncIdempotency, CachedIdempotencyStore, DynamoDbIdempotencyStore, IdempotencyConfig,
     key_from_json_pointer,
 };
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 struct CheckoutRequest {

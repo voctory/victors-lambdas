@@ -2,8 +2,8 @@
 
 use std::error::Error;
 
-use aws_lambda_powertools::prelude::{JsonSchemaCache, Validate, ValidationResult, Validator};
 use serde_json::json;
+use victors_lambdas::prelude::{JsonSchemaCache, Validate, ValidationResult, Validator};
 
 #[derive(Debug, Eq, PartialEq)]
 struct CreateOrder {

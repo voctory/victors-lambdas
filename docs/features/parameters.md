@@ -4,7 +4,7 @@ The parameters utility retrieves configuration values through a provider facade 
 is exposed through the `parameters` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["parameters"] }
+victors-lambdas = { version = "0.1", features = ["parameters"] }
 ```
 
 ## Providers

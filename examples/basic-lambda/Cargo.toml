@@ -1,6 +1,6 @@
 [package]
 name = "basic-lambda"
-description = "Basic Powertools Lambda Rust example."
+description = "Basic Victor's Lambdas example."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-aws-lambda-powertools = { path = "../../crates/aws-lambda-powertools", features = ["all"] }
+victors-lambdas = { path = "../../crates/victors-lambdas", features = ["all"] }
 
 [lints]
 workspace = true

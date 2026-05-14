@@ -1,6 +1,6 @@
 [package]
 name = "metrics-snippet"
-description = "Buildable metrics snippet for Powertools Lambda Rust docs."
+description = "Buildable metrics snippet for Victor's Lambdas docs."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["metrics"] }
+victors-lambdas = { path = "../../../crates/victors-lambdas", features = ["metrics"] }
 
 [lints]
 workspace = true

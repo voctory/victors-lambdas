@@ -32,7 +32,7 @@ inside a larger AppConfig document.
 The workspace keeps a buildable snippet in `examples/snippets/feature-flags`:
 
 ```rust
-use aws_lambda_powertools::feature_flags::{
+use victors_lambdas::feature_flags::{
     FeatureCondition, FeatureFlag, FeatureFlagCachePolicy, FeatureFlagConfig,
     FeatureFlagContext, FeatureFlags, FeatureRule, InMemoryFeatureFlagStore, RuleAction,
 };

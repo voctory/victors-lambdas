@@ -1,6 +1,6 @@
 [package]
 name = "parameters-aws-snippet"
-description = "Buildable AWS-backed parameters snippet for Powertools Lambda Rust docs."
+description = "Buildable AWS-backed parameters snippet for Victor's Lambdas docs."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,7 +9,7 @@ publish = false
 
 [dependencies]
 aws-config = { version = "=1.6.3", default-features = false, features = ["default-https-client", "rt-tokio"] }
-aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["parameters-appconfig", "parameters-dynamodb", "parameters-secrets", "parameters-ssm"] }
+victors-lambdas = { path = "../../../crates/victors-lambdas", features = ["parameters-appconfig", "parameters-dynamodb", "parameters-secrets", "parameters-ssm"] }
 aws-sdk-appconfigdata = "=1.74.0"
 aws-sdk-dynamodb = "=1.82.0"
 aws-sdk-secretsmanager = "=1.78.0"

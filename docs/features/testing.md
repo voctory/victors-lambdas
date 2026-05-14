@@ -3,7 +3,7 @@
 The testing crate provides small test doubles and fixture helpers for Lambda-oriented unit tests.
 
 ```toml
-aws-lambda-powertools-testing = { version = "0.1" }
+victors-lambdas-testing = { version = "0.1" }
 ```
 
 ## Supported Behavior
@@ -19,7 +19,7 @@ aws-lambda-powertools-testing = { version = "0.1" }
 Enable the feature-specific stubs you need:
 
 ```toml
-aws-lambda-powertools-testing = { version = "0.1", features = ["feature-flags", "idempotency", "streaming"] }
+victors-lambdas-testing = { version = "0.1", features = ["feature-flags", "idempotency", "streaming"] }
 ```
 
 ## Handler Harness
@@ -27,7 +27,7 @@ aws-lambda-powertools-testing = { version = "0.1", features = ["feature-flags", 
 Use `HandlerHarness` when the handler is a plain Rust function that accepts a typed event and context reference:
 
 ```rust
-use aws_lambda_powertools_testing::HandlerHarness;
+use victors_lambdas_testing::HandlerHarness;
 
 #[derive(serde::Deserialize)]
 struct OrderEvent {
@@ -47,7 +47,7 @@ For fixture-driven tests, let the harness decode JSON before invoking the handle
 ```rust,no_run
 use std::path::Path;
 
-use aws_lambda_powertools_testing::HandlerHarness;
+use victors_lambdas_testing::HandlerHarness;
 
 #[derive(serde::Deserialize)]
 struct OrderEvent {
@@ -59,7 +59,7 @@ let output = harness.invoke_json(Path::new("tests/events/order.json"), |event: O
     event.order_id
 })?;
 
-# Ok::<(), aws_lambda_powertools_testing::FixtureError>(())
+# Ok::<(), victors_lambdas_testing::FixtureError>(())
 ```
 
 ## Store Stubs
@@ -68,8 +68,8 @@ let output = harness.invoke_json(Path::new("tests/events/order.json"), |event: O
 testing-oriented names:
 
 ```rust
-use aws_lambda_powertools_feature_flags::{FeatureFlag, FeatureFlagConfig, FeatureFlagContext, FeatureFlags};
-use aws_lambda_powertools_testing::FeatureFlagStoreStub;
+use victors_lambdas_feature_flags::{FeatureFlag, FeatureFlagConfig, FeatureFlagContext, FeatureFlags};
+use victors_lambdas_testing::FeatureFlagStoreStub;
 
 let store = FeatureFlagStoreStub::from_config(
     FeatureFlagConfig::new().with_feature("beta", FeatureFlag::boolean(true)),
@@ -78,7 +78,7 @@ let flags = FeatureFlags::new(store);
 
 assert!(flags.evaluate_bool("beta", &FeatureFlagContext::new(), false)?);
 
-# Ok::<(), aws_lambda_powertools_feature_flags::FeatureFlagError>(())
+# Ok::<(), victors_lambdas_feature_flags::FeatureFlagError>(())
 ```
 
 ## S3 Stub
@@ -88,8 +88,8 @@ assert!(flags.evaluate_bool("beta", &FeatureFlagContext::new(), false)?);
 ```rust,no_run
 use std::io::{Read as _, Seek as _, SeekFrom};
 
-use aws_lambda_powertools_streaming::S3Object;
-use aws_lambda_powertools_testing::S3ObjectClientStub;
+use victors_lambdas_streaming::S3Object;
+use victors_lambdas_testing::S3ObjectClientStub;
 
 let client = S3ObjectClientStub::new().with_object("orders", "order.json", b"{\"id\":1}");
 let mut object = S3Object::for_bucket_key("orders", "order.json", client);

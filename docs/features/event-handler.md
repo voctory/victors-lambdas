@@ -4,7 +4,7 @@ The event-handler utility provides dependency-free HTTP request/response routing
 sources. It is exposed through the `event-handler` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["event-handler"] }
+victors-lambdas = { version = "0.1", features = ["event-handler"] }
 ```
 
 ## Supported Behavior
@@ -36,14 +36,14 @@ Enable `event-handler-aws-lambda-events` to convert common `aws_lambda_events` H
 dependency-free `Request` and `Response` types:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["event-handler-aws-lambda-events"] }
+victors-lambdas = { version = "0.1", features = ["event-handler-aws-lambda-events"] }
 ```
 
 AppSync scalar helpers, AppSync Events, and Bedrock Agent function-details resolvers have separate feature flags so
 applications can opt into only the helpers and adapters they use:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = [
+victors-lambdas = { version = "0.1", features = [
   "event-handler-appsync-scalars",
   "event-handler-appsync-events",
   "event-handler-bedrock-agent-functions",
@@ -53,13 +53,13 @@ aws-lambda-powertools = { version = "0.1", features = [
 Metrics middleware is available when both the event handler and metrics utility are enabled:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["event-handler-metrics"] }
+victors-lambdas = { version = "0.1", features = ["event-handler-metrics"] }
 ```
 
 Trace record middleware is available when both the event handler and tracer utility are enabled:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["event-handler-tracer"] }
+victors-lambdas = { version = "0.1", features = ["event-handler-tracer"] }
 ```
 
 ## Debug Error Details

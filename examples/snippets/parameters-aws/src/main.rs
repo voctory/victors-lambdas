@@ -3,11 +3,11 @@
 use std::{env, error::Error, time::Duration};
 
 use aws_config::BehaviorVersion;
-use aws_lambda_powertools::prelude::{
+use serde::Deserialize;
+use victors_lambdas::prelude::{
     AppConfigProvider, AsyncParameters, CachePolicy, DynamoDbParameterProvider, ParameterTransform,
     SecretsManagerProvider, SsmParameterProvider, SsmParameterType,
 };
-use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 struct DatabaseConfig {

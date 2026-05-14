@@ -4,7 +4,7 @@ The JMESPath utility extracts data from JSON-like Lambda events using JMESPath e
 `jmespath` Cargo feature on the umbrella crate:
 
 ```toml
-aws-lambda-powertools = { version = "0.1", features = ["jmespath"] }
+victors-lambdas = { version = "0.1", features = ["jmespath"] }
 ```
 
 ## Supported Behavior
