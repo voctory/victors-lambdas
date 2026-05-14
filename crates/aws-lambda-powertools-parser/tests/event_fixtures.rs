@@ -5,34 +5,23 @@
 use std::path::PathBuf;
 
 use aws_lambda_events::event::{
-    activemq::ActiveMqEvent,
-    alb::AlbTargetGroupRequest,
-    apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
-    bedrock_agent_runtime::AgentEvent,
-    cloudwatch_logs::LogsEvent,
-    cognito::CognitoEventUserPoolsPreSignup,
-    dynamodb::Event as DynamoDbEvent,
-    eventbridge::EventBridgeEvent,
-    firehose::KinesisFirehoseEvent,
-    kafka::KafkaEvent,
-    kinesis::KinesisEvent,
-    lambda_function_urls::LambdaFunctionUrlRequest,
-    rabbitmq::RabbitMqEvent,
-    s3::{S3Event, batch_job::S3BatchJobEvent, object_lambda::S3ObjectLambdaEvent},
-    ses::SimpleEmailEvent,
-    sns::SnsEvent,
-    sqs::SqsEvent,
-    vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
+    bedrock_agent_runtime::AgentEvent, cognito::CognitoEventUserPoolsPreSignup,
 };
 use aws_lambda_powertools_parser::{
-    ApiGatewayAuthorizerHttpApiV1Request, ApiGatewayAuthorizerIamPolicyResponse,
-    ApiGatewayAuthorizerRequest, ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
-    ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, ApiGatewayWebsocketConnectEvent,
+    ActiveMqModel, AlbModel, ApiGatewayAuthorizerHttpApiV1Request,
+    ApiGatewayAuthorizerIamPolicyResponse, ApiGatewayAuthorizerRequest,
+    ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
+    ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, ApiGatewayProxyEventModel,
+    ApiGatewayProxyEventV2Model, ApiGatewayWebsocketConnectEvent,
     ApiGatewayWebsocketDisconnectEvent, ApiGatewayWebsocketMessageEvent, AppSyncBatchResolverEvent,
     AppSyncEventsEvent, AppSyncResolverEvent, CloudFormationCustomResourceCreate,
     CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
     CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
-    CloudFormationCustomResourceUpdate, EventParser,
+    CloudFormationCustomResourceUpdate, CloudWatchLogsModel, DynamoDbStreamModel, EventBridgeModel,
+    EventParser, KafkaMskEventModel, KafkaSelfManagedEventModel, KinesisDataStreamModel,
+    KinesisFirehoseModel, KinesisFirehoseSqsModel, LambdaFunctionUrlModel, RabbitMqModel,
+    S3BatchOperationModel, S3Model, S3ObjectLambdaEvent, S3SqsEventNotificationModel, SesModel,
+    SnsModel, SqsModel, VpcLatticeModel, VpcLatticeV2Model,
 };
 use aws_lambda_powertools_testing::load_json_fixture;
 use serde::Deserialize;
@@ -70,7 +59,7 @@ struct S3BatchTask {
 
 #[test]
 fn parses_api_gateway_v2_body_fixture() {
-    let event = load_json_fixture::<ApiGatewayV2httpRequest>(fixture("apigw-v2-order.json"))
+    let event = load_json_fixture::<ApiGatewayProxyEventV2Model>(fixture("apigw-v2-order.json"))
         .expect("API Gateway v2 fixture should decode");
 
     let parsed = EventParser::new()
@@ -88,7 +77,7 @@ fn parses_api_gateway_v2_body_fixture() {
 
 #[test]
 fn parses_api_gateway_v1_body_fixture() {
-    let event = load_json_fixture::<ApiGatewayProxyRequest>(fixture("apigw-v1-order.json"))
+    let event = load_json_fixture::<ApiGatewayProxyEventModel>(fixture("apigw-v1-order.json"))
         .expect("API Gateway v1 fixture should decode");
 
     let parsed = EventParser::new()
@@ -219,7 +208,7 @@ fn parses_api_gateway_authorizer_response_fixtures() {
 
 #[test]
 fn parses_vpc_lattice_body_fixture() {
-    let event = load_json_fixture::<VpcLatticeRequestV1>(fixture("vpc-lattice-v1-order.json"))
+    let event = load_json_fixture::<VpcLatticeModel>(fixture("vpc-lattice-v1-order.json"))
         .expect("VPC Lattice v1 fixture should decode");
 
     let parsed = EventParser::new()
@@ -232,7 +221,7 @@ fn parses_vpc_lattice_body_fixture() {
 
 #[test]
 fn parses_vpc_lattice_v2_body_fixture() {
-    let event = load_json_fixture::<VpcLatticeRequestV2>(fixture("vpc-lattice-v2-order.json"))
+    let event = load_json_fixture::<VpcLatticeV2Model>(fixture("vpc-lattice-v2-order.json"))
         .expect("VPC Lattice v2 fixture should decode");
 
     let parsed = EventParser::new()
@@ -245,7 +234,7 @@ fn parses_vpc_lattice_v2_body_fixture() {
 
 #[test]
 fn parses_eventbridge_detail_fixture() {
-    let event = load_json_fixture::<EventBridgeEvent<Value>>(fixture("eventbridge-order.json"))
+    let event = load_json_fixture::<EventBridgeModel<Value>>(fixture("eventbridge-order.json"))
         .expect("EventBridge fixture should decode");
 
     let parsed = EventParser::new()
@@ -258,7 +247,7 @@ fn parses_eventbridge_detail_fixture() {
 
 #[test]
 fn parses_eventbridge_scheduler_empty_detail_fixture() {
-    let event = load_json_fixture::<EventBridgeEvent<Value>>(fixture(
+    let event = load_json_fixture::<EventBridgeModel<Value>>(fixture(
         "eventbridge-scheduler-empty-detail.json",
     ))
     .expect("EventBridge Scheduler fixture should decode");
@@ -373,7 +362,7 @@ fn parses_cognito_pre_signup_user_attributes_fixture() {
 
 #[test]
 fn parses_sqs_message_body_fixture() {
-    let event = load_json_fixture::<SqsEvent>(fixture("sqs-orders.json"))
+    let event = load_json_fixture::<SqsModel>(fixture("sqs-orders.json"))
         .expect("SQS fixture should decode");
 
     let parsed = EventParser::new()
@@ -389,7 +378,7 @@ fn parses_sqs_message_body_fixture() {
 
 #[test]
 fn parses_activemq_message_data_fixture() {
-    let event = load_json_fixture::<ActiveMqEvent>(fixture("activemq-orders.json"))
+    let event = load_json_fixture::<ActiveMqModel>(fixture("activemq-orders.json"))
         .expect("ActiveMQ fixture should decode");
 
     let parsed = EventParser::new()
@@ -403,7 +392,7 @@ fn parses_activemq_message_data_fixture() {
 
 #[test]
 fn parses_rabbitmq_message_data_fixture() {
-    let event = load_json_fixture::<RabbitMqEvent>(fixture("rabbitmq-orders.json"))
+    let event = load_json_fixture::<RabbitMqModel>(fixture("rabbitmq-orders.json"))
         .expect("RabbitMQ fixture should decode");
 
     let parsed = EventParser::new()
@@ -420,7 +409,7 @@ fn parses_rabbitmq_message_data_fixture() {
 
 #[test]
 fn parses_alb_body_fixture() {
-    let event = load_json_fixture::<AlbTargetGroupRequest>(fixture("alb-order.json"))
+    let event = load_json_fixture::<AlbModel>(fixture("alb-order.json"))
         .expect("ALB fixture should decode");
 
     let parsed = EventParser::new()
@@ -433,7 +422,7 @@ fn parses_alb_body_fixture() {
 
 #[test]
 fn parses_lambda_function_url_body_fixture() {
-    let event = load_json_fixture::<LambdaFunctionUrlRequest>(fixture("lambda-url-order.json"))
+    let event = load_json_fixture::<LambdaFunctionUrlModel>(fixture("lambda-url-order.json"))
         .expect("Lambda Function URL fixture should decode");
 
     let parsed = EventParser::new()
@@ -446,7 +435,7 @@ fn parses_lambda_function_url_body_fixture() {
 
 #[test]
 fn parses_sns_message_fixture() {
-    let event = load_json_fixture::<SnsEvent>(fixture("sns-orders.json"))
+    let event = load_json_fixture::<SnsModel>(fixture("sns-orders.json"))
         .expect("SNS fixture should decode");
 
     let parsed = EventParser::new()
@@ -460,7 +449,7 @@ fn parses_sns_message_fixture() {
 
 #[test]
 fn parses_s3_record_fixture() {
-    let event = load_json_fixture::<S3Event>(fixture("s3-order-object.json"))
+    let event = load_json_fixture::<S3Model>(fixture("s3-order-object.json"))
         .expect("S3 fixture should decode");
 
     let parsed = EventParser::new()
@@ -505,7 +494,7 @@ fn parses_s3_object_lambda_payload_fixture() {
 
 #[test]
 fn parses_s3_batch_job_task_fixture() {
-    let event = load_json_fixture::<S3BatchJobEvent>(fixture("s3-batch-orders.json"))
+    let event = load_json_fixture::<S3BatchOperationModel>(fixture("s3-batch-orders.json"))
         .expect("S3 Batch fixture should decode");
 
     let parsed = EventParser::new()
@@ -526,8 +515,9 @@ fn parses_s3_batch_job_task_fixture() {
 
 #[test]
 fn parses_s3_over_sqs_record_fixture() {
-    let event = load_json_fixture::<SqsEvent>(fixture("s3-over-sqs-order-object.json"))
-        .expect("S3-over-SQS fixture should decode");
+    let event =
+        load_json_fixture::<S3SqsEventNotificationModel>(fixture("s3-over-sqs-order-object.json"))
+            .expect("S3-over-SQS fixture should decode");
 
     let parsed = EventParser::new()
         .parse_s3_sqs_event_records::<Value>(event)
@@ -545,7 +535,7 @@ fn parses_s3_over_sqs_record_fixture() {
 
 #[test]
 fn parses_sns_over_sqs_message_fixture() {
-    let event = load_json_fixture::<SqsEvent>(fixture("sns-over-sqs-orders.json"))
+    let event = load_json_fixture::<SqsModel>(fixture("sns-over-sqs-orders.json"))
         .expect("SNS-over-SQS fixture should decode");
 
     let parsed = EventParser::new()
@@ -559,7 +549,7 @@ fn parses_sns_over_sqs_message_fixture() {
 
 #[test]
 fn parses_ses_record_fixture() {
-    let event = load_json_fixture::<SimpleEmailEvent>(fixture("ses-order-email.json"))
+    let event = load_json_fixture::<SesModel>(fixture("ses-order-email.json"))
         .expect("SES fixture should decode");
 
     let parsed = EventParser::new()
@@ -666,7 +656,7 @@ fn parses_cloudformation_response_fixture() {
 
 #[test]
 fn parses_kinesis_record_fixture() {
-    let event = load_json_fixture::<KinesisEvent>(fixture("kinesis-orders.json"))
+    let event = load_json_fixture::<KinesisDataStreamModel>(fixture("kinesis-orders.json"))
         .expect("Kinesis fixture should decode");
 
     let parsed = EventParser::new()
@@ -680,7 +670,7 @@ fn parses_kinesis_record_fixture() {
 
 #[test]
 fn parses_firehose_record_fixture() {
-    let event = load_json_fixture::<KinesisFirehoseEvent>(fixture("firehose-orders.json"))
+    let event = load_json_fixture::<KinesisFirehoseModel>(fixture("firehose-orders.json"))
         .expect("Firehose fixture should decode");
 
     let parsed = EventParser::new()
@@ -694,7 +684,7 @@ fn parses_firehose_record_fixture() {
 
 #[test]
 fn parses_firehose_sqs_message_body_fixture() {
-    let event = load_json_fixture::<KinesisFirehoseEvent>(fixture("firehose-sqs-orders.json"))
+    let event = load_json_fixture::<KinesisFirehoseSqsModel>(fixture("firehose-sqs-orders.json"))
         .expect("Firehose-delivered SQS fixture should decode");
 
     let parsed = EventParser::new()
@@ -708,7 +698,7 @@ fn parses_firehose_sqs_message_body_fixture() {
 
 #[test]
 fn parses_cloudwatch_log_message_fixture() {
-    let event = load_json_fixture::<LogsEvent>(fixture("cloudwatch-logs-orders.json"))
+    let event = load_json_fixture::<CloudWatchLogsModel>(fixture("cloudwatch-logs-orders.json"))
         .expect("CloudWatch Logs fixture should decode");
 
     let parsed = EventParser::new()
@@ -722,7 +712,7 @@ fn parses_cloudwatch_log_message_fixture() {
 
 #[test]
 fn parses_dynamodb_new_image_fixture() {
-    let event = load_json_fixture::<DynamoDbEvent>(fixture("dynamodb-orders.json"))
+    let event = load_json_fixture::<DynamoDbStreamModel>(fixture("dynamodb-orders.json"))
         .expect("DynamoDB fixture should decode");
 
     let parsed = EventParser::new()
@@ -736,8 +726,9 @@ fn parses_dynamodb_new_image_fixture() {
 
 #[test]
 fn parses_kinesis_dynamodb_new_image_fixture() {
-    let event = load_json_fixture::<KinesisEvent>(fixture("kinesis-dynamodb-orders.json"))
-        .expect("Kinesis-delivered DynamoDB fixture should decode");
+    let event =
+        load_json_fixture::<KinesisDataStreamModel>(fixture("kinesis-dynamodb-orders.json"))
+            .expect("Kinesis-delivered DynamoDB fixture should decode");
 
     let parsed = EventParser::new()
         .parse_kinesis_dynamodb_new_images::<OrderEvent>(event)
@@ -750,8 +741,22 @@ fn parses_kinesis_dynamodb_new_image_fixture() {
 
 #[test]
 fn parses_kafka_record_value_fixture() {
-    let event = load_json_fixture::<KafkaEvent>(fixture("kafka-orders.json"))
+    let event = load_json_fixture::<KafkaMskEventModel>(fixture("kafka-orders.json"))
         .expect("Kafka fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_kafka_record_values::<OrderEvent>(event)
+        .expect("fixture Kafka record value should parse");
+
+    assert_eq!(parsed["orders-0"].len(), 1);
+    assert_eq!(parsed["orders-0"][0].payload().order_id, "order-kafka-1");
+    assert_eq!(parsed["orders-0"][0].payload().quantity, 20);
+}
+
+#[test]
+fn parses_self_managed_kafka_record_value_fixture() {
+    let event = load_json_fixture::<KafkaSelfManagedEventModel>(fixture("kafka-orders.json"))
+        .expect("Kafka fixture should decode through self-managed alias");
 
     let parsed = EventParser::new()
         .parse_kafka_record_values::<OrderEvent>(event)

@@ -24,6 +24,12 @@ pub use appsync_events::{
 };
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::activemq::ActiveMqEvent as ActiveMqModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::alb::AlbTargetGroupRequest as AlbModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::apigw::ApiGatewayCustomAuthorizerRequest as ApiGatewayAuthorizerToken;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
@@ -31,6 +37,9 @@ pub use aws_lambda_events::event::apigw::ApiGatewayCustomAuthorizerRequestTypeRe
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::apigw::ApiGatewayCustomAuthorizerResponse as ApiGatewayAuthorizerResponse;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayProxyRequest as ApiGatewayProxyEventModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerIamPolicyResponse as ApiGatewayAuthorizerIamPolicyResponse;
@@ -43,6 +52,9 @@ pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerV1Request a
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerV2Request as ApiGatewayAuthorizerRequestV2;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayV2httpRequest as ApiGatewayProxyEventV2Model;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::apigw::ApiGatewayWebsocketProxyRequest as ApiGatewayWebsocketConnectEvent;
@@ -70,6 +82,63 @@ pub use aws_lambda_events::event::cloudformation::DeleteRequest as CloudFormatio
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::cloudformation::UpdateRequest as CloudFormationCustomResourceUpdate;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cloudwatch_logs::LogsEvent as CloudWatchLogsModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::dynamodb::Event as DynamoDbStreamModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::eventbridge::EventBridgeEvent as EventBridgeModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::firehose::KinesisFirehoseEvent as KinesisFirehoseModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::firehose::KinesisFirehoseEvent as KinesisFirehoseSqsModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::kafka::KafkaEvent as KafkaMskEventModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::kafka::KafkaEvent as KafkaSelfManagedEventModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::kinesis::KinesisEvent as KinesisDataStreamModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::lambda_function_urls::LambdaFunctionUrlRequest as LambdaFunctionUrlModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::rabbitmq::RabbitMqEvent as RabbitMqModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::s3::S3Event as S3Model;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::s3::batch_job::S3BatchJobEvent as S3BatchOperationModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::s3::object_lambda::S3ObjectLambdaEvent;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::ses::SimpleEmailEvent as SesModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::sns::SnsEvent as SnsModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::sqs::SqsEvent as S3SqsEventNotificationModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::sqs::SqsEvent as SqsModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::vpc_lattice::VpcLatticeRequestV1 as VpcLatticeModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::vpc_lattice::VpcLatticeRequestV2 as VpcLatticeV2Model;
 pub use bedrock_agent::{
     BedrockAgentEvent, BedrockAgentEventModel, BedrockAgentFunctionAgent,
     BedrockAgentFunctionEvent, BedrockAgentFunctionEventModel, BedrockAgentFunctionParameter,

@@ -208,14 +208,20 @@ pub mod prelude {
 
     #[cfg(feature = "parser-aws-lambda-events")]
     pub use aws_lambda_powertools_parser::{
-        ApiGatewayAuthorizerHttpApiV1Request, ApiGatewayAuthorizerIamPolicyResponse,
-        ApiGatewayAuthorizerRequest, ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
-        ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken,
-        ApiGatewayWebsocketConnectEvent, ApiGatewayWebsocketDisconnectEvent,
-        ApiGatewayWebsocketMessageEvent, AppSyncBatchResolverEvent, AppSyncResolverEvent,
-        CloudFormationCustomResourceCreate, CloudFormationCustomResourceDelete,
-        CloudFormationCustomResourceRequest, CloudFormationCustomResourceResponse,
-        CloudFormationCustomResourceResponseStatus, CloudFormationCustomResourceUpdate,
+        ActiveMqModel, AlbModel, ApiGatewayAuthorizerHttpApiV1Request,
+        ApiGatewayAuthorizerIamPolicyResponse, ApiGatewayAuthorizerRequest,
+        ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
+        ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, ApiGatewayProxyEventModel,
+        ApiGatewayProxyEventV2Model, ApiGatewayWebsocketConnectEvent,
+        ApiGatewayWebsocketDisconnectEvent, ApiGatewayWebsocketMessageEvent,
+        AppSyncBatchResolverEvent, AppSyncResolverEvent, CloudFormationCustomResourceCreate,
+        CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
+        CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
+        CloudFormationCustomResourceUpdate, CloudWatchLogsModel, DynamoDbStreamModel,
+        EventBridgeModel, KafkaMskEventModel, KafkaSelfManagedEventModel, KinesisDataStreamModel,
+        KinesisFirehoseModel, KinesisFirehoseSqsModel, LambdaFunctionUrlModel, RabbitMqModel,
+        S3BatchOperationModel, S3Model, S3ObjectLambdaEvent, S3SqsEventNotificationModel, SesModel,
+        SnsModel, SqsModel, VpcLatticeModel, VpcLatticeV2Model,
     };
 
     #[cfg(feature = "tracer")]
