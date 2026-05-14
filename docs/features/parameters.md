@@ -45,3 +45,20 @@ cargo run -p parameters-snippet
 
 Use `get_force`, `get_force_json`, `get_force_binary`, or `get_force_transformed` when a Lambda invocation must bypass
 the cache and refresh the stored value.
+
+## AWS Provider Snippet
+
+The buildable AWS-backed snippet in
+[examples/snippets/parameters-aws/src/main.rs](../../examples/snippets/parameters-aws/src/main.rs) shows how to create
+SSM Parameter Store, Secrets Manager, AppConfig, and DynamoDB providers from caller-owned AWS SDK clients. It also
+demonstrates SSM by-name, path, and write operations.
+
+The snippet is guarded so local validation does not call AWS by default:
+
+```sh
+cargo run -p parameters-aws-snippet
+RUN_AWS_PARAMETERS_SNIPPET=1 cargo run -p parameters-aws-snippet
+```
+
+Set `RUN_AWS_PARAMETERS_SNIPPET=1` only in an environment with AWS credentials, region configuration, and matching
+sample resources.

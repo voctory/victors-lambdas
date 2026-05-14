@@ -1,0 +1,21 @@
+[package]
+name = "parameters-aws-snippet"
+description = "Buildable AWS-backed parameters snippet for Powertools Lambda Rust docs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+aws-config = { version = "=1.6.3", default-features = false, features = ["default-https-client", "rt-tokio"] }
+aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["parameters-appconfig", "parameters-dynamodb", "parameters-secrets", "parameters-ssm"] }
+aws-sdk-appconfigdata = "=1.74.0"
+aws-sdk-dynamodb = "=1.82.0"
+aws-sdk-secretsmanager = "=1.78.0"
+aws-sdk-ssm = "=1.83.0"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[lints]
+workspace = true
