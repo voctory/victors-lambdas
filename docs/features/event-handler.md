@@ -20,6 +20,7 @@ aws-lambda-powertools = { version = "0.1", features = ["event-handler"] }
 - Matched-route metadata on routed requests so handlers and response middleware can label observations by route pattern.
 - Optional CORS preflight handling and response headers with request `Origin` matching, wildcard/additional origins,
   AWS-friendly default request headers, and credential headers for non-wildcard origins.
+- Optional metrics middleware through `event-handler-metrics` for per-route latency, fault, and error metrics.
 - Optional AppSync GraphQL scalar helpers for `ID`, `AWSDate`, `AWSTime`, `AWSDateTime`, and `AWSTimestamp`.
 - Optional request/response validation hooks through `event-handler-validation`.
 - Optional gzip and deflate response compression through `event-handler-compression`.
@@ -45,6 +46,12 @@ aws-lambda-powertools = { version = "0.1", features = [
   "event-handler-appsync-events",
   "event-handler-bedrock-agent-functions",
 ] }
+```
+
+Metrics middleware is available when both the event handler and metrics utility are enabled:
+
+```toml
+aws-lambda-powertools = { version = "0.1", features = ["event-handler-metrics"] }
 ```
 
 ## Snippet

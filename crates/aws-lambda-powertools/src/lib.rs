@@ -114,6 +114,12 @@ pub mod prelude {
         RequestValidator, ResponseValidator, ValidationConfig as EventHandlerValidationConfig,
     };
 
+    #[cfg(feature = "event-handler-metrics")]
+    pub use aws_lambda_powertools_event_handler::{
+        HttpMetricsResult, http_metrics_response_middleware, http_metrics_start_middleware,
+        record_http_metrics,
+    };
+
     #[cfg(feature = "event-handler-aws-lambda-events")]
     pub use aws_lambda_powertools_event_handler::{
         AlbAdapterError, AlbAdapterResult, ApiGatewayAdapterError, ApiGatewayAdapterResult,

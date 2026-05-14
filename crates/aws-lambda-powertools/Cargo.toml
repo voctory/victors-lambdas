@@ -22,6 +22,7 @@ all = [
     "event-handler-appsync-events",
     "event-handler-bedrock-agent-functions",
     "event-handler-compression",
+    "event-handler-metrics",
     "event-handler-validation",
     "feature-flags",
     "feature-flags-appconfig",
@@ -75,6 +76,11 @@ event-handler-aws-lambda-events = [
 event-handler-compression = [
     "event-handler",
     "aws-lambda-powertools-event-handler/compression",
+]
+event-handler-metrics = [
+    "event-handler",
+    "metrics",
+    "aws-lambda-powertools-event-handler/metrics",
 ]
 event-handler-validation = [
     "event-handler",

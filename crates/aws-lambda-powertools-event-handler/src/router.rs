@@ -165,6 +165,17 @@ impl Router {
         self
     }
 
+    /// Adds request and response middleware that records per-request HTTP metrics.
+    #[cfg(feature = "metrics")]
+    pub fn add_metrics_middleware(
+        &mut self,
+        metrics: std::sync::Arc<std::sync::Mutex<aws_lambda_powertools_metrics::Metrics>>,
+    ) -> &mut Self {
+        self.add_request_middleware(crate::http_metrics_start_middleware());
+        self.add_response_middleware(crate::http_metrics_response_middleware(metrics));
+        self
+    }
+
     /// Returns the number of registered request middleware functions.
     #[must_use]
     pub fn request_middleware_len(&self) -> usize {
@@ -883,6 +894,17 @@ impl AsyncRouter {
         middleware: impl Fn(&Request, Response) -> Response + Send + Sync + 'static,
     ) -> &mut Self {
         self.response_middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Adds request and response middleware that records per-request HTTP metrics.
+    #[cfg(feature = "metrics")]
+    pub fn add_metrics_middleware(
+        &mut self,
+        metrics: std::sync::Arc<std::sync::Mutex<aws_lambda_powertools_metrics::Metrics>>,
+    ) -> &mut Self {
+        self.add_request_middleware(crate::http_metrics_start_middleware());
+        self.add_response_middleware(crate::http_metrics_response_middleware(metrics));
         self
     }
 

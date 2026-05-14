@@ -198,6 +198,7 @@ name = "aws-lambda-powertools-event-handler"
 version = "0.1.0"
 dependencies = [
  "aws-lambda-powertools-core",
+ "aws-lambda-powertools-metrics",
  "aws-lambda-powertools-parser",
  "aws-lambda-powertools-validation",
  "aws_lambda_events",

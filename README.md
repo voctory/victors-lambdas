@@ -63,9 +63,9 @@ first implementation tranche has landed:
   multi-method route registration, built-in HTTP errors, unsupported-method `405` adapter responses, custom not-found
   and fallible route error handlers, typed fallible route error handlers, router composition with path prefixes,
   router-level and route-specific request/response middleware, matched-route metadata, request-scoped and shared typed
-  extensions, origin-aware CORS handling, optional AppSync GraphQL scalar helpers, optional router-level and
-  route-specific validation hooks, optional gzip/deflate compression middleware, and optional API Gateway
-  REST/HTTP/WebSocket API, ALB, Lambda Function URL, VPC Lattice, sync/async AppSync direct and batch resolver
+  extensions, origin-aware CORS handling, optional metrics middleware, optional AppSync GraphQL scalar helpers, optional
+  router-level and route-specific validation hooks, optional gzip/deflate compression middleware, and optional API
+  Gateway REST/HTTP/WebSocket API, ALB, Lambda Function URL, VPC Lattice, sync/async AppSync direct and batch resolver
   composition, AppSync Events routing and composition, Bedrock Agent OpenAPI adapter, and sync/async Bedrock Agent
   function-details resolver
 - testing helper surfaces for Lambda context stubs, handler harnesses, parameter provider stubs, optional feature flag

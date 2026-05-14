@@ -22,6 +22,8 @@ mod http_error;
 #[cfg(feature = "aws-lambda-events")]
 mod lambda_function_url;
 mod method;
+#[cfg(feature = "metrics")]
+mod metrics;
 mod request;
 mod response;
 mod route;
@@ -87,6 +89,11 @@ pub use lambda_function_url::{
     request_from_lambda_function_url, response_to_lambda_function_url,
 };
 pub use method::{Method, ParseMethodError};
+#[cfg(feature = "metrics")]
+pub use metrics::{
+    HttpMetricsResult, http_metrics_response_middleware, http_metrics_start_middleware,
+    record_http_metrics,
+};
 pub use request::Request;
 pub use response::Response;
 pub use route::{

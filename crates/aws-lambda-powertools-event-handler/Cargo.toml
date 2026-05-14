@@ -26,6 +26,7 @@ bedrock-agent-functions = [
     "dep:serde_json",
 ]
 compression = ["dep:flate2"]
+metrics = ["dep:aws-lambda-powertools-metrics"]
 validation = ["dep:aws-lambda-powertools-validation"]
 aws-lambda-events = [
     "dep:aws_lambda_events",
@@ -42,6 +43,7 @@ aws-lambda-events = [
 
 [dependencies]
 aws-lambda-powertools-core.workspace = true
+aws-lambda-powertools-metrics = { workspace = true, optional = true }
 aws-lambda-powertools-parser = { workspace = true, optional = true }
 aws-lambda-powertools-validation = { workspace = true, optional = true }
 aws_lambda_events = { version = "1.2.0", default-features = false, optional = true }
