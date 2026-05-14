@@ -1,0 +1,46 @@
+{
+  "version": "0",
+  "id": "event-codebuild-orders-1",
+  "detail-type": "CodeBuild Build State Change",
+  "source": "aws.codebuild",
+  "account": "123456789012",
+  "time": "2026-05-14T09:00:00Z",
+  "region": "us-west-2",
+  "resources": [
+    "arn:aws:codebuild:us-west-2:123456789012:build/orders-build:build-1"
+  ],
+  "detail": {
+    "build-status": "SUCCEEDED",
+    "project-name": "orders-build",
+    "build-id": "arn:aws:codebuild:us-west-2:123456789012:build/orders-build:build-1",
+    "additional-information": {
+      "artifact": {
+        "location": "arn:aws:s3:::orders-artifacts/build.zip"
+      },
+      "environment": {
+        "image": "aws/codebuild/standard:7.0",
+        "privileged-mode": false,
+        "compute-type": "BUILD_GENERAL1_SMALL",
+        "type": "LINUX_CONTAINER",
+        "environment-variables": []
+      },
+      "timeout-in-minutes": 60,
+      "build-complete": true,
+      "build-number": 1,
+      "initiator": "orders-user",
+      "build-start-time": "May 14, 2026 9:00:00 AM",
+      "source": {
+        "location": "orders-source",
+        "type": "CODEPIPELINE"
+      },
+      "logs": {
+        "group-name": "/aws/codebuild/orders-build",
+        "stream-name": "build-1"
+      },
+      "phases": []
+    },
+    "current-phase": "COMPLETED",
+    "current-phase-context": "[]",
+    "version": "1"
+  }
+}

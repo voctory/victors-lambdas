@@ -1,0 +1,17 @@
+{
+  "Sender": {
+    "SenderId": "user-orders-1",
+    "SenderIdType": "USER"
+  },
+  "Discussion": {
+    "DiscussionId": "room-orders-1",
+    "DiscussionType": "ROOM"
+  },
+  "EventType": "MESSAGE",
+  "InboundHttpsEndpoint": {
+    "EndpointType": "https",
+    "Url": "https://hooks.chime.aws/incomingwebhooks/orders"
+  },
+  "EventTimestamp": "2026-05-14T09:00:00Z",
+  "Message": "order order-chime-1"
+}

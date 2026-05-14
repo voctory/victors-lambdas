@@ -15,25 +15,28 @@ use victors_lambdas_parser::{
     ApiGatewayProxyEventV2Model, ApiGatewayWebsocketConnectEvent,
     ApiGatewayWebsocketDisconnectEvent, ApiGatewayWebsocketMessageEvent, AppSyncAuthorizerEvent,
     AppSyncAuthorizerResponse, AppSyncBatchResolverEvent, AppSyncEventsEvent, AppSyncResolverEvent,
-    AutoScalingModel, AwsConfigModel, CloudFormationCustomResourceCreate,
-    CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
-    CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
-    CloudFormationCustomResourceUpdate, CloudWatchDashboardCustomWidgetModel, CloudWatchLogsModel,
-    CloudWatchMetricAlarmModel, CodeCommitModel, CodeDeployLifecycleHookEventModel,
-    CodePipelineJobEventModel, CognitoCustomEmailSenderTriggerModel,
+    AutoScalingModel, AwsConfigModel, ChimeBotModel, ClientVpnConnectionHandlerRequestModel,
+    CloudFormationCustomResourceCreate, CloudFormationCustomResourceDelete,
+    CloudFormationCustomResourceRequest, CloudFormationCustomResourceResponse,
+    CloudFormationCustomResourceResponseStatus, CloudFormationCustomResourceUpdate,
+    CloudWatchCloudTrailApiCallModel, CloudWatchDashboardCustomWidgetModel, CloudWatchLogsModel,
+    CloudWatchMetricAlarmModel, CodeBuildModel, CodeCommitModel, CodeDeployLifecycleHookEventModel,
+    CodePipelineCloudWatchModel, CodePipelineJobEventModel, CognitoCustomEmailSenderTriggerModel,
     CognitoCustomEmailSenderTriggerSource, CognitoCustomSMSSenderTriggerModel,
     CognitoCustomSenderRequestType, CognitoCustomSmsSenderTriggerSource,
     CognitoMigrateUserTriggerModel, CognitoMigrateUserTriggerSource, CognitoPreSignupTriggerModel,
-    ConnectContactFlowEventModel, DynamoDbStreamModel, DynamoDbStreamOnFailureDestination,
-    EventBridgeModel, EventParser, IoTCoreRegistryCrudOperation, IoTCoreRegistryEventType,
-    IoTCoreRegistryMembershipOperation, IoTCoreThingEvent, IoTCoreThingGroupEvent,
-    IoTCoreThingGroupHierarchyEvent, IoTCoreThingGroupMembershipEvent,
-    IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent, KafkaMskEventModel,
-    KafkaSelfManagedEventModel, KinesisDataStreamModel, KinesisFirehoseModel,
-    KinesisFirehoseSqsModel, LambdaFunctionUrlModel, RabbitMqModel, S3BatchOperationModel,
-    S3EventNotificationEventBridgeModel, S3EventNotificationModel, S3Model, S3ObjectLambdaEvent,
-    S3SqsEventNotificationModel, SecretsManagerRotationEventModel, SesModel, SnsModel, SqsModel,
-    TransferFamilyAuthorizerEvent, TransferFamilyProtocol, VpcLatticeModel, VpcLatticeV2Model,
+    ConnectContactFlowEventModel, ControlTowerLifecycleModel, DocumentDbModel, DynamoDbStreamModel,
+    DynamoDbStreamOnFailureDestination, EcrScanModel, EventBridgeModel, EventParser,
+    IoTButtonModel, IoTCoreCustomAuthorizerRequestModel, IoTCoreRegistryCrudOperation,
+    IoTCoreRegistryEventType, IoTCoreRegistryMembershipOperation, IoTCoreThingEvent,
+    IoTCoreThingGroupEvent, IoTCoreThingGroupHierarchyEvent, IoTCoreThingGroupMembershipEvent,
+    IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent, IoTOneClickModel, KafkaMskEventModel,
+    KafkaSelfManagedEventModel, KinesisAnalyticsOutputDeliveryModel, KinesisDataStreamModel,
+    KinesisFirehoseModel, KinesisFirehoseSqsModel, LambdaFunctionUrlModel, LexModel, RabbitMqModel,
+    S3BatchOperationModel, S3EventNotificationEventBridgeModel, S3EventNotificationModel, S3Model,
+    S3ObjectLambdaEvent, S3SqsEventNotificationModel, SecretsManagerRotationEventModel, SesModel,
+    SnsModel, SqsModel, TransferFamilyAuthorizerEvent, TransferFamilyProtocol, VpcLatticeModel,
+    VpcLatticeV2Model,
 };
 use victors_lambdas_testing::load_json_fixture;
 
@@ -315,6 +318,79 @@ fn parses_config_rule_fixture() {
             .as_deref()
             .is_some_and(|value| value.contains("AWS::S3::Bucket"))
     );
+}
+
+#[test]
+fn parses_additional_aws_lambda_events_fixtures() {
+    let chime = load_json_fixture::<ChimeBotModel>(fixture("chime-bot-order-message.json"))
+        .expect("Chime bot fixture should decode");
+    let client_vpn = load_json_fixture::<ClientVpnConnectionHandlerRequestModel>(fixture(
+        "clientvpn-connection-handler.json",
+    ))
+    .expect("Client VPN fixture should decode");
+    let codebuild =
+        load_json_fixture::<CodeBuildModel>(fixture("codebuild-state-change-orders.json"))
+            .expect("CodeBuild fixture should decode");
+    let codepipeline = load_json_fixture::<CodePipelineCloudWatchModel>(fixture(
+        "codepipeline-cloudwatch-orders.json",
+    ))
+    .expect("CodePipeline CloudWatch fixture should decode");
+    let controltower = load_json_fixture::<ControlTowerLifecycleModel>(fixture(
+        "controltower-managed-account.json",
+    ))
+    .expect("Control Tower fixture should decode");
+    let documentdb = load_json_fixture::<DocumentDbModel>(fixture("documentdb-insert-order.json"))
+        .expect("DocumentDB fixture should decode");
+    let ecr = load_json_fixture::<EcrScanModel>(fixture("ecr-image-scan-orders.json"))
+        .expect("ECR image scan fixture should decode");
+    let iot_authorizer = load_json_fixture::<IoTCoreCustomAuthorizerRequestModel>(fixture(
+        "iot-custom-authorizer-request.json",
+    ))
+    .expect("IoT custom authorizer fixture should decode");
+    let iot_button = load_json_fixture::<IoTButtonModel>(fixture("iot-button-order.json"))
+        .expect("IoT Button fixture should decode");
+    let iot_one_click = load_json_fixture::<IoTOneClickModel>(fixture("iot-one-click-order.json"))
+        .expect("IoT 1-Click fixture should decode");
+    let kinesis_analytics = load_json_fixture::<KinesisAnalyticsOutputDeliveryModel>(fixture(
+        "kinesis-analytics-output-delivery.json",
+    ))
+    .expect("Kinesis Analytics fixture should decode");
+    let lex = load_json_fixture::<LexModel>(fixture("lex-order.json"))
+        .expect("Lex fixture should decode");
+    let cloudtrail = load_json_fixture::<CloudWatchCloudTrailApiCallModel>(fixture(
+        "cloudwatch-cloudtrail-api-call.json",
+    ))
+    .expect("CloudTrail detail fixture should decode");
+
+    assert_eq!(chime.event_type.as_deref(), Some("MESSAGE"));
+    assert_eq!(client_vpn.username.as_deref(), Some("orders-user"));
+    assert_eq!(
+        codebuild.detail.project_name.as_deref(),
+        Some("orders-build")
+    );
+    assert_eq!(
+        codepipeline.detail.pipeline.as_deref(),
+        Some("orders-pipeline")
+    );
+    assert_eq!(controltower.event_name, "CreateManagedAccount");
+    assert_eq!(documentdb.event_source.as_deref(), Some("aws:docdb"));
+    assert_eq!(documentdb.events.len(), 1);
+    assert_eq!(ecr.detail.repository_name.as_deref(), Some("orders-api"));
+    assert_eq!(iot_authorizer.token.as_deref(), Some("order-token"));
+    assert_eq!(iot_button.serial_number.as_deref(), Some("ORDERBUTTON1"));
+    assert_eq!(
+        iot_one_click.device_info.device_id.as_deref(),
+        Some("order-device-1")
+    );
+    assert_eq!(kinesis_analytics.records.len(), 1);
+    assert_eq!(
+        lex.current_intent
+            .as_ref()
+            .and_then(|intent| intent.name.as_deref()),
+        Some("OrderStatus")
+    );
+    assert_eq!(cloudtrail.event_source, "lambda.amazonaws.com");
+    assert_eq!(cloudtrail.event_name, "Invoke");
 }
 
 #[test]

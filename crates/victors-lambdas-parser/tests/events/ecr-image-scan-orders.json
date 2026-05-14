@@ -1,0 +1,28 @@
+{
+  "version": "0",
+  "id": "event-ecr-orders-1",
+  "detail-type": "ECR Image Scan",
+  "source": "aws.ecr",
+  "account": "123456789012",
+  "time": "2026-05-14T09:00:00Z",
+  "region": "us-west-2",
+  "resources": [
+    "arn:aws:ecr:us-west-2:123456789012:repository/orders-api"
+  ],
+  "detail": {
+    "scan-status": "COMPLETE",
+    "repository-name": "orders-api",
+    "finding-severity-counts": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 1,
+      "LOW": 2,
+      "INFORMATIONAL": 0,
+      "UNDEFINED": 0
+    },
+    "image-digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "image-tags": [
+      "dev"
+    ]
+  }
+}

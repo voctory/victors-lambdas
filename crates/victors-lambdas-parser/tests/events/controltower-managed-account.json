@@ -1,0 +1,32 @@
+{
+  "eventVersion": "1.05",
+  "userIdentity": {
+    "accountId": "123456789012",
+    "invokedBy": "AWS Internal"
+  },
+  "eventTime": "2026-05-14T09:00:00Z",
+  "eventSource": "controltower.amazonaws.com",
+  "eventName": "CreateManagedAccount",
+  "awsRegion": "us-west-2",
+  "sourceIPAddress": "AWS Internal",
+  "userAgent": "AWS Internal",
+  "eventID": "event-controltower-orders-1",
+  "readOnly": false,
+  "eventType": "AwsServiceEvent",
+  "serviceEventDetails": {
+    "createManagedAccountStatus": {
+      "organizationalUnit": {
+        "organizationalUnitName": "Orders",
+        "organizationalUnitId": "ou-orders-12345678"
+      },
+      "account": {
+        "accountName": "OrdersDev",
+        "accountId": "210987654321"
+      },
+      "state": "SUCCEEDED",
+      "message": "Created",
+      "requestedTimestamp": "2026-05-14T08:50:00Z",
+      "completedTimestamp": "2026-05-14T09:00:00Z"
+    }
+  }
+}

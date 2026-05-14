@@ -1,0 +1,28 @@
+{
+  "eventVersion": "1.08",
+  "userIdentity": {
+    "type": "AssumedRole",
+    "principalId": "principal-orders",
+    "arn": "arn:aws:sts::123456789012:assumed-role/orders-role/session",
+    "accountId": "123456789012",
+    "sessionContext": {
+      "attributes": {
+        "mfaAuthenticated": "false",
+        "creationDate": "2026-05-14T09:00:00Z"
+      }
+    }
+  },
+  "eventTime": "2026-05-14T09:00:00Z",
+  "eventSource": "lambda.amazonaws.com",
+  "eventName": "Invoke",
+  "awsRegion": "us-west-2",
+  "sourceIPAddress": "203.0.113.10",
+  "userAgent": "orders-client",
+  "requestParameters": {
+    "functionName": "orders-handler"
+  },
+  "responseElements": null,
+  "requestID": "request-cloudtrail-orders-1",
+  "eventID": "event-cloudtrail-orders-1",
+  "eventType": "AwsApiCall"
+}

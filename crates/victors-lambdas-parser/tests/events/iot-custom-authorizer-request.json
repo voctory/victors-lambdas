@@ -1,0 +1,21 @@
+{
+  "token": "order-token",
+  "signatureVerified": true,
+  "protocols": [
+    "tls",
+    "mqtt"
+  ],
+  "protocolData": {
+    "tls": {
+      "serverName": "orders.iot.example.com"
+    },
+    "mqtt": {
+      "username": "orders-device",
+      "password": "b3JkZXItcGFzcw==",
+      "clientId": "orders-device-1"
+    }
+  },
+  "connectionMetadata": {
+    "id": "connection-orders-1"
+  }
+}

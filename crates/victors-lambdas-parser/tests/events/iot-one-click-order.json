@@ -1,0 +1,26 @@
+{
+  "deviceEvent": {
+    "buttonClicked": {
+      "clickType": "SINGLE",
+      "reportedTime": "2026-05-14T09:00:00Z"
+    }
+  },
+  "deviceInfo": {
+    "attributes": {
+      "tenant": "orders"
+    },
+    "type": "button",
+    "deviceId": "order-device-1",
+    "remainingLife": 99.0
+  },
+  "placementInfo": {
+    "projectName": "orders",
+    "placementName": "warehouse",
+    "attributes": {
+      "region": "us-west-2"
+    },
+    "devices": {
+      "button": "order-device-1"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "eventSourceArn": "arn:aws:rds:us-west-2:123456789012:cluster:orders-docdb",
+  "events": [
+    {
+      "event": {
+        "_id": {
+          "_data": "82664A0000000000012B042C0100296E5A1004"
+        },
+        "clusterTime": {
+          "$timestamp": {
+            "t": 1778758800,
+            "i": 1
+          }
+        },
+        "documentKey": {
+          "_id": {
+            "$oid": "664a00000000000000000001"
+          }
+        },
+        "ns": {
+          "db": "orders",
+          "coll": "orders"
+        },
+        "operationType": "insert"
+      }
+    }
+  ],
+  "eventSource": "aws:docdb"
+}

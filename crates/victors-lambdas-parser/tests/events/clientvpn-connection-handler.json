@@ -1,0 +1,11 @@
+{
+  "connection-id": "cvpn-connection-orders-1",
+  "endpoint-id": "cvpn-endpoint-orders-1",
+  "common-name": "orders.example.com",
+  "username": "orders-user",
+  "platform": "macOS",
+  "platform-version": "15.0",
+  "public-ip": "203.0.113.10",
+  "client-openvpn-version": "2.6.0",
+  "schema-version": "v1"
+}

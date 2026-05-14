@@ -1,0 +1,24 @@
+{
+  "currentIntent": {
+    "name": "OrderStatus",
+    "slots": {
+      "orderId": "order-lex-1"
+    },
+    "slotDetails": {},
+    "confirmationStatus": "Confirmed"
+  },
+  "bot": {
+    "name": "Orders",
+    "alias": "dev",
+    "version": "1"
+  },
+  "userId": "user-lex-1",
+  "inputTranscript": "where is my order",
+  "invocationSource": "FulfillmentCodeHook",
+  "outputDialogMode": "Text",
+  "messageVersion": "1.0",
+  "sessionAttributes": {
+    "tenant": "orders"
+  },
+  "requestAttributes": {}
+}

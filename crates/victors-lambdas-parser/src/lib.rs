@@ -86,6 +86,15 @@ pub use aws_lambda_events::event::appsync::AppSyncLambdaAuthorizerResponse as Ap
 pub use aws_lambda_events::event::autoscaling::AutoScalingEvent as AutoScalingModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::chime_bot::ChimeBotEvent as ChimeBotModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::clientvpn::ClientVpnConnectionHandlerRequest as ClientVpnConnectionHandlerRequestModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::clientvpn::ClientVpnConnectionHandlerResponse as ClientVpnConnectionHandlerResponseModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::cloudformation::CloudFormationCustomResourceRequest;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
@@ -113,6 +122,12 @@ pub use aws_lambda_events::event::cloudwatch_alarms::CloudWatchCompositeAlarm as
 pub use aws_lambda_events::event::cloudwatch_alarms::CloudWatchMetricAlarm as CloudWatchMetricAlarmModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::cloudwatch_events::CloudWatchEvent as CloudWatchEventModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cloudwatch_events::cloudtrail::AWSAPICall as CloudWatchCloudTrailApiCallModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::cloudwatch_logs::LogData as CloudWatchLogsDecodeModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
@@ -125,7 +140,13 @@ pub use aws_lambda_events::event::cloudwatch_logs::LogsEvent as CloudWatchLogsMo
 pub use aws_lambda_events::event::code_commit::CodeCommitEvent as CodeCommitModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::codebuild::CodeBuildEvent as CodeBuildModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::codedeploy::CodeDeployLifecycleEvent as CodeDeployLifecycleHookEventModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::codepipeline_cloudwatch::CodePipelineCloudWatchEvent as CodePipelineCloudWatchModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::codepipeline_job::CodePipelineJobEvent as CodePipelineJobEventModel;
@@ -167,6 +188,12 @@ pub use aws_lambda_events::event::config::ConfigEvent as AwsConfigModel;
 pub use aws_lambda_events::event::connect::ConnectEvent as ConnectContactFlowEventModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::controltower::ControlTowerLifecycleEvent as ControlTowerLifecycleModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::documentdb::DocumentDbEvent as DocumentDbModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::dynamodb::Event as DynamoDbStreamModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
@@ -174,6 +201,9 @@ pub use aws_lambda_events::event::dynamodb::EventRecord as DynamoDbStreamRecordM
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::dynamodb::EventRecord as DynamoDbStreamToKinesisRecordModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::ecr_scan::EcrScanEvent as EcrScanModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::eventbridge::EventBridgeEvent as EventBridgeModel;
@@ -189,6 +219,24 @@ pub use aws_lambda_events::event::firehose::KinesisFirehoseEventRecord as Kinesi
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::firehose::KinesisFirehoseEventRecord as KinesisFirehoseSqsRecordModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::iot::IoTCoreCustomAuthorizerRequest as IoTCoreCustomAuthorizerRequestModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::iot::IoTCoreCustomAuthorizerResponse as IoTCoreCustomAuthorizerResponseModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::iot_1_click::IoTOneClickEvent as IoTOneClickModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::iot_button::IoTButtonEvent as IoTButtonModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::iot_deprecated::IoTCustomAuthorizerRequest as IoTCustomAuthorizerRequestModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::iot_deprecated::IoTCustomAuthorizerResponse as IoTCustomAuthorizerResponseModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::kafka::KafkaEvent as KafkaMskEventModel;
@@ -209,7 +257,25 @@ pub use aws_lambda_events::event::kinesis::KinesisEvent as KinesisDynamoDbStream
 pub use aws_lambda_events::event::kinesis::KinesisEventRecord as KinesisDataStreamRecordModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::kinesis::KinesisTimeWindowEvent as KinesisTimeWindowModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::kinesis::KinesisTimeWindowEventResponse as KinesisTimeWindowResponseModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::kinesis::analytics::KinesisAnalyticsOutputDeliveryEvent as KinesisAnalyticsOutputDeliveryModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::kinesis::analytics::KinesisAnalyticsOutputDeliveryResponse as KinesisAnalyticsOutputDeliveryResponseModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::lambda_function_urls::LambdaFunctionUrlRequest as LambdaFunctionUrlModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::lex::LexEvent as LexModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::lex::LexResponse as LexResponseModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::rabbitmq::RabbitMqEvent as RabbitMqModel;
@@ -258,6 +324,15 @@ pub use aws_lambda_events::event::sqs::SqsMessage as SqsRecordModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::sqs::SqsMessageAttribute as SqsMessageAttributeModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::streams::DynamoDbEventResponse as DynamoDbBatchResponseModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::streams::KinesisEventResponse as KinesisBatchResponseModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::streams::SqsEventResponse as SqsBatchResponseModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::vpc_lattice::VpcLatticeRequestV1 as VpcLatticeModel;
@@ -318,11 +393,20 @@ pub use transfer_family::{
 mod tests {
     use super::{
         ApiGatewayProxyEventV2RequestContextModel, ApiGatewayProxyRequestContextModel,
-        ApiGatewayWebsocketEventModel, CloudWatchLogEventModel, CloudWatchLogsDecodeModel,
-        DynamoDbStreamRecordModel, DynamoDbStreamToKinesisRecordModel, KafkaRecordModel,
-        KinesisDataStreamRecordModel, KinesisDynamoDbStreamModel, KinesisFirehoseRecordModel,
-        KinesisFirehoseSqsRecordModel, S3ObjectLambdaModel, SesRecordModel, SnsNotificationModel,
-        SnsRecordModel, SnsSqsNotificationModel, SqsMessageAttributeModel, SqsRecordModel,
+        ApiGatewayWebsocketEventModel, ChimeBotModel, ClientVpnConnectionHandlerRequestModel,
+        ClientVpnConnectionHandlerResponseModel, CloudWatchCloudTrailApiCallModel,
+        CloudWatchEventModel, CloudWatchLogEventModel, CloudWatchLogsDecodeModel, CodeBuildModel,
+        CodePipelineCloudWatchModel, ControlTowerLifecycleModel, DocumentDbModel,
+        DynamoDbBatchResponseModel, DynamoDbStreamRecordModel, DynamoDbStreamToKinesisRecordModel,
+        EcrScanModel, IoTButtonModel, IoTCoreCustomAuthorizerRequestModel,
+        IoTCoreCustomAuthorizerResponseModel, IoTCustomAuthorizerRequestModel,
+        IoTCustomAuthorizerResponseModel, IoTOneClickModel, KafkaRecordModel,
+        KinesisAnalyticsOutputDeliveryModel, KinesisAnalyticsOutputDeliveryResponseModel,
+        KinesisBatchResponseModel, KinesisDataStreamRecordModel, KinesisDynamoDbStreamModel,
+        KinesisFirehoseRecordModel, KinesisFirehoseSqsRecordModel, KinesisTimeWindowModel,
+        KinesisTimeWindowResponseModel, LexModel, LexResponseModel, S3ObjectLambdaModel,
+        SesRecordModel, SnsNotificationModel, SnsRecordModel, SnsSqsNotificationModel,
+        SqsBatchResponseModel, SqsMessageAttributeModel, SqsRecordModel,
     };
 
     fn assert_public_alias<T>() {}
@@ -332,20 +416,45 @@ mod tests {
         assert_public_alias::<ApiGatewayProxyRequestContextModel>();
         assert_public_alias::<ApiGatewayProxyEventV2RequestContextModel>();
         assert_public_alias::<ApiGatewayWebsocketEventModel>();
+        assert_public_alias::<ChimeBotModel>();
+        assert_public_alias::<ClientVpnConnectionHandlerRequestModel>();
+        assert_public_alias::<ClientVpnConnectionHandlerResponseModel>();
+        assert_public_alias::<CloudWatchCloudTrailApiCallModel>();
+        assert_public_alias::<CloudWatchEventModel>();
         assert_public_alias::<CloudWatchLogEventModel>();
         assert_public_alias::<CloudWatchLogsDecodeModel>();
+        assert_public_alias::<CodeBuildModel>();
+        assert_public_alias::<CodePipelineCloudWatchModel>();
+        assert_public_alias::<ControlTowerLifecycleModel>();
+        assert_public_alias::<DocumentDbModel>();
+        assert_public_alias::<DynamoDbBatchResponseModel>();
         assert_public_alias::<DynamoDbStreamRecordModel>();
         assert_public_alias::<DynamoDbStreamToKinesisRecordModel>();
+        assert_public_alias::<EcrScanModel>();
+        assert_public_alias::<IoTButtonModel>();
+        assert_public_alias::<IoTCoreCustomAuthorizerRequestModel>();
+        assert_public_alias::<IoTCoreCustomAuthorizerResponseModel>();
+        assert_public_alias::<IoTCustomAuthorizerRequestModel>();
+        assert_public_alias::<IoTCustomAuthorizerResponseModel>();
+        assert_public_alias::<IoTOneClickModel>();
         assert_public_alias::<KafkaRecordModel>();
+        assert_public_alias::<KinesisAnalyticsOutputDeliveryModel>();
+        assert_public_alias::<KinesisAnalyticsOutputDeliveryResponseModel>();
+        assert_public_alias::<KinesisBatchResponseModel>();
         assert_public_alias::<KinesisDataStreamRecordModel>();
         assert_public_alias::<KinesisDynamoDbStreamModel>();
         assert_public_alias::<KinesisFirehoseRecordModel>();
         assert_public_alias::<KinesisFirehoseSqsRecordModel>();
+        assert_public_alias::<KinesisTimeWindowModel>();
+        assert_public_alias::<KinesisTimeWindowResponseModel>();
+        assert_public_alias::<LexModel>();
+        assert_public_alias::<LexResponseModel>();
         assert_public_alias::<S3ObjectLambdaModel>();
         assert_public_alias::<SesRecordModel>();
         assert_public_alias::<SnsNotificationModel>();
         assert_public_alias::<SnsRecordModel>();
         assert_public_alias::<SnsSqsNotificationModel>();
+        assert_public_alias::<SqsBatchResponseModel>();
         assert_public_alias::<SqsMessageAttributeModel>();
         assert_public_alias::<SqsRecordModel>();
     }

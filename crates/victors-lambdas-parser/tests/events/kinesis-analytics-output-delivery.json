@@ -1,0 +1,10 @@
+{
+  "invocationId": "invocation-orders-1",
+  "applicationArn": "arn:aws:kinesisanalytics:us-west-2:123456789012:application/orders",
+  "records": [
+    {
+      "recordId": "record-orders-1",
+      "data": "eyJvcmRlcl9pZCI6Im9yZGVyLWthLTEiLCJxdWFudGl0eSI6MX0="
+    }
+  ]
+}

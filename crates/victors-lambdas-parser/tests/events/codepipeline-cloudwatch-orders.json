@@ -1,0 +1,19 @@
+{
+  "version": "0",
+  "id": "event-codepipeline-orders-1",
+  "detail-type": "CodePipeline Pipeline Execution State Change",
+  "source": "aws.codepipeline",
+  "account": "123456789012",
+  "time": "2026-05-14T09:00:00Z",
+  "region": "us-west-2",
+  "resources": [
+    "arn:aws:codepipeline:us-west-2:123456789012:orders-pipeline"
+  ],
+  "detail": {
+    "pipeline": "orders-pipeline",
+    "version": 1,
+    "execution-id": "execution-orders-1",
+    "state": "STARTED",
+    "region": "us-west-2"
+  }
+}
