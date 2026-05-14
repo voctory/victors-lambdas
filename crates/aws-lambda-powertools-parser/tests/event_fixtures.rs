@@ -144,6 +144,20 @@ fn parses_eventbridge_detail_fixture() {
 }
 
 #[test]
+fn parses_eventbridge_scheduler_empty_detail_fixture() {
+    let event = load_json_fixture::<EventBridgeEvent<Value>>(fixture(
+        "eventbridge-scheduler-empty-detail.json",
+    ))
+    .expect("EventBridge Scheduler fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_eventbridge_detail::<Value>(event)
+        .expect("fixture Scheduler detail should parse");
+
+    assert_eq!(parsed.into_payload(), serde_json::json!({}));
+}
+
+#[test]
 fn parses_appsync_arguments_fixture() {
     let event = load_json_fixture::<AppSyncDirectResolverEvent<Value, Value, Value>>(fixture(
         "appsync-direct-order.json",

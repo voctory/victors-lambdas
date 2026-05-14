@@ -252,7 +252,13 @@ impl EventParser {
     where
         T: DeserializeOwned,
     {
-        self.parse_json_value(event.detail)
+        let detail = if event.source == "aws.scheduler" && event.detail.as_str() == Some("{}") {
+            Value::Object(serde_json::Map::default())
+        } else {
+            event.detail
+        };
+
+        self.parse_json_value(detail)
     }
 
     /// Parses `CloudFormation` custom resource `ResourceProperties`.
@@ -1621,6 +1627,20 @@ mod tests {
                 quantity: 2,
             }
         );
+    }
+
+    #[test]
+    fn parses_eventbridge_scheduler_empty_detail_string() {
+        let mut event = EventBridgeEvent::<Value>::default();
+        event.detail_type = "Scheduled Event".to_owned();
+        event.source = "aws.scheduler".to_owned();
+        event.detail = Value::String("{}".to_owned());
+
+        let parsed = EventParser::new()
+            .parse_eventbridge_detail::<Value>(event)
+            .expect("Scheduler empty detail should parse as an object");
+
+        assert_eq!(parsed.into_payload(), json!({}));
     }
 
     #[test]

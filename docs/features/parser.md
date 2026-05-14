@@ -21,6 +21,8 @@ aws-lambda-powertools = { version = "0.1", features = ["parser"] }
   SQS bodies, SNS messages, SNS-over-SQS messages, S3 records, S3-over-SQS records, S3 Object Lambda configuration
   payloads, S3 Batch tasks, SES records, CloudWatch Logs messages, Kinesis records, Firehose records, DynamoDB stream
   images, and Kafka record values.
+- EventBridge Scheduler empty-detail compatibility: Scheduler events with `source` set to `aws.scheduler` and `detail`
+  set to the string `"{}"` parse as an empty JSON object.
 
 ## Envelopes
 
