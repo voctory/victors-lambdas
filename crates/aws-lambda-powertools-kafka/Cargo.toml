@@ -10,10 +10,18 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = []
+avro = ["dep:apache-avro"]
+protobuf = ["dep:prost"]
+schema = ["avro", "protobuf"]
+
 [dependencies]
+apache-avro = { version = "0.21", optional = true }
 aws_lambda_events = { version = "1.2.0", default-features = false, features = ["kafka"] }
 base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
+prost = { version = "0.14", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

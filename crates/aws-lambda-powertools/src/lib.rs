@@ -178,6 +178,14 @@ pub mod prelude {
         decode_base64_json, decode_base64_string,
     };
 
+    #[cfg(feature = "kafka-avro")]
+    pub use aws_lambda_powertools_kafka::decode_base64_avro;
+
+    #[cfg(feature = "kafka-protobuf")]
+    pub use aws_lambda_powertools_kafka::{
+        ProtobufWireFormat, decode_base64_protobuf, decode_base64_protobuf_with_format,
+    };
+
     #[cfg(feature = "logger")]
     pub use aws_lambda_powertools_logger::{
         JsonLogFormatter, LambdaContextFields, LambdaLogContext, LogEntry, LogFields, LogFormatter,

@@ -22,7 +22,7 @@ first implementation tranche has landed:
 - data masking for JSON payloads with whole-value erasure, field masking by JSON Pointer or dot path, fixed/dynamic,
   custom, and regex masking strategies, and configurable missing-field behavior
 - Kafka consumer record materialization that flattens Lambda Kafka event records, decodes primitive or JSON base64 keys
-  and values, decodes headers, and preserves original encoded fields
+  and values, provides optional Avro and Protobuf decode helpers, decodes headers, and preserves original encoded fields
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway
   REST/HTTP/WebSocket API bodies, API Gateway WebSocket lifecycle aliases, API Gateway Lambda authorizer aliases,
   common Powertools parser event model aliases, AppSync direct resolver/batch aliases and arguments/source, AppSync

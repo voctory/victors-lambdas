@@ -11,6 +11,8 @@ pub enum KafkaConsumerErrorKind {
     Utf8,
     /// A JSON field could not be decoded into the target type.
     Json,
+    /// A schema-backed field could not be decoded into the target type.
+    Schema,
     /// A header value could not be decoded.
     Header,
 }
@@ -56,6 +58,15 @@ impl KafkaConsumerError {
         Self::new(
             KafkaConsumerErrorKind::Json,
             format!("Kafka record {field} could not be decoded as JSON: {error}"),
+        )
+    }
+
+    /// Creates a schema-backed decode error.
+    #[must_use]
+    pub fn schema(field: &str, format: &str, error: impl fmt::Display) -> Self {
+        Self::new(
+            KafkaConsumerErrorKind::Schema,
+            format!("Kafka record {field} could not be decoded as {format}: {error}"),
         )
     }
 
