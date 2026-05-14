@@ -5,9 +5,10 @@
 use std::path::PathBuf;
 
 use aws_lambda_events::event::{
-    apigw::ApiGatewayV2httpRequest, cloudwatch_logs::LogsEvent, dynamodb::Event as DynamoDbEvent,
-    eventbridge::EventBridgeEvent, firehose::KinesisFirehoseEvent, kinesis::KinesisEvent,
-    sqs::SqsEvent,
+    alb::AlbTargetGroupRequest, apigw::ApiGatewayV2httpRequest, cloudwatch_logs::LogsEvent,
+    dynamodb::Event as DynamoDbEvent, eventbridge::EventBridgeEvent,
+    firehose::KinesisFirehoseEvent, kinesis::KinesisEvent,
+    lambda_function_urls::LambdaFunctionUrlRequest, sns::SnsEvent, sqs::SqsEvent,
 };
 use aws_lambda_powertools_parser::EventParser;
 use aws_lambda_powertools_testing::load_json_fixture;
@@ -65,6 +66,46 @@ fn parses_sqs_message_body_fixture() {
     assert_eq!(parsed[0].payload().quantity, 1);
     assert_eq!(parsed[1].payload().order_id, "order-sqs-2");
     assert_eq!(parsed[1].payload().quantity, 4);
+}
+
+#[test]
+fn parses_alb_body_fixture() {
+    let event = load_json_fixture::<AlbTargetGroupRequest>(fixture("alb-order.json"))
+        .expect("ALB fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_alb_body::<OrderEvent>(event)
+        .expect("fixture ALB body should parse");
+
+    assert_eq!(parsed.payload().order_id, "order-alb-1");
+    assert_eq!(parsed.payload().quantity, 9);
+}
+
+#[test]
+fn parses_lambda_function_url_body_fixture() {
+    let event = load_json_fixture::<LambdaFunctionUrlRequest>(fixture("lambda-url-order.json"))
+        .expect("Lambda Function URL fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_lambda_function_url_body::<OrderEvent>(event)
+        .expect("fixture Lambda Function URL body should parse");
+
+    assert_eq!(parsed.payload().order_id, "order-lambda-url-1");
+    assert_eq!(parsed.payload().quantity, 10);
+}
+
+#[test]
+fn parses_sns_message_fixture() {
+    let event = load_json_fixture::<SnsEvent>(fixture("sns-orders.json"))
+        .expect("SNS fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_sns_messages::<OrderEvent>(event)
+        .expect("fixture SNS messages should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].payload().order_id, "order-sns-1");
+    assert_eq!(parsed[0].payload().quantity, 11);
 }
 
 #[test]

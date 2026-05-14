@@ -1,0 +1,29 @@
+{
+  "version": "2.0",
+  "rawPath": "/orders",
+  "rawQueryString": "",
+  "cookies": [],
+  "headers": {
+    "content-type": "application/json"
+  },
+  "queryStringParameters": {},
+  "requestContext": {
+    "accountId": "123456789012",
+    "apiId": "abc123",
+    "domainName": "abc123.lambda-url.us-east-1.on.aws",
+    "domainPrefix": "abc123",
+    "requestId": "request-lambda-url-1",
+    "time": "01/Jan/2024:00:00:00 +0000",
+    "timeEpoch": 1704067200000,
+    "http": {
+      "method": "POST",
+      "path": "/orders",
+      "protocol": "HTTP/1.1",
+      "sourceIp": "127.0.0.1",
+      "userAgent": "fixture"
+    },
+    "authorizer": null
+  },
+  "body": "{\"order_id\":\"order-lambda-url-1\",\"quantity\":10}",
+  "isBase64Encoded": false
+}

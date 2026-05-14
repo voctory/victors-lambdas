@@ -1,0 +1,17 @@
+{
+  "httpMethod": "POST",
+  "path": "/orders",
+  "queryStringParameters": {},
+  "multiValueQueryStringParameters": {},
+  "headers": {
+    "content-type": "application/json"
+  },
+  "multiValueHeaders": {},
+  "requestContext": {
+    "elb": {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/orders/abcdef1234567890"
+    }
+  },
+  "isBase64Encoded": false,
+  "body": "{\"order_id\":\"order-alb-1\",\"quantity\":9}"
+}

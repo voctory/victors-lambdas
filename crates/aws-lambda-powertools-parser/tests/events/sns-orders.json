@@ -1,0 +1,22 @@
+{
+  "Records": [
+    {
+      "EventSource": "aws:sns",
+      "EventVersion": "1.0",
+      "EventSubscriptionArn": "arn:aws:sns:us-east-1:123456789012:orders:subscription",
+      "Sns": {
+        "Type": "Notification",
+        "MessageId": "message-sns-1",
+        "TopicArn": "arn:aws:sns:us-east-1:123456789012:orders",
+        "Subject": "Order",
+        "Timestamp": "2024-01-01T00:00:00Z",
+        "SignatureVersion": "1",
+        "Signature": "signature",
+        "SigningCertURL": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem",
+        "UnsubscribeURL": "https://sns.us-east-1.amazonaws.com/unsubscribe",
+        "Message": "{\"order_id\":\"order-sns-1\",\"quantity\":11}",
+        "MessageAttributes": {}
+      }
+    }
+  ]
+}
