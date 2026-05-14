@@ -761,6 +761,27 @@ fn parses_dynamodb_new_image_fixture() {
 }
 
 #[test]
+fn parses_dynamodb_image_pair_fixture() {
+    let event = load_json_fixture::<DynamoDbStreamModel>(fixture("dynamodb-orders.json"))
+        .expect("DynamoDB fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_dynamodb_images::<OrderEvent>(event)
+        .expect("fixture DynamoDB images should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(
+        parsed[0]
+            .new_image()
+            .expect("fixture record should have NewImage")
+            .payload()
+            .order_id,
+        "order-dynamodb-1"
+    );
+    assert!(parsed[0].old_image().is_none());
+}
+
+#[test]
 fn parses_kinesis_dynamodb_new_image_fixture() {
     let event =
         load_json_fixture::<KinesisDataStreamModel>(fixture("kinesis-dynamodb-orders.json"))

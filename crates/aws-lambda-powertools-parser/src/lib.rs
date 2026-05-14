@@ -185,8 +185,8 @@ pub use cognito::{
     CognitoMigrateUserTriggerSource, CognitoUserPoolCallerContext,
 };
 pub use dynamodb::{
-    DynamoDbStreamBatchInfo, DynamoDbStreamOnFailureDestination, DynamoDbStreamRequestContext,
-    DynamoDbStreamResponseContext,
+    DynamoDbStreamBatchInfo, DynamoDbStreamImageRecord, DynamoDbStreamOnFailureDestination,
+    DynamoDbStreamRequestContext, DynamoDbStreamResponseContext,
 };
 pub use error::{ParseError, ParseErrorKind};
 pub use iot_registry::{

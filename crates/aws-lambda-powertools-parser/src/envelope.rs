@@ -38,7 +38,8 @@ use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
 use crate::{
-    AppSyncEventsEvent, EventParser, ParseError, ParseErrorKind, ParsedEvent, S3EventNotification,
+    AppSyncEventsEvent, DynamoDbStreamImageRecord, EventParser, ParseError, ParseErrorKind,
+    ParsedEvent, S3EventNotification,
 };
 
 impl EventParser {
@@ -706,6 +707,36 @@ impl EventParser {
             .collect()
     }
 
+    /// Parses `DynamoDB` stream `NewImage` and `OldImage` records.
+    ///
+    /// Each non-empty image item is decoded into `T` with `serde_dynamo`.
+    /// Missing images are returned as `None`, preserving the original stream
+    /// record order and image presence.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any present image cannot be decoded into `T`.
+    pub fn parse_dynamodb_images<T>(
+        &self,
+        event: DynamoDbEvent,
+    ) -> Result<Vec<DynamoDbStreamImageRecord<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| {
+                let new_image =
+                    optional_dynamodb_image("NewImage", index, record.change.new_image)?;
+                let old_image =
+                    optional_dynamodb_image("OldImage", index, record.change.old_image)?;
+                Ok(DynamoDbStreamImageRecord::new(new_image, old_image))
+            })
+            .collect()
+    }
+
     /// Parses `DynamoDB` stream `NewImage` records.
     ///
     /// Each non-empty `NewImage` item is decoded into `T` with `serde_dynamo`
@@ -1160,6 +1191,21 @@ fn sqs_body(index: usize, body: Option<String>) -> Result<String, ParseError> {
             format!("SQS record at index {index} is missing body"),
         )
     })
+}
+
+fn optional_dynamodb_image<T>(
+    image_name: &str,
+    index: usize,
+    image: serde_dynamo::Item,
+) -> Result<Option<ParsedEvent<T>>, ParseError>
+where
+    T: DeserializeOwned,
+{
+    if image.is_empty() {
+        return Ok(None);
+    }
+
+    dynamodb_image(image_name, index, image).map(Some)
 }
 
 fn dynamodb_image<T>(
@@ -2496,6 +2542,88 @@ mod tests {
 
         assert_eq!(parsed[0].payload().order_id, "order-1");
         assert_eq!(parsed[0].payload().quantity, 1);
+    }
+
+    #[test]
+    fn parses_dynamodb_new_and_old_images() {
+        let event: DynamoDbEvent = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "eventID": "1",
+                    "eventName": "INSERT",
+                    "awsRegion": "us-east-1",
+                    "eventSource": "aws:dynamodb",
+                    "dynamodb": {
+                        "ApproximateCreationDateTime": 1,
+                        "Keys": {
+                            "order_id": {"S": "order-1"}
+                        },
+                        "NewImage": {
+                            "order_id": {"S": "order-1"},
+                            "quantity": {"N": "2"}
+                        },
+                        "SequenceNumber": "1",
+                        "SizeBytes": 26,
+                        "StreamViewType": "NEW_IMAGE"
+                    }
+                },
+                {
+                    "eventID": "2",
+                    "eventName": "MODIFY",
+                    "awsRegion": "us-east-1",
+                    "eventSource": "aws:dynamodb",
+                    "dynamodb": {
+                        "ApproximateCreationDateTime": 2,
+                        "Keys": {
+                            "order_id": {"S": "order-2"}
+                        },
+                        "OldImage": {
+                            "order_id": {"S": "order-2"},
+                            "quantity": {"N": "1"}
+                        },
+                        "NewImage": {
+                            "order_id": {"S": "order-2"},
+                            "quantity": {"N": "3"}
+                        },
+                        "SequenceNumber": "2",
+                        "SizeBytes": 52,
+                        "StreamViewType": "NEW_AND_OLD_IMAGES"
+                    }
+                }
+            ]
+        }))
+        .expect("DynamoDB event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_dynamodb_images::<OrderEvent>(event)
+            .expect("new and old images should parse");
+
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(
+            parsed[0]
+                .new_image()
+                .expect("first record should have NewImage")
+                .payload()
+                .quantity,
+            2
+        );
+        assert!(parsed[0].old_image().is_none());
+        assert_eq!(
+            parsed[1]
+                .old_image()
+                .expect("second record should have OldImage")
+                .payload()
+                .quantity,
+            1
+        );
+        assert_eq!(
+            parsed[1]
+                .new_image()
+                .expect("second record should have NewImage")
+                .payload()
+                .quantity,
+            3
+        );
     }
 
     #[test]

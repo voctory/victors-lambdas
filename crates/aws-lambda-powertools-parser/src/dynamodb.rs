@@ -3,6 +3,47 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::ParsedEvent;
+
+/// Parsed `DynamoDB` stream images for one stream record.
+///
+/// `NewImage` and `OldImage` are optional because stream view types and record
+/// operations determine which images are present.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DynamoDbStreamImageRecord<T> {
+    new_image: Option<ParsedEvent<T>>,
+    old_image: Option<ParsedEvent<T>>,
+}
+
+impl<T> DynamoDbStreamImageRecord<T> {
+    /// Creates a parsed `DynamoDB` stream image record.
+    #[must_use]
+    pub const fn new(new_image: Option<ParsedEvent<T>>, old_image: Option<ParsedEvent<T>>) -> Self {
+        Self {
+            new_image,
+            old_image,
+        }
+    }
+
+    /// Returns the parsed `NewImage`, when present.
+    #[must_use]
+    pub const fn new_image(&self) -> Option<&ParsedEvent<T>> {
+        self.new_image.as_ref()
+    }
+
+    /// Returns the parsed `OldImage`, when present.
+    #[must_use]
+    pub const fn old_image(&self) -> Option<&ParsedEvent<T>> {
+        self.old_image.as_ref()
+    }
+
+    /// Consumes the record and returns the parsed images.
+    #[must_use]
+    pub fn into_images(self) -> (Option<ParsedEvent<T>>, Option<ParsedEvent<T>>) {
+        (self.new_image, self.old_image)
+    }
+}
+
 /// Lambda invocation record for a failed Amazon `DynamoDB` stream batch.
 ///
 /// Lambda sends this record to event source mapping on-failure destinations
