@@ -173,6 +173,9 @@ pub use aws_lambda_events::event::dynamodb::Event as DynamoDbStreamModel;
 pub use aws_lambda_events::event::dynamodb::EventRecord as DynamoDbStreamRecordModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::dynamodb::EventRecord as DynamoDbStreamToKinesisRecordModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::eventbridge::EventBridgeEvent as EventBridgeModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
@@ -316,10 +319,10 @@ mod tests {
     use super::{
         ApiGatewayProxyEventV2RequestContextModel, ApiGatewayProxyRequestContextModel,
         ApiGatewayWebsocketEventModel, CloudWatchLogEventModel, CloudWatchLogsDecodeModel,
-        DynamoDbStreamRecordModel, KafkaRecordModel, KinesisDataStreamRecordModel,
-        KinesisDynamoDbStreamModel, KinesisFirehoseRecordModel, KinesisFirehoseSqsRecordModel,
-        S3ObjectLambdaModel, SesRecordModel, SnsNotificationModel, SnsRecordModel,
-        SnsSqsNotificationModel, SqsMessageAttributeModel, SqsRecordModel,
+        DynamoDbStreamRecordModel, DynamoDbStreamToKinesisRecordModel, KafkaRecordModel,
+        KinesisDataStreamRecordModel, KinesisDynamoDbStreamModel, KinesisFirehoseRecordModel,
+        KinesisFirehoseSqsRecordModel, S3ObjectLambdaModel, SesRecordModel, SnsNotificationModel,
+        SnsRecordModel, SnsSqsNotificationModel, SqsMessageAttributeModel, SqsRecordModel,
     };
 
     fn assert_public_alias<T>() {}
@@ -332,6 +335,7 @@ mod tests {
         assert_public_alias::<CloudWatchLogEventModel>();
         assert_public_alias::<CloudWatchLogsDecodeModel>();
         assert_public_alias::<DynamoDbStreamRecordModel>();
+        assert_public_alias::<DynamoDbStreamToKinesisRecordModel>();
         assert_public_alias::<KafkaRecordModel>();
         assert_public_alias::<KinesisDataStreamRecordModel>();
         assert_public_alias::<KinesisDynamoDbStreamModel>();

@@ -307,14 +307,15 @@ pub mod prelude {
         CognitoPostConfirmationTriggerModel, CognitoPreAuthenticationTriggerModel,
         CognitoPreSignupTriggerModel, CognitoPreTokenGenerationTriggerModelV1,
         CognitoPreTokenGenerationTriggerModelV2AndV3, CognitoVerifyAuthChallengeTriggerModel,
-        DynamoDbStreamModel, DynamoDbStreamRecordModel, EventBridgeModel, KafkaMskEventModel,
-        KafkaRecordModel, KafkaSelfManagedEventModel, KinesisDataStreamModel,
-        KinesisDataStreamRecordModel, KinesisDynamoDbStreamModel, KinesisFirehoseModel,
-        KinesisFirehoseRecordModel, KinesisFirehoseSqsModel, KinesisFirehoseSqsRecordModel,
-        LambdaFunctionUrlModel, RabbitMqModel, S3BatchOperationModel, S3Model, S3ObjectLambdaEvent,
-        S3ObjectLambdaModel, S3SqsEventNotificationModel, SesModel, SesRecordModel, SnsModel,
-        SnsNotificationModel, SnsRecordModel, SnsSqsNotificationModel, SqsMessageAttributeModel,
-        SqsModel, SqsRecordModel, VpcLatticeModel, VpcLatticeV2Model,
+        DynamoDbStreamModel, DynamoDbStreamRecordModel, DynamoDbStreamToKinesisRecordModel,
+        EventBridgeModel, KafkaMskEventModel, KafkaRecordModel, KafkaSelfManagedEventModel,
+        KinesisDataStreamModel, KinesisDataStreamRecordModel, KinesisDynamoDbStreamModel,
+        KinesisFirehoseModel, KinesisFirehoseRecordModel, KinesisFirehoseSqsModel,
+        KinesisFirehoseSqsRecordModel, LambdaFunctionUrlModel, RabbitMqModel,
+        S3BatchOperationModel, S3Model, S3ObjectLambdaEvent, S3ObjectLambdaModel,
+        S3SqsEventNotificationModel, SesModel, SesRecordModel, SnsModel, SnsNotificationModel,
+        SnsRecordModel, SnsSqsNotificationModel, SqsMessageAttributeModel, SqsModel,
+        SqsRecordModel, VpcLatticeModel, VpcLatticeV2Model,
     };
 
     #[cfg(feature = "streaming")]
