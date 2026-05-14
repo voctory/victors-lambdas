@@ -16,11 +16,11 @@ aws-lambda-powertools = { version = "0.1", features = ["parser"] }
   action groups, DynamoDB stream on-failure destinations, S3 EventBridge notifications, IoT Core registry events, and
   selected Cognito triggers.
 - Optional `aws_lambda_events` envelopes for common payload extraction paths, including API Gateway bodies, AppSync
-  resolver arguments/source, AppSync Events publish payloads, Bedrock Agent input text, ALB bodies, Lambda Function URL
-  bodies, VPC Lattice bodies, EventBridge detail, CloudFormation custom resource properties, Cognito user attributes,
-  SQS bodies, SNS messages, SNS-over-SQS messages, S3 records, S3-over-SQS records, S3 Object Lambda configuration
-  payloads, S3 Batch tasks, SES records, CloudWatch Logs messages, Kinesis records, Firehose records, DynamoDB stream
-  images, and Kafka record values.
+  resolver arguments/source, AppSync Events publish payloads, Bedrock Agent input text, ActiveMQ message data, ALB
+  bodies, Lambda Function URL bodies, VPC Lattice bodies, EventBridge detail, CloudFormation custom resource properties,
+  Cognito user attributes, SQS bodies, SNS messages, SNS-over-SQS messages, RabbitMQ message data, S3 records,
+  S3-over-SQS records, S3 Object Lambda configuration payloads, S3 Batch tasks, SES records, CloudWatch Logs messages,
+  Kinesis records, Firehose records, DynamoDB stream images, and Kafka record values.
 - EventBridge Scheduler empty-detail compatibility: Scheduler events with `source` set to `aws.scheduler` and `detail`
   set to the string `"{}"` parse as an empty JSON object.
 

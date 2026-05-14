@@ -5,6 +5,7 @@
 use std::path::PathBuf;
 
 use aws_lambda_events::event::{
+    activemq::ActiveMqEvent,
     alb::AlbTargetGroupRequest,
     apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
     appsync::AppSyncDirectResolverEvent,
@@ -18,6 +19,7 @@ use aws_lambda_events::event::{
     kafka::KafkaEvent,
     kinesis::KinesisEvent,
     lambda_function_urls::LambdaFunctionUrlRequest,
+    rabbitmq::RabbitMqEvent,
     s3::{S3Event, batch_job::S3BatchJobEvent, object_lambda::S3ObjectLambdaEvent},
     ses::SimpleEmailEvent,
     sns::SnsEvent,
@@ -246,6 +248,37 @@ fn parses_sqs_message_body_fixture() {
     assert_eq!(parsed[0].payload().quantity, 1);
     assert_eq!(parsed[1].payload().order_id, "order-sqs-2");
     assert_eq!(parsed[1].payload().quantity, 4);
+}
+
+#[test]
+fn parses_activemq_message_data_fixture() {
+    let event = load_json_fixture::<ActiveMqEvent>(fixture("activemq-orders.json"))
+        .expect("ActiveMQ fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_activemq_message_data::<OrderEvent>(event)
+        .expect("fixture ActiveMQ data should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].payload().order_id, "order-active-mq-1");
+    assert_eq!(parsed[0].payload().quantity, 26);
+}
+
+#[test]
+fn parses_rabbitmq_message_data_fixture() {
+    let event = load_json_fixture::<RabbitMqEvent>(fixture("rabbitmq-orders.json"))
+        .expect("RabbitMQ fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_rabbitmq_message_data::<OrderEvent>(event)
+        .expect("fixture RabbitMQ data should parse");
+
+    assert_eq!(parsed["orders::/"].len(), 1);
+    assert_eq!(
+        parsed["orders::/"][0].payload().order_id,
+        "order-rabbit-mq-1"
+    );
+    assert_eq!(parsed["orders::/"][0].payload().quantity, 27);
 }
 
 #[test]

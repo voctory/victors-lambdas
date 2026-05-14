@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use aws_lambda_events::{
     encodings::Body,
     event::{
+        activemq::{ActiveMqEvent, ActiveMqMessage},
         alb::AlbTargetGroupRequest,
         apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
         appsync::AppSyncDirectResolverEvent,
@@ -24,6 +25,7 @@ use aws_lambda_events::{
         kafka::{KafkaEvent, KafkaRecord},
         kinesis::KinesisEvent,
         lambda_function_urls::LambdaFunctionUrlRequest,
+        rabbitmq::{RabbitMqEvent, RabbitMqMessage},
         s3::{S3Event, batch_job::S3BatchJobEvent, object_lambda::S3ObjectLambdaEvent},
         ses::SimpleEmailEvent,
         sns::{SnsEvent, SnsMessage},
@@ -38,6 +40,33 @@ use serde_json::Value;
 use crate::{AppSyncEventsEvent, EventParser, ParseError, ParseErrorKind, ParsedEvent};
 
 impl EventParser {
+    /// Parses JSON `ActiveMQ` message data.
+    ///
+    /// Each `ActiveMQ` message data field is base64-decoded before being decoded
+    /// into `T`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any message data is missing, is not valid
+    /// base64, or cannot be decoded into `T`.
+    pub fn parse_activemq_message_data<T>(
+        &self,
+        event: ActiveMqEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .messages
+            .into_iter()
+            .enumerate()
+            .map(|(index, message)| {
+                let data = activemq_message_data(index, message)?;
+                self.parse_json_slice(&data)
+            })
+            .collect()
+    }
+
     /// Parses an API Gateway REST API v1 JSON body.
     ///
     /// # Errors
@@ -758,6 +787,41 @@ impl EventParser {
             .collect()
     }
 
+    /// Parses JSON `RabbitMQ` message data.
+    ///
+    /// `RabbitMQ` messages are returned with the same queue grouping used by the
+    /// Lambda event. Each message data field is base64-decoded before being
+    /// decoded into `T`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any message data is missing, is not valid
+    /// base64, or cannot be decoded into `T`.
+    pub fn parse_rabbitmq_message_data<T>(
+        &self,
+        event: RabbitMqEvent,
+    ) -> Result<HashMap<String, Vec<ParsedEvent<T>>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .messages_by_queue
+            .into_iter()
+            .map(|(queue, messages)| {
+                let parsed_messages = messages
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, message)| {
+                        let data = rabbitmq_message_data(&queue, index, message)?;
+                        self.parse_json_slice(&data)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok((queue, parsed_messages))
+            })
+            .collect()
+    }
+
     /// Parses Amazon S3 event records.
     ///
     /// Each S3 event record is decoded into `T` and returned in record order.
@@ -1090,6 +1154,42 @@ fn kafka_record_value(
         })
 }
 
+fn activemq_message_data(index: usize, message: ActiveMqMessage) -> Result<Vec<u8>, ParseError> {
+    decode_mq_data("ActiveMQ", None, index, message.data)
+}
+
+fn rabbitmq_message_data(
+    queue: &str,
+    index: usize,
+    message: RabbitMqMessage,
+) -> Result<Vec<u8>, ParseError> {
+    decode_mq_data("RabbitMQ", Some(queue), index, message.data)
+}
+
+fn decode_mq_data(
+    source: &str,
+    group: Option<&str>,
+    index: usize,
+    data: Option<String>,
+) -> Result<Vec<u8>, ParseError> {
+    let location = match group {
+        Some(group) => format!("{source} message group {group} at index {index}"),
+        None => format!("{source} message at index {index}"),
+    };
+    let data = data.ok_or_else(|| {
+        ParseError::new(ParseErrorKind::Data, format!("{location} is missing data"))
+    })?;
+
+    base64::engine::general_purpose::STANDARD
+        .decode(data)
+        .map_err(|error| {
+            ParseError::new(
+                ParseErrorKind::Data,
+                format!("{location} data is not valid base64: {error}"),
+            )
+        })
+}
+
 fn event_body(
     source: &str,
     body: Option<Body>,
@@ -1156,6 +1256,7 @@ mod tests {
     use aws_lambda_events::{
         encodings::Body,
         event::{
+            activemq::ActiveMqEvent,
             alb::AlbTargetGroupRequest,
             apigw::{
                 ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest,
@@ -1177,6 +1278,7 @@ mod tests {
             kafka::{KafkaEvent, KafkaRecord},
             kinesis::KinesisEvent,
             lambda_function_urls::LambdaFunctionUrlRequest,
+            rabbitmq::RabbitMqEvent,
             s3::{S3Event, batch_job::S3BatchJobEvent, object_lambda::S3ObjectLambdaEvent},
             ses::SimpleEmailEvent,
             sns::{SnsEvent, SnsMessage, SnsRecord},
@@ -1319,6 +1421,84 @@ mod tests {
             "iamRolesToOverride": [],
             "preferredRole": null
         })
+    }
+
+    #[test]
+    fn parses_activemq_message_data() {
+        let event: ActiveMqEvent = serde_json::from_value(json!({
+            "eventSource": "aws:amazonmq",
+            "eventSourceArn": "arn:aws:amazonmq:us-east-1:123456789012:broker:orders:b-1",
+            "messages": [
+                {
+                    "messageID": "message-active-mq-1",
+                    "messageType": "text",
+                    "timestamp": 1_767_225_600_000_i64,
+                    "deliveryMode": 2,
+                    "correlationID": "correlation-1",
+                    "destination": {
+                        "physicalName": "orders"
+                    },
+                    "redelivered": false,
+                    "type": "OrderCreated",
+                    "expiration": 0,
+                    "priority": 4,
+                    "data": "eyJvcmRlcl9pZCI6Im9yZGVyLWFjdGl2ZS1tcS0xIiwicXVhbnRpdHkiOjI2fQ==",
+                    "brokerInTime": 1_767_225_600_000_i64,
+                    "brokerOutTime": 1_767_225_600_001_i64,
+                    "properties": {}
+                }
+            ]
+        }))
+        .expect("ActiveMQ event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_activemq_message_data::<OrderEvent>(event)
+            .expect("ActiveMQ message data should parse");
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].payload().order_id, "order-active-mq-1");
+        assert_eq!(parsed[0].payload().quantity, 26);
+    }
+
+    #[test]
+    fn parses_rabbitmq_message_data() {
+        let event: RabbitMqEvent = serde_json::from_value(json!({
+            "eventSource": "aws:amazonmq",
+            "eventSourceArn": "arn:aws:amazonmq:us-east-1:123456789012:broker:orders:b-1",
+            "rmqMessagesByQueue": {
+                "orders::/": [
+                    {
+                        "basicProperties": {
+                            "contentType": "application/json",
+                            "contentEncoding": "utf-8",
+                            "headers": {},
+                            "deliveryMode": 2,
+                            "priority": 0,
+                            "correlationId": "correlation-1",
+                            "messageId": "message-rabbit-mq-1",
+                            "timestamp": "2026-01-01T00:00:00Z",
+                            "type": "OrderCreated",
+                            "appId": "checkout",
+                            "bodySize": 47
+                        },
+                        "data": "eyJvcmRlcl9pZCI6Im9yZGVyLXJhYmJpdC1tcS0xIiwicXVhbnRpdHkiOjI3fQ==",
+                        "redelivered": false
+                    }
+                ]
+            }
+        }))
+        .expect("RabbitMQ event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_rabbitmq_message_data::<OrderEvent>(event)
+            .expect("RabbitMQ message data should parse");
+
+        assert_eq!(parsed["orders::/"].len(), 1);
+        assert_eq!(
+            parsed["orders::/"][0].payload().order_id,
+            "order-rabbit-mq-1"
+        );
+        assert_eq!(parsed["orders::/"][0].payload().quantity, 27);
     }
 
     #[test]

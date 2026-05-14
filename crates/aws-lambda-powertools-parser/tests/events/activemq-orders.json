@@ -1,0 +1,24 @@
+{
+  "eventSource": "aws:amazonmq",
+  "eventSourceArn": "arn:aws:amazonmq:us-east-1:123456789012:broker:orders:b-1",
+  "messages": [
+    {
+      "messageID": "message-active-mq-1",
+      "messageType": "text",
+      "timestamp": 1767225600000,
+      "deliveryMode": 2,
+      "correlationID": "correlation-1",
+      "destination": {
+        "physicalName": "orders"
+      },
+      "redelivered": false,
+      "type": "OrderCreated",
+      "expiration": 0,
+      "priority": 4,
+      "data": "eyJvcmRlcl9pZCI6Im9yZGVyLWFjdGl2ZS1tcS0xIiwicXVhbnRpdHkiOjI2fQ==",
+      "brokerInTime": 1767225600000,
+      "brokerOutTime": 1767225600001,
+      "properties": {}
+    }
+  ]
+}

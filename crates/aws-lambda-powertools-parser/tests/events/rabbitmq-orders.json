@@ -1,0 +1,25 @@
+{
+  "eventSource": "aws:amazonmq",
+  "eventSourceArn": "arn:aws:amazonmq:us-east-1:123456789012:broker:orders:b-1",
+  "rmqMessagesByQueue": {
+    "orders::/": [
+      {
+        "basicProperties": {
+          "contentType": "application/json",
+          "contentEncoding": "utf-8",
+          "headers": {},
+          "deliveryMode": 2,
+          "priority": 0,
+          "correlationId": "correlation-1",
+          "messageId": "message-rabbit-mq-1",
+          "timestamp": "2026-01-01T00:00:00Z",
+          "type": "OrderCreated",
+          "appId": "checkout",
+          "bodySize": 47
+        },
+        "data": "eyJvcmRlcl9pZCI6Im9yZGVyLXJhYmJpdC1tcS0xIiwicXVhbnRpdHkiOjI3fQ==",
+        "redelivered": false
+      }
+    ]
+  }
+}
