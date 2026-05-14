@@ -17,7 +17,9 @@ Current utility areas:
 - parameters, idempotency, validation, feature flags, JMESPath, and data masking
 - event parsing, event handling, batch processing, Kafka, streaming, and testing helpers
 
-See [docs/porting-plan.md](docs/porting-plan.md) for the detailed feature inventory and backlog.
+See the
+[porting plan](https://github.com/voctory/victors-lambdas/blob/main/docs/porting-plan.md)
+for the detailed feature inventory and backlog.
 
 ## Quick Start
 
@@ -34,22 +36,22 @@ Local examples use path dependencies until crates are published.
 
 ## Feature Docs
 
-- [Logger](docs/features/logger.md)
-- [Lambda Metadata](docs/features/metadata.md)
-- [Metrics](docs/features/metrics.md)
-- [Tracer](docs/features/tracer.md)
-- [Parameters](docs/features/parameters.md)
-- [JMESPath](docs/features/jmespath.md)
-- [Data Masking](docs/features/data-masking.md)
-- [Kafka](docs/features/kafka.md)
-- [Streaming](docs/features/streaming.md)
-- [Parser](docs/features/parser.md)
-- [Batch](docs/features/batch.md)
-- [Idempotency](docs/features/idempotency.md)
-- [Validation](docs/features/validation.md)
-- [Feature Flags](docs/features/feature-flags.md)
-- [Event Handler](docs/features/event-handler.md)
-- [Testing](docs/features/testing.md)
+- [Logger](https://github.com/voctory/victors-lambdas/blob/main/docs/features/logger.md)
+- [Lambda Metadata](https://github.com/voctory/victors-lambdas/blob/main/docs/features/metadata.md)
+- [Metrics](https://github.com/voctory/victors-lambdas/blob/main/docs/features/metrics.md)
+- [Tracer](https://github.com/voctory/victors-lambdas/blob/main/docs/features/tracer.md)
+- [Parameters](https://github.com/voctory/victors-lambdas/blob/main/docs/features/parameters.md)
+- [JMESPath](https://github.com/voctory/victors-lambdas/blob/main/docs/features/jmespath.md)
+- [Data Masking](https://github.com/voctory/victors-lambdas/blob/main/docs/features/data-masking.md)
+- [Kafka](https://github.com/voctory/victors-lambdas/blob/main/docs/features/kafka.md)
+- [Streaming](https://github.com/voctory/victors-lambdas/blob/main/docs/features/streaming.md)
+- [Parser](https://github.com/voctory/victors-lambdas/blob/main/docs/features/parser.md)
+- [Batch](https://github.com/voctory/victors-lambdas/blob/main/docs/features/batch.md)
+- [Idempotency](https://github.com/voctory/victors-lambdas/blob/main/docs/features/idempotency.md)
+- [Validation](https://github.com/voctory/victors-lambdas/blob/main/docs/features/validation.md)
+- [Feature Flags](https://github.com/voctory/victors-lambdas/blob/main/docs/features/feature-flags.md)
+- [Event Handler](https://github.com/voctory/victors-lambdas/blob/main/docs/features/event-handler.md)
+- [Testing](https://github.com/voctory/victors-lambdas/blob/main/docs/features/testing.md)
 
 ## Validation
 
