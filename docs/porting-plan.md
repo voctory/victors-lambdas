@@ -271,7 +271,8 @@ Powertools conventions.
 - [x] Add parser nested notification fixtures for S3-over-SQS and SNS-over-SQS.
 - [x] Add parser S3 Object Lambda and S3 Batch fixtures.
 - [x] Add parser API Gateway REST/WebSocket and VPC Lattice fixtures.
-- [x] Add parser nested stream fixtures for Firehose-delivered SQS, Kinesis-delivered DynamoDB, and Kafka.
+- [x] Add parser nested stream fixtures for Firehose-delivered SQS, Kinesis-delivered CloudWatch Logs,
+      Kinesis-delivered DynamoDB, and Kafka.
 - [x] Add Kinesis-delivered CloudWatch Logs parser envelope.
 - [x] Add parser MQ fixtures for ActiveMQ and RabbitMQ.
 - [x] Add parser AppSync, AppSync Events, and Bedrock Agent fixtures.

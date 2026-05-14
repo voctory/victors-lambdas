@@ -833,6 +833,21 @@ fn parses_cloudwatch_log_message_fixture() {
 }
 
 #[test]
+fn parses_kinesis_cloudwatch_log_message_fixture() {
+    let event =
+        load_json_fixture::<KinesisDataStreamModel>(fixture("kinesis-cloudwatch-logs-orders.json"))
+            .expect("Kinesis-delivered CloudWatch Logs fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_kinesis_cloudwatch_log_messages::<OrderEvent>(event)
+        .expect("fixture Kinesis-delivered CloudWatch Logs message should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].payload().order_id, "order-kinesis-log-1");
+    assert_eq!(parsed[0].payload().quantity, 20);
+}
+
+#[test]
 fn parses_dynamodb_new_image_fixture() {
     let event = load_json_fixture::<DynamoDbStreamModel>(fixture("dynamodb-orders.json"))
         .expect("DynamoDB fixture should decode");
