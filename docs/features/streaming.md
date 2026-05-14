@@ -13,13 +13,21 @@ Use `streaming-s3` to enable the AWS SDK-backed S3 adapter:
 aws-lambda-powertools = { version = "0.1", features = ["streaming-s3"] }
 ```
 
+Use `streaming-async` for the Tokio `AsyncRead`/`AsyncSeek` facade without the AWS SDK adapter:
+
+```toml
+aws-lambda-powertools = { version = "0.1", features = ["streaming-async"] }
+```
+
 ## Supported Behavior
 
 - `SeekableStream` implements `Read` and `Seek` over a caller-provided `RangeSource`.
-- `S3RangeSource` models S3 object range reads through the `S3ObjectClient` trait.
-- Optional `streaming-s3` exposes `AwsSdkS3ObjectClient` for a configured `aws_sdk_s3::Client`.
+- `AsyncSeekableStream` implements Tokio `AsyncRead` and `AsyncSeek` over an `AsyncRangeSource`.
+- `S3RangeSource` models S3 object range reads through the `S3ObjectClient` and `AsyncS3ObjectClient` traits.
+- Optional `streaming-s3` exposes `AwsSdkS3ObjectClient` for a configured `aws_sdk_s3::Client` and enables async
+  streaming support.
 - Seeking invalidates the active range only when the stream position changes.
-- `BytesRangeSource` supports local buffers for examples and tests.
+- `BytesRangeSource` supports sync and async local buffers for examples and tests.
 - Optional `streaming-gzip` exposes `gzip_decoder`.
 - Optional `streaming-csv` exposes `csv_reader` and `csv_reader_with_builder`.
 - Optional `streaming-zip` exposes `zip_archive`.

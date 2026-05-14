@@ -300,8 +300,15 @@ pub mod prelude {
         StreamingError, StreamingErrorKind, StreamingResult,
     };
 
+    #[cfg(feature = "streaming-async")]
+    pub use aws_lambda_powertools_streaming::{
+        AsyncRangeFuture, AsyncRangeSource, AsyncS3ObjectClient, AsyncSeekableStream,
+    };
+
     #[cfg(feature = "streaming-s3")]
-    pub use aws_lambda_powertools_streaming::{AwsSdkS3ObjectClient, AwsSdkS3RangeReader};
+    pub use aws_lambda_powertools_streaming::{
+        AwsSdkS3AsyncRangeReader, AwsSdkS3ObjectClient, AwsSdkS3RangeReader,
+    };
 
     #[cfg(feature = "streaming-csv")]
     pub use aws_lambda_powertools_streaming::{csv_reader, csv_reader_with_builder};

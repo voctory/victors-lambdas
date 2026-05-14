@@ -6,14 +6,19 @@ use std::io::Read;
 use std::{
     future::Future,
     io::{self, Cursor},
+    pin::Pin,
     sync::mpsc::{self, Receiver, SyncSender},
 };
 
 #[cfg(feature = "s3")]
 use aws_sdk_s3::{Client as AwsSdkS3Client, primitives::ByteStream};
+#[cfg(feature = "async")]
+use tokio::io::AsyncRead;
 #[cfg(feature = "s3")]
-use tokio::io::AsyncReadExt as _;
+use tokio::io::{AsyncBufRead, AsyncReadExt as _};
 
+#[cfg(feature = "async")]
+use crate::{AsyncRangeFuture, AsyncRangeSource};
 use crate::{RangeSource, StreamingResult};
 #[cfg(feature = "s3")]
 use crate::{StreamingError, StreamingErrorKind};
@@ -167,6 +172,19 @@ pub trait S3ObjectClient {
     ) -> StreamingResult<Self::Reader>;
 }
 
+/// Async client abstraction used by `S3RangeSource`.
+#[cfg(feature = "async")]
+pub trait AsyncS3ObjectClient {
+    /// Async reader returned for an opened S3 object range.
+    type Reader: AsyncRead + Send + Unpin + 'static;
+
+    /// Retrieves object metadata asynchronously.
+    fn head_object(&self, request: S3HeadObjectRequest) -> AsyncRangeFuture<S3HeadObjectOutput>;
+
+    /// Opens an async object body reader from a byte offset.
+    fn get_object_range(&self, request: S3GetObjectRangeRequest) -> AsyncRangeFuture<Self::Reader>;
+}
+
 /// AWS SDK-backed client abstraction for S3 range reads.
 ///
 /// This adapter accepts a configured [`aws_sdk_s3::Client`] instead of loading
@@ -178,6 +196,10 @@ pub trait S3ObjectClient {
 pub struct AwsSdkS3ObjectClient {
     client: AwsSdkS3Client,
 }
+
+/// Async reader over an AWS SDK S3 object body.
+#[cfg(feature = "s3")]
+pub type AwsSdkS3AsyncRangeReader = Pin<Box<dyn AsyncBufRead + Send>>;
 
 #[cfg(feature = "s3")]
 impl AwsSdkS3ObjectClient {
@@ -202,29 +224,7 @@ impl S3ObjectClient for AwsSdkS3ObjectClient {
         let client = self.client.clone();
         let object = request.object().clone();
 
-        run_s3_request(async move {
-            let mut request = client
-                .head_object()
-                .bucket(object.bucket().to_owned())
-                .key(object.key().to_owned());
-            if let Some(version_id) = object.version_id() {
-                request = request.version_id(version_id.to_owned());
-            }
-
-            let output = request
-                .send()
-                .await
-                .map_err(|error| sdk_error("head_object", error))?;
-            let content_length = output.content_length().unwrap_or_default();
-            let content_length = u64::try_from(content_length).map_err(|_| {
-                StreamingError::new(
-                    StreamingErrorKind::Io,
-                    "S3 head_object returned a negative content length",
-                )
-            })?;
-
-            Ok(S3HeadObjectOutput::new(content_length))
-        })
+        run_s3_request(head_s3_object(client, object))
     }
 
     fn get_object_range(
@@ -237,6 +237,70 @@ impl S3ObjectClient for AwsSdkS3ObjectClient {
             request.range_header().to_owned(),
         )
     }
+}
+
+#[cfg(feature = "s3")]
+impl AsyncS3ObjectClient for AwsSdkS3ObjectClient {
+    type Reader = AwsSdkS3AsyncRangeReader;
+
+    fn head_object(&self, request: S3HeadObjectRequest) -> AsyncRangeFuture<S3HeadObjectOutput> {
+        let client = self.client.clone();
+        let object = request.object().clone();
+
+        Box::pin(head_s3_object(client, object))
+    }
+
+    fn get_object_range(&self, request: S3GetObjectRangeRequest) -> AsyncRangeFuture<Self::Reader> {
+        let client = self.client.clone();
+        let object = request.object().clone();
+        let range_header = request.range_header().to_owned();
+
+        Box::pin(async move {
+            let mut request = client
+                .get_object()
+                .bucket(object.bucket().to_owned())
+                .key(object.key().to_owned())
+                .range(range_header);
+            if let Some(version_id) = object.version_id() {
+                request = request.version_id(version_id.to_owned());
+            }
+
+            let output = request
+                .send()
+                .await
+                .map_err(|error| sdk_error("get_object", error))?;
+            let reader: AwsSdkS3AsyncRangeReader = Box::pin(output.body.into_async_read());
+            Ok(reader)
+        })
+    }
+}
+
+#[cfg(feature = "s3")]
+async fn head_s3_object(
+    client: AwsSdkS3Client,
+    object: S3ObjectIdentifier,
+) -> StreamingResult<S3HeadObjectOutput> {
+    let mut request = client
+        .head_object()
+        .bucket(object.bucket().to_owned())
+        .key(object.key().to_owned());
+    if let Some(version_id) = object.version_id() {
+        request = request.version_id(version_id.to_owned());
+    }
+
+    let output = request
+        .send()
+        .await
+        .map_err(|error| sdk_error("head_object", error))?;
+    let content_length = output.content_length().unwrap_or_default();
+    let content_length = u64::try_from(content_length).map_err(|_| {
+        StreamingError::new(
+            StreamingErrorKind::Io,
+            "S3 head_object returned a negative content length",
+        )
+    })?;
+
+    Ok(S3HeadObjectOutput::new(content_length))
 }
 
 /// Synchronous reader over an AWS SDK S3 object body.
@@ -427,10 +491,7 @@ pub struct S3RangeSource<C> {
     length: Option<u64>,
 }
 
-impl<C> S3RangeSource<C>
-where
-    C: S3ObjectClient,
-{
+impl<C> S3RangeSource<C> {
     /// Creates an S3 range source.
     #[must_use]
     pub const fn new(object: S3ObjectIdentifier, client: C) -> Self {
@@ -470,6 +531,29 @@ where
     }
 }
 
+#[cfg(feature = "async")]
+impl<C> AsyncRangeSource for S3RangeSource<C>
+where
+    C: AsyncS3ObjectClient,
+{
+    type Reader = C::Reader;
+
+    fn len(&self) -> AsyncRangeFuture<u64> {
+        if let Some(length) = self.length {
+            return Box::pin(async move { Ok(length) });
+        }
+
+        let request = S3HeadObjectRequest::new(self.object.clone());
+        let head_object = self.client.head_object(request);
+        Box::pin(async move { head_object.await.map(|output| output.content_length()) })
+    }
+
+    fn open_range(&self, offset: u64) -> AsyncRangeFuture<Self::Reader> {
+        let request = S3GetObjectRangeRequest::new(self.object.clone(), offset);
+        self.client.get_object_range(request)
+    }
+}
+
 impl<C> RangeSource for S3RangeSource<C>
 where
     C: S3ObjectClient,
@@ -497,8 +581,12 @@ where
 #[cfg(test)]
 mod tests {
     use std::io::{Cursor, Read as _, Seek as _, SeekFrom};
+    #[cfg(feature = "async")]
+    use std::sync::{Arc, Mutex};
 
     use crate::SeekableStream;
+    #[cfg(feature = "async")]
+    use crate::{AsyncRangeFuture, AsyncSeekableStream};
 
     use super::*;
 
@@ -542,6 +630,74 @@ mod tests {
                 .map_or_else(Vec::new, ToOwned::to_owned);
 
             Ok(Cursor::new(data))
+        }
+    }
+
+    #[cfg(feature = "async")]
+    #[derive(Clone, Debug)]
+    struct FakeAsyncS3Client {
+        data: Arc<Vec<u8>>,
+        head_requests: Arc<Mutex<Vec<S3HeadObjectRequest>>>,
+        range_requests: Arc<Mutex<Vec<S3GetObjectRangeRequest>>>,
+    }
+
+    #[cfg(feature = "async")]
+    impl FakeAsyncS3Client {
+        fn new(data: impl Into<Vec<u8>>) -> Self {
+            Self {
+                data: Arc::new(data.into()),
+                head_requests: Arc::new(Mutex::new(Vec::new())),
+                range_requests: Arc::new(Mutex::new(Vec::new())),
+            }
+        }
+
+        fn range_headers(&self) -> Vec<String> {
+            self.range_requests
+                .lock()
+                .expect("range requests should lock")
+                .iter()
+                .map(|request| request.range_header().to_owned())
+                .collect()
+        }
+    }
+
+    #[cfg(feature = "async")]
+    impl AsyncS3ObjectClient for FakeAsyncS3Client {
+        type Reader = Cursor<Vec<u8>>;
+
+        fn head_object(
+            &self,
+            request: S3HeadObjectRequest,
+        ) -> AsyncRangeFuture<S3HeadObjectOutput> {
+            let data = Arc::clone(&self.data);
+            let head_requests = Arc::clone(&self.head_requests);
+
+            Box::pin(async move {
+                head_requests
+                    .lock()
+                    .expect("head requests should lock")
+                    .push(request);
+                Ok(S3HeadObjectOutput::new(data.len() as u64))
+            })
+        }
+
+        fn get_object_range(
+            &self,
+            request: S3GetObjectRangeRequest,
+        ) -> AsyncRangeFuture<Self::Reader> {
+            let data = Arc::clone(&self.data);
+            let range_requests = Arc::clone(&self.range_requests);
+
+            Box::pin(async move {
+                let offset = usize::try_from(request.offset()).unwrap_or(usize::MAX);
+                range_requests
+                    .lock()
+                    .expect("range requests should lock")
+                    .push(request);
+                let data = data.get(offset..).map_or_else(Vec::new, ToOwned::to_owned);
+
+                Ok(Cursor::new(data))
+            })
         }
     }
 
@@ -624,6 +780,62 @@ mod tests {
         assert_eq!(range_object.bucket(), "bucket");
         assert_eq!(range_object.key(), "key");
         assert_eq!(range_object.version_id(), Some("version-1"));
+    }
+
+    #[cfg(feature = "async")]
+    #[test]
+    fn opens_async_s3_ranges_from_async_seekable_stream() {
+        futures_executor::block_on(async {
+            use tokio::io::{AsyncReadExt as _, AsyncSeekExt as _};
+
+            let object = S3ObjectIdentifier::new("bucket", "key");
+            let client = FakeAsyncS3Client::new(b"abcdef".to_vec());
+            let source = S3RangeSource::new(object, client);
+            let mut stream = AsyncSeekableStream::new(source);
+            let mut buffer = [0; 2];
+
+            stream
+                .read_exact(&mut buffer)
+                .await
+                .expect("read should succeed");
+            stream
+                .seek(SeekFrom::Start(3))
+                .await
+                .expect("seek should succeed");
+            stream
+                .read_exact(&mut buffer)
+                .await
+                .expect("read should succeed");
+
+            assert_eq!(&buffer, b"de");
+            assert_eq!(
+                stream.source_ref().client().range_headers(),
+                vec!["bytes=0-", "bytes=3-"]
+            );
+        });
+    }
+
+    #[cfg(feature = "async")]
+    #[test]
+    fn caches_async_s3_object_length_in_stream() {
+        futures_executor::block_on(async {
+            let object = S3ObjectIdentifier::new("bucket", "key");
+            let client = FakeAsyncS3Client::new(b"abcdef".to_vec());
+            let source = S3RangeSource::new(object, client);
+            let mut stream = AsyncSeekableStream::new(source);
+
+            assert_eq!(stream.len().await.expect("length should load"), 6);
+            assert_eq!(stream.len().await.expect("length should be cached"), 6);
+
+            let head_count = stream
+                .source_ref()
+                .client()
+                .head_requests
+                .lock()
+                .expect("head requests should lock")
+                .len();
+            assert_eq!(head_count, 1);
+        });
     }
 
     #[cfg(feature = "s3")]

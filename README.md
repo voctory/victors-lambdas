@@ -24,8 +24,8 @@ first implementation tranche has landed:
   configurable missing-field behavior
 - Kafka consumer record materialization that flattens Lambda Kafka event records, decodes primitive or JSON base64 keys
   and values, provides optional Avro and Protobuf decode helpers, decodes headers, and preserves original encoded fields
-- seekable streaming over byte-range and AWS SDK-backed S3 object range sources with optional gzip, CSV, and ZIP
-  transforms
+- sync and async seekable streaming over byte-range and AWS SDK-backed S3 object range sources with optional gzip, CSV,
+  and ZIP transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway
   REST/HTTP/WebSocket API bodies, API Gateway WebSocket lifecycle aliases, API Gateway Lambda authorizer aliases,
   common Powertools parser event model aliases, AppSync direct resolver/batch aliases and arguments/source, AppSync

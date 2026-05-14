@@ -308,6 +308,7 @@ dependencies = [
  "aws-sdk-s3",
  "csv",
  "flate2",
+ "futures-executor",
  "tokio",
  "zip",
 ]

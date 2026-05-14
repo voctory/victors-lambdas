@@ -34,6 +34,7 @@ all = [
     "parameters",
     "parser",
     "streaming",
+    "streaming-async",
     "streaming-csv",
     "streaming-gzip",
     "streaming-s3",
@@ -96,9 +97,10 @@ parameters-ssm = ["parameters", "aws-lambda-powertools-parameters/ssm"]
 parser = ["dep:aws-lambda-powertools-parser"]
 parser-aws-lambda-events = ["parser", "aws-lambda-powertools-parser/aws-lambda-events"]
 streaming = ["dep:aws-lambda-powertools-streaming"]
+streaming-async = ["streaming", "aws-lambda-powertools-streaming/async"]
 streaming-csv = ["streaming", "aws-lambda-powertools-streaming/csv"]
 streaming-gzip = ["streaming", "aws-lambda-powertools-streaming/gzip"]
-streaming-s3 = ["streaming", "aws-lambda-powertools-streaming/s3"]
+streaming-s3 = ["streaming-async", "aws-lambda-powertools-streaming/s3"]
 streaming-zip = ["streaming", "aws-lambda-powertools-streaming/zip"]
 tracer = ["dep:aws-lambda-powertools-tracer"]
 tracer-opentelemetry = ["tracer", "aws-lambda-powertools-tracer/opentelemetry"]
