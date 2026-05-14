@@ -47,7 +47,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Core | `ServiceConfig`, env constants and parsers, cold-start tracking, user-agent metadata | Cross-crate error conventions beyond concrete utility errors |
 | Logger | `LoggerConfig`, `LogLevel`, `Logger`, `LogEntry`, `LogValue`, `LogFormatter`, `LogRedactor`, `JsonLogFormatter`, `LambdaContextFields`, `LoggerLayer`, JSON rendering, persistent fields, temporary fields, event rendering toggle, level filtering, debug sampling, correlation ID helpers, Lambda context fields, key redaction, custom formatter/redaction hook APIs, optional `tracing` subscriber integration, stdout emission, and initial docs/snippet | Broader handler examples |
 | Metrics | `MetricsConfig`, `Metric`, `MetricUnit`, `MetricResolution`, `MetadataValue`, EMF JSON renderer, request dimensions, default dimensions, metadata, name/value validation, service dimension, cold-start metric, high-resolution metric definitions, stdout flush API, explicit timestamp rendering/writing, opt-in overflow flush helpers, async capture helpers, CloudWatch limits, and initial docs/snippet | Broader handler examples |
-| Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing/rendering, `TraceSegment`, `TraceValue`, optional X-Ray-compatible subsegment document rendering, optional `tracing` span integration, and initial docs/snippet | OpenTelemetry export and X-Ray daemon transport |
+| Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing/rendering, `TraceSegment`, `TraceValue`, optional X-Ray-compatible subsegment document rendering, optional X-Ray daemon UDP transport, optional `tracing` span integration, and initial docs/snippet | OpenTelemetry export |
 | Parameters | `ParameterProvider`, `AsyncParameterProvider`, `Parameters`, `AsyncParameters`, `Parameter`, `ParameterTransform`, `ParameterValue`, `CachePolicy`, async provider/retrieval errors, in-memory provider, optional SSM single-parameter, by-name, and path providers with decryption plus set operations, optional Secrets Manager, AppConfig, and DynamoDB providers, force-fetch support, JSON transforms, base64 binary transforms, suffix-based auto transforms, and initial docs/snippet | Broader AWS provider examples |
 | Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, Transfer Family authorizer event/response models, AppSync Events model and publish payload envelope, Bedrock Agent OpenAPI event model and input text envelope, Bedrock Agent function-details model and input text envelope, DynamoDB stream on-failure destination model, S3 EventBridge notification model, IoT Core registry event models, Cognito migrate-user and custom sender event models, optional `aws_lambda_events` API Gateway REST/HTTP/WebSocket API body, AppSync direct resolver arguments/source, Bedrock Agent OpenAPI input text, ALB target group body, Lambda Function URL body, VPC Lattice v1/v2 body, EventBridge detail, CloudFormation custom resource properties, Cognito User Pool user attributes, SQS body, SNS message, SNS-over-SQS message, S3 record, S3-over-SQS record, S3 Object Lambda configuration payload, S3 Batch job task, SES record, CloudWatch Logs message, Kinesis record data, Kinesis-delivered DynamoDB stream image, Firehose record data, Firehose-delivered SQS body, DynamoDB stream image, Kafka record value envelopes, initial docs/snippet, and initial JSON fixtures | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, sequential and concurrent generic processing, stream checkpoint helpers, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior, optional parser-integrated SQS message body, Kinesis record data, and DynamoDB stream image processing, and initial docs/snippet | Larger examples |
@@ -61,7 +61,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 
 The next durable work should turn the landed primitives into Lambda-facing utilities:
 
-1. Add optional OpenTelemetry export and X-Ray daemon transport features on top of the tracer span integration.
+1. Add optional OpenTelemetry export features on top of the tracer span integration.
 2. Expand parameter provider docs and examples. Keep AWS SDK dependencies aligned with the documented MSRV.
 3. Expand parser envelopes and fixtures using `aws_lambda_events` as the default event model source.
 4. Expand idempotency examples where AWS retry semantics overlap.
@@ -77,7 +77,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-core` | Shared foundations | Keep small: config, env, cold start, metadata, and other genuine cross-crate foundations |
 | `aws-lambda-powertools-logger` | Structured logs | JSON renderer, sampling, correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, optional `tracing` subscriber layer, and initial docs/snippet exist; next work is broader handler examples |
 | `aws-lambda-powertools-metrics` | CloudWatch EMF metrics | Renderer, flush API, high-resolution metrics, default dimensions, explicit timestamps, overflow flush helpers, async capture helpers, and initial docs/snippet exist; next work is broader handler examples |
-| `aws-lambda-powertools-tracer` | Tracing facade | Segment records, X-Ray header propagation helpers, optional X-Ray-compatible subsegment document rendering, optional `tracing` span conversion, and initial docs/snippet exist; next work is OpenTelemetry export and X-Ray daemon transport |
+| `aws-lambda-powertools-tracer` | Tracing facade | Segment records, X-Ray header propagation helpers, optional X-Ray-compatible subsegment document rendering, optional X-Ray daemon UDP transport, optional `tracing` span conversion, and initial docs/snippet exist; next work is OpenTelemetry export |
 | `aws-lambda-powertools-parameters` | Parameter retrieval | Sync and async traits, cache facades, async provider/retrieval errors, in-memory provider, optional SSM single-parameter, by-name, and path providers plus set operations, optional Secrets Manager, AppConfig, and DynamoDB providers, force-fetch support, JSON/base64/auto transforms, and initial docs/snippet exist; broader AWS provider examples are next |
 | `aws-lambda-powertools-parser` | Event parsing | serde JSON facade plus Transfer Family authorizer event/response, AppSync Events, Bedrock Agent OpenAPI, Bedrock Agent function-details, DynamoDB stream on-failure destination, S3 EventBridge notification, IoT Core registry, Cognito migrate-user, and Cognito custom sender event models, API Gateway REST API, HTTP API, and WebSocket API, AppSync direct resolver arguments/source, AppSync Events publish payload, Bedrock Agent OpenAPI input text, ALB, Lambda Function URL, VPC Lattice, SQS, SNS, SNS-over-SQS, S3, S3-over-SQS, S3 Object Lambda, S3 Batch, EventBridge, CloudFormation custom resource properties, Cognito User Pool trigger user attributes, SES, CloudWatch Logs, Kinesis, Kinesis-delivered DynamoDB stream image, Firehose, Firehose-delivered SQS, DynamoDB stream image, Kafka `aws_lambda_events` envelopes, initial docs/snippet, and initial JSON fixtures exist; broader envelope coverage and fixtures are next |
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential/concurrent processing, stream checkpoint helpers, SQS, Kinesis, and DynamoDB stream adapters, parser-integrated SQS message body, Kinesis record data, and DynamoDB stream image processing, and initial docs/snippet exist; larger examples are next |
@@ -99,6 +99,8 @@ Implemented umbrella features:
 - `metrics`
 - `tracer`
 - `tracer-tracing`
+- `tracer-xray`
+- `tracer-xray-daemon`
 - `parameters`
 - `parameters-appconfig`
 - `parameters-dynamodb`
@@ -183,7 +185,8 @@ Powertools conventions.
 - [x] Implement `tracing` span integration.
 - [x] Add X-Ray trace header rendering helpers.
 - [x] Add optional X-Ray-compatible tracer subsegment document rendering.
-- [ ] Add optional OpenTelemetry tracer export and X-Ray daemon transport features.
+- [x] Add optional X-Ray daemon transport feature.
+- [ ] Add optional OpenTelemetry tracer export features.
 - [x] Add parameter force-fetch and local/auto value transforms.
 - [x] Add async parameter provider facade and errors for AWS SDK-backed providers.
 - [x] Add SSM single-parameter provider behind a feature flag.
@@ -294,7 +297,7 @@ CI uses the same checks with `--locked` where dependency resolution matters.
   crates before the umbrella crate.
 - Event types: use `aws_lambda_events` by default and own only Powertools-specific adapters, envelopes, fixtures, and
   missing models.
-- Tracing: build on Rust `tracing` spans first, then add optional OpenTelemetry export and X-Ray daemon transport.
+- Tracing: build on Rust `tracing` spans first, then add optional OpenTelemetry export.
 - Contributor commands: keep plain Cargo commands as the canonical workflow. Add `just` or `make` only later as optional
   convenience wrappers.
 - Lockfile: keep `Cargo.lock` committed for reproducible workspace and example validation.

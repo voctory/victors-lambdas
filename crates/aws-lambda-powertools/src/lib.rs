@@ -214,6 +214,9 @@ pub mod prelude {
     #[cfg(feature = "tracer-xray")]
     pub use aws_lambda_powertools_tracer::{XrayDocumentError, XrayDocumentResult};
 
+    #[cfg(feature = "tracer-xray-daemon")]
+    pub use aws_lambda_powertools_tracer::{XrayDaemonClient, XrayDaemonConfig, XrayDaemonError};
+
     #[cfg(feature = "validation")]
     pub use aws_lambda_powertools_validation::{
         Validate, ValidationError, ValidationErrorKind, ValidationResult, Validator,

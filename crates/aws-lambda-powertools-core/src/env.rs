@@ -32,6 +32,9 @@ pub const POWERTOOLS_TRACER_CAPTURE_RESPONSE: &str = "POWERTOOLS_TRACER_CAPTURE_
 /// Whether tracer utilities should capture handler errors.
 pub const POWERTOOLS_TRACER_CAPTURE_ERROR: &str = "POWERTOOLS_TRACER_CAPTURE_ERROR";
 
+/// Address for the AWS X-Ray daemon.
+pub const AWS_XRAY_DAEMON_ADDRESS: &str = "AWS_XRAY_DAEMON_ADDRESS";
+
 /// Maximum age for cached parameter provider values.
 pub const POWERTOOLS_PARAMETERS_MAX_AGE: &str = "POWERTOOLS_PARAMETERS_MAX_AGE";
 

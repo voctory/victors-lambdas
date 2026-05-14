@@ -14,6 +14,7 @@ categories.workspace = true
 default = []
 tracing = ["dep:tracing"]
 xray = []
+xray-daemon = ["xray"]
 
 [dependencies]
 aws-lambda-powertools-core.workspace = true

@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["tracer", "tracer-xray"] }
+aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["tracer-xray-daemon"] }
 
 [lints]
 workspace = true

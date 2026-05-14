@@ -81,6 +81,7 @@ parser-aws-lambda-events = ["parser", "aws-lambda-powertools-parser/aws-lambda-e
 tracer = ["dep:aws-lambda-powertools-tracer"]
 tracer-tracing = ["tracer", "aws-lambda-powertools-tracer/tracing"]
 tracer-xray = ["tracer", "aws-lambda-powertools-tracer/xray"]
+tracer-xray-daemon = ["tracer-xray", "aws-lambda-powertools-tracer/xray-daemon"]
 validation = ["dep:aws-lambda-powertools-validation"]
 validation-jsonschema = ["validation", "aws-lambda-powertools-validation/jsonschema"]
 

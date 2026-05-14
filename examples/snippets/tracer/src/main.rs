@@ -2,7 +2,9 @@
 
 use std::error::Error;
 
-use aws_lambda_powertools::prelude::{TraceValue, Tracer, TracerConfig};
+use aws_lambda_powertools::prelude::{
+    TraceValue, Tracer, TracerConfig, XrayDaemonClient, XrayDaemonConfig,
+};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let tracer = Tracer::with_config(TracerConfig::new("checkout"));
@@ -19,6 +21,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         .to_xray_subsegment_document("70de5b6f19ff9a0a", 1_700_000_000.0, 1_700_000_000.25)?;
 
     println!("{document}");
+
+    let daemon = XrayDaemonClient::new(XrayDaemonConfig::new("127.0.0.1:2000"));
+    assert_eq!(daemon.address(), "127.0.0.1:2000");
 
     Ok(())
 }

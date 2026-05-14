@@ -38,7 +38,8 @@ first implementation tranche has landed:
   evaluation, enabled-feature listing, configuration cache policies, common context comparators, modulo range matching,
   and time-window rules
 - tracer configuration, X-Ray header context parsing/rendering, trace segment records, JSON-compatible trace values,
-  optional X-Ray-compatible subsegment document rendering, and optional `tracing` span integration
+  optional X-Ray-compatible subsegment document rendering, optional X-Ray daemon UDP transport, and optional `tracing`
+  span integration
 - event-handler request/response types, route matching, dynamic path parameters, sync and async router dispatch,
   multi-method route registration, built-in HTTP errors, unsupported-method `405` adapter responses, custom not-found
   and fallible route error handlers, typed fallible route error handlers, router composition with path prefixes,
@@ -49,7 +50,7 @@ first implementation tranche has landed:
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
 Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, richer idempotency examples, OpenTelemetry
-tracing integration, X-Ray daemon transport, additional event-handler adapters, and crates.io publishing. See
+tracing integration, additional event-handler adapters, and crates.io publishing. See
 [docs/porting-plan.md](docs/porting-plan.md) for the current backlog.
 
 ## Workspace
