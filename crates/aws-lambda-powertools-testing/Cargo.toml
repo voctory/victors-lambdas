@@ -12,9 +12,13 @@ categories.workspace = true
 
 [features]
 default = []
+feature-flags = ["dep:aws-lambda-powertools-feature-flags"]
+idempotency = ["dep:aws-lambda-powertools-idempotency"]
 streaming = ["dep:aws-lambda-powertools-streaming"]
 
 [dependencies]
+aws-lambda-powertools-feature-flags = { workspace = true, optional = true }
+aws-lambda-powertools-idempotency = { workspace = true, optional = true }
 aws-lambda-powertools-parameters.workspace = true
 aws-lambda-powertools-streaming = { workspace = true, optional = true }
 serde = { version = "1.0", features = ["derive"] }

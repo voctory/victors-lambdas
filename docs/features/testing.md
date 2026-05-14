@@ -11,13 +11,15 @@ aws-lambda-powertools-testing = { version = "0.1" }
 - `LambdaContextStub` for stable request ID and function name assertions.
 - `HandlerHarness` for invoking sync or async handler-shaped functions with a reusable context.
 - `ParameterProviderStub`, re-exported from the parameters crate for in-memory parameter tests.
+- Optional `FeatureFlagStoreStub` for in-memory feature flag tests.
+- Optional `IdempotencyStoreStub` for in-memory idempotency tests.
 - Optional `S3ObjectClientStub` for testing streaming code against in-memory S3 objects.
 - Text, bytes, and JSON fixture loaders.
 
-Enable `streaming` to use the S3 object client stub:
+Enable the feature-specific stubs you need:
 
 ```toml
-aws-lambda-powertools-testing = { version = "0.1", features = ["streaming"] }
+aws-lambda-powertools-testing = { version = "0.1", features = ["feature-flags", "idempotency", "streaming"] }
 ```
 
 ## Handler Harness
@@ -58,6 +60,25 @@ let output = harness.invoke_json(Path::new("tests/events/order.json"), |event: O
 })?;
 
 # Ok::<(), aws_lambda_powertools_testing::FixtureError>(())
+```
+
+## Store Stubs
+
+`FeatureFlagStoreStub` and `IdempotencyStoreStub` re-export the corresponding utility crates' in-memory stores under
+testing-oriented names:
+
+```rust
+use aws_lambda_powertools_feature_flags::{FeatureFlag, FeatureFlagConfig, FeatureFlagContext, FeatureFlags};
+use aws_lambda_powertools_testing::FeatureFlagStoreStub;
+
+let store = FeatureFlagStoreStub::from_config(
+    FeatureFlagConfig::new().with_feature("beta", FeatureFlag::boolean(true)),
+);
+let flags = FeatureFlags::new(store);
+
+assert!(flags.evaluate_bool("beta", &FeatureFlagContext::new(), false)?);
+
+# Ok::<(), aws_lambda_powertools_feature_flags::FeatureFlagError>(())
 ```
 
 ## S3 Stub
