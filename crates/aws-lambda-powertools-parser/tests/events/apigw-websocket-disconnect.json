@@ -1,0 +1,31 @@
+{
+  "resource": "/$disconnect",
+  "path": "/prod",
+  "headers": {},
+  "multiValueHeaders": {},
+  "queryStringParameters": {},
+  "multiValueQueryStringParameters": {},
+  "pathParameters": {},
+  "stageVariables": {},
+  "requestContext": {
+    "accountId": "123456789012",
+    "resourceId": "resource-disconnect",
+    "stage": "prod",
+    "requestId": "request-apigw-websocket-disconnect",
+    "identity": {
+      "sourceIp": "203.0.113.12"
+    },
+    "resourcePath": "/$disconnect",
+    "apiId": "api-id",
+    "connectedAt": 1767225600000,
+    "connectionId": "connection-apigw-websocket-1",
+    "disconnectReason": "Client disconnected",
+    "disconnectStatusCode": 1000,
+    "domainName": "api-id.execute-api.us-east-1.amazonaws.com",
+    "eventType": "DISCONNECT",
+    "requestTime": "01/Jan/2026:00:05:00 +0000",
+    "requestTimeEpoch": 1767225900000,
+    "routeKey": "$disconnect"
+  },
+  "isBase64Encoded": false
+}

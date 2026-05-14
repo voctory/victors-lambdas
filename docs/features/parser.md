@@ -15,8 +15,9 @@ aws-lambda-powertools = { version = "0.1", features = ["parser"] }
 - Rust-native event models for Transfer Family authorizers, AppSync Events, Bedrock Agent OpenAPI and function-details
   action groups, DynamoDB stream on-failure destinations, S3 EventBridge notifications, IoT Core registry events, and
   selected Cognito triggers.
-- Optional `aws_lambda_events` aliases for API Gateway Lambda authorizer TOKEN, REST API REQUEST, HTTP API payload
-  format 1.0, HTTP API payload format 2.0, IAM policy response, and simple response models.
+- Optional `aws_lambda_events` aliases for API Gateway WebSocket message, connect, and disconnect models plus Lambda
+  authorizer TOKEN, REST API REQUEST, HTTP API payload format 1.0, HTTP API payload format 2.0, IAM policy response,
+  and simple response models.
 - Optional `aws_lambda_events` aliases for AppSync direct resolver and batch resolver models.
 - Optional `aws_lambda_events` aliases for CloudFormation custom resource create, update, delete, aggregate request,
   response, and response status models.

@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use aws_lambda_events::event::{
     activemq::ActiveMqEvent,
     alb::AlbTargetGroupRequest,
-    apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
+    apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest},
     bedrock_agent_runtime::AgentEvent,
     cloudwatch_logs::LogsEvent,
     cognito::CognitoEventUserPoolsPreSignup,
@@ -27,7 +27,8 @@ use aws_lambda_events::event::{
 use aws_lambda_powertools_parser::{
     ApiGatewayAuthorizerHttpApiV1Request, ApiGatewayAuthorizerIamPolicyResponse,
     ApiGatewayAuthorizerRequest, ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
-    ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, AppSyncBatchResolverEvent,
+    ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, ApiGatewayWebsocketConnectEvent,
+    ApiGatewayWebsocketDisconnectEvent, ApiGatewayWebsocketMessageEvent, AppSyncBatchResolverEvent,
     AppSyncEventsEvent, AppSyncResolverEvent, CloudFormationCustomResourceCreate,
     CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
     CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
@@ -101,7 +102,7 @@ fn parses_api_gateway_v1_body_fixture() {
 #[test]
 fn parses_api_gateway_websocket_body_fixture() {
     let event =
-        load_json_fixture::<ApiGatewayWebsocketProxyRequest>(fixture("apigw-websocket-order.json"))
+        load_json_fixture::<ApiGatewayWebsocketMessageEvent>(fixture("apigw-websocket-order.json"))
             .expect("API Gateway WebSocket fixture should decode");
 
     let parsed = EventParser::new()
@@ -110,6 +111,35 @@ fn parses_api_gateway_websocket_body_fixture() {
 
     assert_eq!(parsed.payload().order_id, "order-apigw-websocket-1");
     assert_eq!(parsed.payload().quantity, 15);
+}
+
+#[test]
+fn parses_api_gateway_websocket_lifecycle_fixtures() {
+    let connect = load_json_fixture::<ApiGatewayWebsocketConnectEvent>(fixture(
+        "apigw-websocket-connect.json",
+    ))
+    .expect("API Gateway WebSocket connect fixture should decode");
+    let disconnect = load_json_fixture::<ApiGatewayWebsocketDisconnectEvent>(fixture(
+        "apigw-websocket-disconnect.json",
+    ))
+    .expect("API Gateway WebSocket disconnect fixture should decode");
+
+    assert_eq!(
+        connect.request_context.event_type.as_deref(),
+        Some("CONNECT")
+    );
+    assert_eq!(
+        connect.request_context.route_key.as_deref(),
+        Some("$connect")
+    );
+    assert_eq!(
+        disconnect.request_context.event_type.as_deref(),
+        Some("DISCONNECT")
+    );
+    assert_eq!(
+        disconnect.request_context.route_key.as_deref(),
+        Some("$disconnect")
+    );
 }
 
 #[test]

@@ -210,11 +210,12 @@ pub mod prelude {
     pub use aws_lambda_powertools_parser::{
         ApiGatewayAuthorizerHttpApiV1Request, ApiGatewayAuthorizerIamPolicyResponse,
         ApiGatewayAuthorizerRequest, ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
-        ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, AppSyncBatchResolverEvent,
-        AppSyncResolverEvent, CloudFormationCustomResourceCreate,
-        CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
-        CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
-        CloudFormationCustomResourceUpdate,
+        ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken,
+        ApiGatewayWebsocketConnectEvent, ApiGatewayWebsocketDisconnectEvent,
+        ApiGatewayWebsocketMessageEvent, AppSyncBatchResolverEvent, AppSyncResolverEvent,
+        CloudFormationCustomResourceCreate, CloudFormationCustomResourceDelete,
+        CloudFormationCustomResourceRequest, CloudFormationCustomResourceResponse,
+        CloudFormationCustomResourceResponseStatus, CloudFormationCustomResourceUpdate,
     };
 
     #[cfg(feature = "tracer")]

@@ -1,0 +1,32 @@
+{
+  "resource": "/$connect",
+  "path": "/prod",
+  "headers": {
+    "host": "api-id.execute-api.us-east-1.amazonaws.com"
+  },
+  "multiValueHeaders": {},
+  "queryStringParameters": {},
+  "multiValueQueryStringParameters": {},
+  "pathParameters": {},
+  "stageVariables": {},
+  "requestContext": {
+    "accountId": "123456789012",
+    "resourceId": "resource-connect",
+    "stage": "prod",
+    "requestId": "request-apigw-websocket-connect",
+    "identity": {
+      "sourceIp": "203.0.113.12",
+      "userAgent": "fixture-client"
+    },
+    "resourcePath": "/$connect",
+    "apiId": "api-id",
+    "connectedAt": 1767225600000,
+    "connectionId": "connection-apigw-websocket-1",
+    "domainName": "api-id.execute-api.us-east-1.amazonaws.com",
+    "eventType": "CONNECT",
+    "requestTime": "01/Jan/2026:00:00:00 +0000",
+    "requestTimeEpoch": 1767225600000,
+    "routeKey": "$connect"
+  },
+  "isBase64Encoded": false
+}

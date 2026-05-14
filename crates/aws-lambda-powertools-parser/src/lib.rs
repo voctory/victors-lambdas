@@ -45,6 +45,15 @@ pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerV1Request a
 pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerV2Request as ApiGatewayAuthorizerRequestV2;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayWebsocketProxyRequest as ApiGatewayWebsocketConnectEvent;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayWebsocketProxyRequest as ApiGatewayWebsocketDisconnectEvent;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::apigw::ApiGatewayWebsocketProxyRequest as ApiGatewayWebsocketMessageEvent;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::cloudformation::CloudFormationCustomResourceRequest;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
