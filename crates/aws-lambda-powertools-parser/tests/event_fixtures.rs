@@ -10,7 +10,6 @@ use aws_lambda_events::event::{
     apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
     appsync::AppSyncDirectResolverEvent,
     bedrock_agent_runtime::AgentEvent,
-    cloudformation::CloudFormationCustomResourceRequest,
     cloudwatch_logs::LogsEvent,
     cognito::CognitoEventUserPoolsPreSignup,
     dynamodb::Event as DynamoDbEvent,
@@ -29,7 +28,10 @@ use aws_lambda_events::event::{
 use aws_lambda_powertools_parser::{
     ApiGatewayAuthorizerHttpApiV1Request, ApiGatewayAuthorizerIamPolicyResponse,
     ApiGatewayAuthorizerRequest, ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
-    ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, AppSyncEventsEvent, EventParser,
+    ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, AppSyncEventsEvent,
+    CloudFormationCustomResourceCreate, CloudFormationCustomResourceDelete,
+    CloudFormationCustomResourceRequest, CloudFormationCustomResourceResponse,
+    CloudFormationCustomResourceResponseStatus, CloudFormationCustomResourceUpdate, EventParser,
 };
 use aws_lambda_powertools_testing::load_json_fixture;
 use serde::Deserialize;
@@ -553,6 +555,57 @@ fn parses_cloudformation_old_resource_properties_fixture() {
 
     assert_eq!(parsed.payload().bucket_name, "orders");
     assert_eq!(parsed.payload().retention_days, 7);
+}
+
+#[test]
+fn parses_cloudformation_request_type_fixtures() {
+    let create = load_json_fixture::<CloudFormationCustomResourceCreate>(fixture(
+        "cloudformation-bucket-policy-create.json",
+    ))
+    .expect("CloudFormation create fixture should decode");
+    let update = load_json_fixture::<CloudFormationCustomResourceUpdate>(fixture(
+        "cloudformation-bucket-policy-update.json",
+    ))
+    .expect("CloudFormation update fixture should decode");
+    let delete = load_json_fixture::<CloudFormationCustomResourceDelete>(fixture(
+        "cloudformation-bucket-policy-delete.json",
+    ))
+    .expect("CloudFormation delete fixture should decode");
+
+    assert_eq!(create.request_id, "request-cloudformation-create-1");
+    assert_eq!(
+        create
+            .resource_properties
+            .pointer("/BucketName")
+            .and_then(Value::as_str),
+        Some("orders")
+    );
+    assert_eq!(
+        update
+            .old_resource_properties
+            .pointer("/RetentionDays")
+            .and_then(Value::as_u64),
+        Some(7)
+    );
+    assert_eq!(delete.physical_resource_id, "bucket-policy-1");
+}
+
+#[test]
+fn parses_cloudformation_response_fixture() {
+    let response = load_json_fixture::<CloudFormationCustomResourceResponse>(fixture(
+        "cloudformation-response-success.json",
+    ))
+    .expect("CloudFormation response fixture should decode");
+
+    assert_eq!(
+        response.status,
+        CloudFormationCustomResourceResponseStatus::Success
+    );
+    assert_eq!(response.physical_resource_id, "bucket-policy-1");
+    assert_eq!(
+        response.data.get("BucketName").map(String::as_str),
+        Some("orders")
+    );
 }
 
 #[test]

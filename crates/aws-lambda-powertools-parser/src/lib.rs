@@ -39,6 +39,24 @@ pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerV1Request a
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::apigw::ApiGatewayV2CustomAuthorizerV2Request as ApiGatewayAuthorizerRequestV2;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cloudformation::CloudFormationCustomResourceRequest;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cloudformation::CloudFormationCustomResourceResponse;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cloudformation::CloudFormationCustomResourceResponseStatus;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cloudformation::CreateRequest as CloudFormationCustomResourceCreate;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cloudformation::DeleteRequest as CloudFormationCustomResourceDelete;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cloudformation::UpdateRequest as CloudFormationCustomResourceUpdate;
 pub use bedrock_agent::{
     BedrockAgentEvent, BedrockAgentEventModel, BedrockAgentFunctionAgent,
     BedrockAgentFunctionEvent, BedrockAgentFunctionEventModel, BedrockAgentFunctionParameter,

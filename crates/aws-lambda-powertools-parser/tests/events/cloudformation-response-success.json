@@ -1,0 +1,12 @@
+{
+  "Status": "SUCCESS",
+  "Reason": "Resource ready",
+  "PhysicalResourceId": "bucket-policy-1",
+  "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/orders/1",
+  "RequestId": "request-cloudformation-create-1",
+  "LogicalResourceId": "BucketPolicy",
+  "NoEcho": false,
+  "Data": {
+    "BucketName": "orders"
+  }
+}

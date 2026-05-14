@@ -1,0 +1,14 @@
+{
+  "RequestType": "Delete",
+  "ServiceToken": "arn:aws:lambda:us-east-1:123456789012:function:handler",
+  "RequestId": "request-cloudformation-delete-1",
+  "ResponseURL": "https://example.com/response",
+  "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/orders/1",
+  "ResourceType": "Custom::BucketPolicy",
+  "LogicalResourceId": "BucketPolicy",
+  "PhysicalResourceId": "bucket-policy-1",
+  "ResourceProperties": {
+    "BucketName": "orders",
+    "RetentionDays": 30
+  }
+}

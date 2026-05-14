@@ -211,6 +211,9 @@ pub mod prelude {
         ApiGatewayAuthorizerHttpApiV1Request, ApiGatewayAuthorizerIamPolicyResponse,
         ApiGatewayAuthorizerRequest, ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
         ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken,
+        CloudFormationCustomResourceCreate, CloudFormationCustomResourceDelete,
+        CloudFormationCustomResourceRequest, CloudFormationCustomResourceResponse,
+        CloudFormationCustomResourceResponseStatus, CloudFormationCustomResourceUpdate,
     };
 
     #[cfg(feature = "tracer")]

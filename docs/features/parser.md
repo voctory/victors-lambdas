@@ -17,6 +17,8 @@ aws-lambda-powertools = { version = "0.1", features = ["parser"] }
   selected Cognito triggers.
 - Optional `aws_lambda_events` aliases for API Gateway Lambda authorizer TOKEN, REST API REQUEST, HTTP API payload
   format 1.0, HTTP API payload format 2.0, IAM policy response, and simple response models.
+- Optional `aws_lambda_events` aliases for CloudFormation custom resource create, update, delete, aggregate request,
+  response, and response status models.
 - Optional `aws_lambda_events` envelopes for common payload extraction paths, including API Gateway bodies, AppSync
   resolver arguments/source, AppSync Events publish payloads, Bedrock Agent input text, ActiveMQ message data, ALB
   bodies, Lambda Function URL bodies, VPC Lattice bodies, EventBridge detail, CloudFormation custom resource properties,
