@@ -9,11 +9,21 @@ const ALLOW_CREDENTIALS: &str = "Access-Control-Allow-Credentials";
 const EXPOSE_HEADERS: &str = "Access-Control-Expose-Headers";
 const MAX_AGE: &str = "Access-Control-Max-Age";
 const REQUEST_METHOD: &str = "Access-Control-Request-Method";
+const REQUEST_HEADERS: &str = "Access-Control-Request-Headers";
+
+const DEFAULT_ALLOW_HEADERS: [&str; 5] = [
+    "Authorization",
+    "Content-Type",
+    "X-Amz-Date",
+    "X-Api-Key",
+    "X-Amz-Security-Token",
+];
 
 /// Cross-origin resource sharing settings for routed HTTP responses.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CorsConfig {
     allow_origin: String,
+    extra_origins: Vec<String>,
     allow_methods: Vec<Method>,
     allow_headers: Vec<String>,
     expose_headers: Vec<String>,
@@ -27,6 +37,7 @@ impl CorsConfig {
     pub fn new(allow_origin: impl Into<String>) -> Self {
         Self {
             allow_origin: allow_origin.into(),
+            extra_origins: Vec::new(),
             allow_methods: vec![
                 Method::Get,
                 Method::Head,
@@ -36,7 +47,10 @@ impl CorsConfig {
                 Method::Delete,
                 Method::Options,
             ],
-            allow_headers: Vec::new(),
+            allow_headers: DEFAULT_ALLOW_HEADERS
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
             expose_headers: Vec::new(),
             max_age_seconds: None,
             allow_credentials: false,
@@ -47,6 +61,12 @@ impl CorsConfig {
     #[must_use]
     pub fn allow_origin(&self) -> &str {
         &self.allow_origin
+    }
+
+    /// Returns additional allowed origins.
+    #[must_use]
+    pub fn extra_origins(&self) -> &[String] {
+        &self.extra_origins
     }
 
     /// Returns allowed methods.
@@ -77,6 +97,16 @@ impl CorsConfig {
     #[must_use]
     pub const fn allow_credentials(&self) -> bool {
         self.allow_credentials
+    }
+
+    /// Returns a copy with additional allowed origins replaced.
+    #[must_use]
+    pub fn with_extra_origins(
+        mut self,
+        origins: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.extra_origins = origins.into_iter().map(Into::into).collect();
+        self
     }
 
     /// Returns a copy with allowed methods replaced.
@@ -126,11 +156,44 @@ impl CorsConfig {
         request.method() == Method::Options && request.header(REQUEST_METHOD).is_some()
     }
 
+    /// Adds CORS response headers when the request origin is allowed.
+    #[must_use]
+    pub fn apply_for_request(&self, request: &Request, response: Response) -> Response {
+        let Some(origin) = self.origin_for_request(request) else {
+            return response;
+        };
+
+        self.apply_with_origin(response, origin)
+    }
+
     /// Adds CORS response headers.
     #[must_use]
     pub fn apply(&self, response: Response) -> Response {
+        self.apply_with_origin(response, self.allow_origin.as_str())
+    }
+
+    /// Creates a CORS preflight response when the request origin and method are allowed.
+    #[must_use]
+    pub fn preflight_response_for_request(&self, request: &Request) -> Option<Response> {
+        if !self.is_preflight_request(request) || self.origin_for_request(request).is_none() {
+            return None;
+        }
+        if !self.allows_requested_method(request) || !self.allows_requested_headers(request) {
+            return None;
+        }
+
+        Some(self.apply_for_request(request, Response::new(204)))
+    }
+
+    /// Creates a CORS preflight response.
+    #[must_use]
+    pub fn preflight_response(&self) -> Response {
+        self.apply(Response::new(204))
+    }
+
+    fn apply_with_origin(&self, response: Response, origin: &str) -> Response {
         let mut response = response
-            .with_header(ALLOW_ORIGIN, self.allow_origin.clone())
+            .with_header(ALLOW_ORIGIN, origin)
             .with_header(ALLOW_METHODS, join_methods(&self.allow_methods));
 
         if !self.allow_headers.is_empty() {
@@ -149,10 +212,45 @@ impl CorsConfig {
         response
     }
 
-    /// Creates a CORS preflight response.
-    #[must_use]
-    pub fn preflight_response(&self) -> Response {
-        self.apply(Response::new(204))
+    fn origin_for_request<'a>(&self, request: &'a Request) -> Option<&'a str> {
+        let origin = request.header("Origin")?;
+
+        if self.allows_wildcard_origin() {
+            return Some("*");
+        }
+
+        if self.allow_origin == origin || self.extra_origins.iter().any(|extra| extra == origin) {
+            Some(origin)
+        } else {
+            None
+        }
+    }
+
+    fn allows_wildcard_origin(&self) -> bool {
+        self.allow_origin == "*" || self.extra_origins.iter().any(|origin| origin == "*")
+    }
+
+    fn allows_requested_method(&self, request: &Request) -> bool {
+        request
+            .header(REQUEST_METHOD)
+            .is_some_and(|requested_method| {
+                self.allow_methods
+                    .iter()
+                    .any(|method| method.as_str().eq_ignore_ascii_case(requested_method))
+            })
+    }
+
+    fn allows_requested_headers(&self, request: &Request) -> bool {
+        request
+            .header(REQUEST_HEADERS)
+            .is_none_or(|requested_headers| {
+                requested_headers.split(',').all(|requested_header| {
+                    let requested_header = requested_header.trim();
+                    self.allow_headers
+                        .iter()
+                        .any(|allowed_header| allowed_header.eq_ignore_ascii_case(requested_header))
+                })
+            })
     }
 }
 
@@ -177,6 +275,7 @@ mod tests {
     #[test]
     fn applies_cors_headers_to_response() {
         let cors = CorsConfig::new("https://example.com")
+            .with_extra_origins(["https://app.example.com"])
             .with_allow_methods([Method::Get, Method::Post])
             .with_allow_headers(["authorization", "content-type"])
             .with_expose_headers(["x-request-id"])
@@ -206,6 +305,43 @@ mod tests {
             response.header("access-control-allow-credentials"),
             Some("true")
         );
+        assert_eq!(cors.extra_origins(), &["https://app.example.com"]);
+    }
+
+    #[test]
+    fn default_cors_allows_aws_request_headers() {
+        let response = CorsConfig::default().apply(Response::ok("ok"));
+
+        assert_eq!(
+            response.header("access-control-allow-headers"),
+            Some("Authorization,Content-Type,X-Amz-Date,X-Api-Key,X-Amz-Security-Token")
+        );
+    }
+
+    #[test]
+    fn request_aware_cors_uses_matching_origin() {
+        let cors =
+            CorsConfig::new("https://example.com").with_extra_origins(["https://app.example.com"]);
+        let request =
+            Request::new(Method::Get, "/orders").with_header("Origin", "https://app.example.com");
+
+        let response = cors.apply_for_request(&request, Response::ok("ok"));
+
+        assert_eq!(
+            response.header("access-control-allow-origin"),
+            Some("https://app.example.com")
+        );
+    }
+
+    #[test]
+    fn request_aware_cors_ignores_disallowed_origin() {
+        let cors = CorsConfig::new("https://example.com");
+        let request =
+            Request::new(Method::Get, "/orders").with_header("Origin", "https://app.example.com");
+
+        let response = cors.apply_for_request(&request, Response::ok("ok"));
+
+        assert_eq!(response.header("access-control-allow-origin"), None);
     }
 
     #[test]
@@ -224,5 +360,29 @@ mod tests {
 
         assert_eq!(response.status_code(), 204);
         assert_eq!(response.header("access-control-allow-origin"), Some("*"));
+    }
+
+    #[test]
+    fn preflight_response_for_request_validates_origin_method_and_headers() {
+        let cors = CorsConfig::new("https://example.com").with_allow_methods([Method::Post]);
+        let request = Request::new(Method::Options, "/orders")
+            .with_header("Origin", "https://example.com")
+            .with_header("Access-Control-Request-Method", "POST")
+            .with_header("Access-Control-Request-Headers", "content-type,x-amz-date");
+
+        let response = cors
+            .preflight_response_for_request(&request)
+            .expect("preflight should be allowed");
+
+        assert_eq!(response.status_code(), 204);
+        assert_eq!(
+            response.header("access-control-allow-origin"),
+            Some("https://example.com")
+        );
+
+        let disallowed = Request::new(Method::Options, "/orders")
+            .with_header("Origin", "https://evil.example.com")
+            .with_header("Access-Control-Request-Method", "POST");
+        assert!(cors.preflight_response_for_request(&disallowed).is_none());
     }
 }

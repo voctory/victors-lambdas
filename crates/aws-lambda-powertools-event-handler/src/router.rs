@@ -656,15 +656,15 @@ impl Router {
         request = self.apply_request_middleware(request);
 
         if let Some(cors) = &self.cors {
-            if cors.is_preflight_request(&request) {
-                return cors.preflight_response();
+            if let Some(response) = cors.preflight_response_for_request(&request) {
+                return response;
             }
         }
 
         let Some(route_match) = self.find(&request) else {
             let response = self.not_found_response(&request);
             let response = self.apply_response_middleware(&request, response);
-            return self.apply_cors(response);
+            return self.apply_cors(&request, response);
         };
         let route = route_match.route;
 
@@ -672,11 +672,11 @@ impl Router {
         request = route.apply_request_middleware(request);
         #[cfg(feature = "validation")]
         if let Err(error) = route.validate_request(&request) {
-            return self.apply_cors(request_validation_response(&error));
+            return self.apply_cors(&request, request_validation_response(&error));
         }
         #[cfg(feature = "validation")]
         if let Some(response) = self.validate_request(&request) {
-            return self.apply_cors(response);
+            return self.apply_cors(&request, response);
         }
 
         let response = match route.try_handle(&request) {
@@ -684,21 +684,21 @@ impl Router {
             Err(error) => {
                 let response = self.error_response(&request, error.as_ref());
                 let response = self.apply_response_middleware(&request, response);
-                return self.apply_cors(response);
+                return self.apply_cors(&request, response);
             }
         };
         let response = route.apply_response_middleware(&request, response);
         let response = self.apply_response_middleware(&request, response);
         #[cfg(feature = "validation")]
         if let Err(error) = route.validate_response(&request, &response) {
-            return self.apply_cors(response_validation_response(&error));
+            return self.apply_cors(&request, response_validation_response(&error));
         }
         #[cfg(feature = "validation")]
         if let Some(validation_response) = self.validate_response(&request, &response) {
-            return self.apply_cors(validation_response);
+            return self.apply_cors(&request, validation_response);
         }
 
-        self.apply_cors(response)
+        self.apply_cors(&request, response)
     }
 
     /// Returns registered routes in registration order.
@@ -719,9 +719,9 @@ impl Router {
         self.routes.is_empty()
     }
 
-    fn apply_cors(&self, response: Response) -> Response {
+    fn apply_cors(&self, request: &Request, response: Response) -> Response {
         if let Some(cors) = &self.cors {
-            cors.apply(response)
+            cors.apply_for_request(request, response)
         } else {
             response
         }
@@ -1350,15 +1350,15 @@ impl AsyncRouter {
         request = self.apply_request_middleware(request);
 
         if let Some(cors) = &self.cors {
-            if cors.is_preflight_request(&request) {
-                return cors.preflight_response();
+            if let Some(response) = cors.preflight_response_for_request(&request) {
+                return response;
             }
         }
 
         let Some(route_match) = self.find(&request) else {
             let response = self.not_found_response(&request).await;
             let response = self.apply_response_middleware(&request, response);
-            return self.apply_cors(response);
+            return self.apply_cors(&request, response);
         };
         let route = route_match.route;
 
@@ -1366,11 +1366,11 @@ impl AsyncRouter {
         request = route.apply_request_middleware(request);
         #[cfg(feature = "validation")]
         if let Err(error) = route.validate_request(&request) {
-            return self.apply_cors(request_validation_response(&error));
+            return self.apply_cors(&request, request_validation_response(&error));
         }
         #[cfg(feature = "validation")]
         if let Some(response) = self.validate_request(&request) {
-            return self.apply_cors(response);
+            return self.apply_cors(&request, response);
         }
 
         let response = match route.try_handle(&request).await {
@@ -1378,21 +1378,21 @@ impl AsyncRouter {
             Err(error) => {
                 let response = self.error_response(&request, error.as_ref()).await;
                 let response = self.apply_response_middleware(&request, response);
-                return self.apply_cors(response);
+                return self.apply_cors(&request, response);
             }
         };
         let response = route.apply_response_middleware(&request, response);
         let response = self.apply_response_middleware(&request, response);
         #[cfg(feature = "validation")]
         if let Err(error) = route.validate_response(&request, &response) {
-            return self.apply_cors(response_validation_response(&error));
+            return self.apply_cors(&request, response_validation_response(&error));
         }
         #[cfg(feature = "validation")]
         if let Some(validation_response) = self.validate_response(&request, &response) {
-            return self.apply_cors(validation_response);
+            return self.apply_cors(&request, validation_response);
         }
 
-        self.apply_cors(response)
+        self.apply_cors(&request, response)
     }
 
     /// Returns registered routes in registration order.
@@ -1413,9 +1413,9 @@ impl AsyncRouter {
         self.routes.is_empty()
     }
 
-    fn apply_cors(&self, response: Response) -> Response {
+    fn apply_cors(&self, request: &Request, response: Response) -> Response {
         if let Some(cors) = &self.cors {
-            cors.apply(response)
+            cors.apply_for_request(request, response)
         } else {
             response
         }
@@ -1893,7 +1893,9 @@ mod tests {
         router.add_response_middleware(|_, response| response.with_header("x-middleware", "1"));
         router.get_fallible("/orders", |_| Err(TestRouteError("duplicate order")));
 
-        let response = router.handle(Request::new(Method::Get, "/orders"));
+        let response = router.handle(
+            Request::new(Method::Get, "/orders").with_header("Origin", "https://example.com"),
+        );
 
         assert_eq!(response.status_code(), 409);
         assert_eq!(response.body(), b"/orders:duplicate order");
@@ -1911,7 +1913,9 @@ mod tests {
         router.add_response_middleware(|_, response| response.with_header("x-middleware", "1"));
         router.get_fallible("/orders", |_| Err(TestRouteError("duplicate order")));
 
-        let response = router.handle(Request::new(Method::Get, "/orders"));
+        let response = router.handle(
+            Request::new(Method::Get, "/orders").with_header("Origin", "https://example.com"),
+        );
 
         assert_eq!(response.status_code(), 409);
         assert_eq!(response.body(), b"/orders:duplicate order");
@@ -1964,8 +1968,12 @@ mod tests {
         let mut router = Router::new().with_cors(CorsConfig::new("https://example.com"));
         router.get("/orders", |_| Response::ok("orders"));
 
-        let orders_response = router.handle(Request::new(Method::Get, "/orders"));
-        let not_found = router.handle(Request::new(Method::Get, "/missing"));
+        let orders_response = router.handle(
+            Request::new(Method::Get, "/orders").with_header("Origin", "https://example.com"),
+        );
+        let not_found = router.handle(
+            Request::new(Method::Get, "/missing").with_header("Origin", "https://example.com"),
+        );
 
         assert_eq!(
             orders_response.header("access-control-allow-origin"),
@@ -1982,6 +1990,7 @@ mod tests {
     fn cors_preflight_request_returns_no_content_without_route() {
         let router = Router::new().with_cors(CorsConfig::default());
         let request = Request::new(Method::Options, "/orders")
+            .with_header("Origin", "https://example.com")
             .with_header("Access-Control-Request-Method", "POST");
 
         let response = router.handle(request);
@@ -2031,7 +2040,9 @@ mod tests {
         });
         router.get("/orders", |_| Response::ok("orders"));
 
-        let response = router.handle(Request::new(Method::Get, "/orders"));
+        let response = router.handle(
+            Request::new(Method::Get, "/orders").with_header("Origin", "https://example.com"),
+        );
 
         assert_eq!(router.response_middleware_len(), 1);
         assert_eq!(response.header("x-path"), Some("/orders"));
@@ -2591,7 +2602,11 @@ mod tests {
         let mut router = AsyncRouter::new().with_cors(CorsConfig::default());
         router.add_request_middleware(|request| {
             if request.path() == "/legacy-orders" {
-                Request::new(request.method(), "/orders")
+                let mut rewritten = Request::new(request.method(), "/orders");
+                if let Some(origin) = request.header("Origin") {
+                    rewritten = rewritten.with_header("Origin", origin.to_owned());
+                }
+                rewritten
             } else {
                 request
             }
@@ -2603,7 +2618,12 @@ mod tests {
             async_response(async move { Response::ok(request.path().to_owned()) })
         });
 
-        let response = block_on(router.handle(Request::new(Method::Get, "/legacy-orders")));
+        let response = block_on(
+            router.handle(
+                Request::new(Method::Get, "/legacy-orders")
+                    .with_header("Origin", "https://example.com"),
+            ),
+        );
 
         assert_eq!(router.request_middleware_len(), 1);
         assert_eq!(router.response_middleware_len(), 1);

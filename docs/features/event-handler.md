@@ -17,7 +17,8 @@ aws-lambda-powertools = { version = "0.1", features = ["event-handler"] }
 - Router-level and route-specific request/response middleware.
 - Request-scoped typed extensions for middleware-to-handler data, and router shared typed extensions for values reused
   across requests.
-- Optional CORS preflight handling and response headers.
+- Optional CORS preflight handling and response headers with request `Origin` matching, wildcard/additional origins,
+  and AWS-friendly default request headers.
 - Optional request/response validation hooks through `event-handler-validation`.
 - Optional gzip and deflate response compression through `event-handler-compression`.
 - Optional adapters for API Gateway REST API, HTTP API, and WebSocket API events, Application Load Balancer events,
