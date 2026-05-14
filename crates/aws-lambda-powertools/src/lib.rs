@@ -71,6 +71,12 @@ pub mod parser {
     pub use aws_lambda_powertools_parser::*;
 }
 
+/// Seekable streaming utility.
+#[cfg(feature = "streaming")]
+pub mod streaming {
+    pub use aws_lambda_powertools_streaming::*;
+}
+
 /// Common imports for Lambda handlers.
 pub mod prelude {
     pub use aws_lambda_powertools_core::{ServiceConfig, ServiceConfigBuilder};
@@ -283,6 +289,18 @@ pub mod prelude {
         S3SqsEventNotificationModel, SesModel, SnsModel, SqsModel, VpcLatticeModel,
         VpcLatticeV2Model,
     };
+
+    #[cfg(feature = "streaming")]
+    pub use aws_lambda_powertools_streaming::{
+        BytesRangeSource, RangeSource, SeekableStream, StreamingError, StreamingErrorKind,
+        StreamingResult,
+    };
+
+    #[cfg(feature = "streaming-csv")]
+    pub use aws_lambda_powertools_streaming::{csv_reader, csv_reader_with_builder};
+
+    #[cfg(feature = "streaming-gzip")]
+    pub use aws_lambda_powertools_streaming::gzip_decoder;
 
     #[cfg(feature = "tracer")]
     pub use aws_lambda_powertools_tracer::{

@@ -25,6 +25,7 @@ aws-lambda-powertools-metrics = { path = "crates/aws-lambda-powertools-metrics",
 aws-lambda-powertools-tracer = { path = "crates/aws-lambda-powertools-tracer", version = "0.1.0" }
 aws-lambda-powertools-parameters = { path = "crates/aws-lambda-powertools-parameters", version = "0.1.0" }
 aws-lambda-powertools-parser = { path = "crates/aws-lambda-powertools-parser", version = "0.1.0" }
+aws-lambda-powertools-streaming = { path = "crates/aws-lambda-powertools-streaming", version = "0.1.0" }
 aws-lambda-powertools-batch = { path = "crates/aws-lambda-powertools-batch", version = "0.1.0" }
 aws-lambda-powertools-idempotency = { path = "crates/aws-lambda-powertools-idempotency", version = "0.1.0" }
 aws-lambda-powertools-validation = { path = "crates/aws-lambda-powertools-validation", version = "0.1.0" }

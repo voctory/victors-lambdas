@@ -32,6 +32,9 @@ all = [
     "metrics",
     "parameters",
     "parser",
+    "streaming",
+    "streaming-csv",
+    "streaming-gzip",
     "tracer",
     "validation",
 ]
@@ -88,6 +91,9 @@ parameters-secrets = ["parameters", "aws-lambda-powertools-parameters/secrets"]
 parameters-ssm = ["parameters", "aws-lambda-powertools-parameters/ssm"]
 parser = ["dep:aws-lambda-powertools-parser"]
 parser-aws-lambda-events = ["parser", "aws-lambda-powertools-parser/aws-lambda-events"]
+streaming = ["dep:aws-lambda-powertools-streaming"]
+streaming-csv = ["streaming", "aws-lambda-powertools-streaming/csv"]
+streaming-gzip = ["streaming", "aws-lambda-powertools-streaming/gzip"]
 tracer = ["dep:aws-lambda-powertools-tracer"]
 tracer-opentelemetry = ["tracer", "aws-lambda-powertools-tracer/opentelemetry"]
 tracer-tracing = ["tracer", "aws-lambda-powertools-tracer/tracing"]
@@ -109,6 +115,7 @@ aws-lambda-powertools-logger = { workspace = true, optional = true }
 aws-lambda-powertools-metrics = { workspace = true, optional = true }
 aws-lambda-powertools-parameters = { workspace = true, optional = true }
 aws-lambda-powertools-parser = { workspace = true, optional = true }
+aws-lambda-powertools-streaming = { workspace = true, optional = true }
 aws-lambda-powertools-tracer = { workspace = true, optional = true }
 aws-lambda-powertools-validation = { workspace = true, optional = true }
 

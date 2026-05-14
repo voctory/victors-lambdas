@@ -23,6 +23,7 @@ first implementation tranche has landed:
   custom, and regex masking strategies, and configurable missing-field behavior
 - Kafka consumer record materialization that flattens Lambda Kafka event records, decodes primitive or JSON base64 keys
   and values, provides optional Avro and Protobuf decode helpers, decodes headers, and preserves original encoded fields
+- seekable streaming over byte-range sources with optional gzip and CSV transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway
   REST/HTTP/WebSocket API bodies, API Gateway WebSocket lifecycle aliases, API Gateway Lambda authorizer aliases,
   common Powertools parser event model aliases, AppSync direct resolver/batch aliases and arguments/source, AppSync
@@ -85,6 +86,7 @@ Initial feature docs:
 - [JMESPath](docs/features/jmespath.md)
 - [Data Masking](docs/features/data-masking.md)
 - [Kafka](docs/features/kafka.md)
+- [Streaming](docs/features/streaming.md)
 - [Parser](docs/features/parser.md)
 - [Batch](docs/features/batch.md)
 - [Idempotency](docs/features/idempotency.md)

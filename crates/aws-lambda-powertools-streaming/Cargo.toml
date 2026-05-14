@@ -1,0 +1,23 @@
+[package]
+name = "aws-lambda-powertools-streaming"
+description = "Seekable streaming utility for Powertools Lambda Rust."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+csv = ["dep:csv"]
+gzip = ["dep:flate2"]
+
+[dependencies]
+csv = { version = "1.4", optional = true }
+flate2 = { version = "1.1", optional = true }
+
+[lints]
+workspace = true

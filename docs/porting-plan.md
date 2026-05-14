@@ -10,7 +10,8 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 - Crates: one umbrella crate, `aws-lambda-powertools`, plus utility crates under `crates/`.
 - Feature flags: the umbrella crate exposes `logger`, `logger-tracing`, `metrics`, `tracer`, `tracer-opentelemetry`,
   `tracer-tracing`, `parameters`, `parameters-appconfig`, `parameters-dynamodb`, `parameters-secrets`, `parameters-ssm`,
-  `jmespath`, `data-masking`, `kafka`, `parser`, `parser-aws-lambda-events`, `batch`, `batch-aws-lambda-events`, `batch-parser`,
+  `jmespath`, `data-masking`, `kafka`, `kafka-avro`, `kafka-protobuf`, `parser`, `parser-aws-lambda-events`,
+  `streaming`, `streaming-csv`, `streaming-gzip`, `batch`, `batch-aws-lambda-events`, `batch-parser`,
   `idempotency`, `idempotency-dynamodb`, `feature-flags`, `feature-flags-appconfig`, `validation`, `validation-jsonschema`,
   `event-handler`, `event-handler-appsync-events`, `event-handler-bedrock-agent-functions`,
   `event-handler-compression`, `event-handler-validation`, `event-handler-aws-lambda-events`, and `all`.
@@ -21,8 +22,8 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 ## Goals
 
 - Provide Rust-native utilities for common Lambda operational practices: structured logging, CloudWatch EMF metrics,
-  tracing, parameter retrieval, JMESPath extraction, data masking, Kafka record materialization, event parsing, batch
-  responses, validation, idempotency, feature flags, and event handling.
+  tracing, parameter retrieval, JMESPath extraction, data masking, Kafka record materialization, seekable streaming,
+  event parsing, batch responses, validation, idempotency, feature flags, and event handling.
 - Keep provider integrations and heavier dependencies behind Cargo features so users do not pay for unused integrations.
 - Preserve useful cross-language Powertools conventions where they fit Rust, especially environment variable names and
   utility boundaries.
@@ -52,6 +53,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | JMESPath | `JmespathExpression`, `search`, `search_as`, `query`, `extract_data_from_envelope`, Powertools `powertools_json`, `powertools_base64`, and `powertools_base64_gzip` functions, common Lambda event envelope constants, and initial docs/snippet | Idempotency/data-masking integration examples |
 | Data masking | `DataMasking`, whole-value erasure, field erasure by JSON Pointer or dot path, fixed/dynamic/custom/regex masking strategies, configurable missing-field behavior, initial docs/snippet, and umbrella exports | KMS-backed encryption/decryption providers and full JSONPath update expressions |
 | Kafka | `KafkaConsumer`, `ConsumerRecords`, `ConsumerRecord`, primitive and `JSON` base64 key/value deserializers, optional Avro and Protobuf base64 decode helpers, decoded `UTF-8` headers, original encoded field/header preservation, initial docs/snippet, and umbrella exports | Schema registry-backed consumer configuration |
+| Streaming | `RangeSource`, `SeekableStream`, `BytesRangeSource`, optional gzip decoder and CSV reader transforms, initial docs/snippet, and umbrella exports | AWS SDK-backed S3 range source and ZIP transform |
 | Parser | `EventParser`, `ParsedEvent`, `ParseError`, serde JSON string/slice/value parsing, Transfer Family authorizer event/response models, AppSync Events model and publish payload envelope, Bedrock Agent OpenAPI event model and input text envelope, Bedrock Agent function-details model and input text envelope, DynamoDB stream on-failure destination model, S3 EventBridge notification model, S3 event notification model with Intelligent-Tiering support, IoT Core registry event models, Cognito migrate-user and custom sender event models, optional `aws_lambda_events` API Gateway Lambda authorizer aliases, API Gateway WebSocket lifecycle aliases, Cognito User Pool trigger aliases, common Powertools parser event model aliases, API Gateway REST/HTTP/WebSocket API body, AppSync direct resolver/batch aliases and arguments/source, Bedrock Agent OpenAPI input text, ActiveMQ message data, ALB target group body, Lambda Function URL body, VPC Lattice v1/v2 body, EventBridge detail with Scheduler empty-detail compatibility, CloudFormation custom resource request/response aliases and properties, Cognito User Pool user attributes, SQS body, SNS message, SNS-over-SQS message, RabbitMQ message data, S3 record, owned S3 event notification record, S3-over-SQS record, owned S3-over-SQS notification record, S3 Object Lambda configuration payload, S3 Batch job task, SES record, CloudWatch Logs message, Kinesis record data, Kinesis-delivered DynamoDB stream image, Firehose record data, Firehose-delivered SQS body, DynamoDB stream image pairs and image-specific helpers, Kafka record value envelopes, initial docs/snippet, and API Gateway REST/HTTP/WebSocket lifecycle/authorizer/VPC Lattice/AppSync/AppSync batch/AppSync Events/Bedrock/Cognito/EventBridge/EventBridge Scheduler/SQS/ActiveMQ/ALB/Lambda Function URL/SNS/RabbitMQ/S3/S3 Intelligent-Tiering/S3 Object Lambda/S3 Batch/S3-over-SQS/SNS-over-SQS/SES/CloudFormation request/response/stream/nested-stream JSON fixtures | Broader `aws_lambda_events` envelopes, Powertools adapters, shared event fixtures, schema-aware parsing |
 | Batch | `BatchRecord`, `BatchProcessor`, `BatchProcessingReport`, `BatchRecordResult`, `BatchItemFailure`, `BatchResponse`, sequential and concurrent generic processing, stream checkpoint helpers, optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters, SQS FIFO early-stop behavior, optional parser-integrated SQS message body, Kinesis record data, and DynamoDB stream image processing, and initial docs/snippet | Larger examples |
 | Validation | `Validator`, `Validate`, `ValidationError`, required text, length, range, custom predicate helpers, inbound/outbound validation wrappers, optional local JSON Schema backend, compiled schema cache, event-handler validation hooks, and initial docs/snippet | Richer handler examples |
@@ -82,6 +84,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-jmespath` | JMESPath extraction | Compiled reusable expressions, one-off search helpers, typed result decoding, Powertools JSON/base64/base64-gzip functions, common Lambda event envelope constants, initial docs/snippet, and umbrella exports exist; next work is integration examples for utilities that use JMESPath expressions |
 | `aws-lambda-powertools-data-masking` | Data masking | Whole-value erasure, JSON Pointer and dot-path field masking, fixed/dynamic/custom/regex masking strategies, configurable missing-field behavior, initial docs/snippet, and umbrella exports exist; next work is KMS-backed encryption/decryption and full JSONPath update expressions |
 | `aws-lambda-powertools-kafka` | Kafka consumer records | Lambda Kafka event flattening, primitive and `JSON` base64 key/value deserializers, optional Avro and Protobuf base64 decode helpers, decoded headers, original field/header preservation, initial docs/snippet, and umbrella exports exist; next work is schema registry-backed consumer configuration |
+| `aws-lambda-powertools-streaming` | Seekable streaming | `RangeSource`, `SeekableStream`, local byte range source, optional gzip decoder and CSV reader transforms, initial docs/snippet, and umbrella exports exist; next work is an AWS SDK-backed S3 range source and ZIP transform |
 | `aws-lambda-powertools-parser` | Event parsing | serde JSON facade plus Transfer Family authorizer event/response, AppSync Events, Bedrock Agent OpenAPI, Bedrock Agent function-details, DynamoDB stream on-failure destination, S3 EventBridge notification, S3 event notification with Intelligent-Tiering support, IoT Core registry, Cognito migrate-user, and Cognito custom sender event models, API Gateway Lambda authorizer aliases, API Gateway WebSocket lifecycle aliases, Cognito User Pool trigger aliases, common Powertools parser event model aliases, CloudFormation custom resource request/response aliases, API Gateway REST API, HTTP API, and WebSocket API, AppSync direct resolver/batch aliases and arguments/source, AppSync Events publish payload, Bedrock Agent OpenAPI input text, ActiveMQ message data, ALB, Lambda Function URL, VPC Lattice, SQS, SNS, SNS-over-SQS, RabbitMQ message data, S3, owned S3 event notification, S3-over-SQS, owned S3-over-SQS notification, S3 Object Lambda, S3 Batch, EventBridge with Scheduler empty-detail compatibility, CloudFormation custom resource properties, Cognito User Pool trigger user attributes, SES, CloudWatch Logs, Kinesis, Kinesis-delivered DynamoDB stream image, Firehose, Firehose-delivered SQS, DynamoDB stream image pairs and image-specific helpers, Kafka `aws_lambda_events` envelopes, initial docs/snippet, and API Gateway REST/HTTP/WebSocket lifecycle/authorizer/VPC Lattice/AppSync/AppSync batch/AppSync Events/Bedrock/Cognito/EventBridge/EventBridge Scheduler/SQS/ActiveMQ/ALB/Lambda Function URL/SNS/RabbitMQ/S3/S3 Intelligent-Tiering/S3 Object Lambda/S3 Batch/S3-over-SQS/SNS-over-SQS/SES/CloudFormation request/response/stream/nested-stream JSON fixtures exist; broader envelope coverage and fixtures are next |
 | `aws-lambda-powertools-batch` | Partial batch responses | Generic sequential/concurrent processing, stream checkpoint helpers, SQS, Kinesis, and DynamoDB stream adapters, parser-integrated SQS message body, Kinesis record data, and DynamoDB stream image processing, and initial docs/snippet exist; larger examples are next |
 | `aws-lambda-powertools-idempotency` | Deduplication | JSON payload hashing, key extraction, sync and async handler workflows, Lambda remaining-time in-progress expiry, replay, records, in-memory store, local cache wrapper, optional DynamoDB persistence, initial docs/snippet, and a buildable DynamoDB-backed snippet exist; additional deployment examples are next |
@@ -122,6 +125,9 @@ Implemented umbrella features:
 - `kafka`
 - `kafka-avro`
 - `kafka-protobuf`
+- `streaming`
+- `streaming-csv`
+- `streaming-gzip`
 - `feature-flags`
 - `feature-flags-appconfig`
 - `validation`
@@ -211,6 +217,7 @@ Powertools conventions.
 - [x] Add first-pass data masking utility with field erasure and masking strategies.
 - [x] Add Kafka consumer record utility with primitive and JSON base64 deserializers.
 - [x] Add optional Kafka Avro and Protobuf schema decode helpers.
+- [x] Add first-pass seekable streaming utility with gzip and CSV transforms.
 - [x] Add initial SQS, SNS, and EventBridge parser envelopes based on `aws_lambda_events`.
 - [x] Add API Gateway REST API and HTTP API parser body envelopes based on `aws_lambda_events`.
 - [x] Add API Gateway WebSocket API parser body envelope based on `aws_lambda_events`.
