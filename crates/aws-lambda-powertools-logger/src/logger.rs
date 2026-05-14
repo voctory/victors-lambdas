@@ -41,7 +41,12 @@ impl LogLevel {
     /// Reads the log level from `POWERTOOLS_LOG_LEVEL`.
     #[must_use]
     pub fn from_env() -> Self {
-        env::var(env::POWERTOOLS_LOG_LEVEL)
+        let mut source = env::var;
+        Self::from_env_source(&mut source)
+    }
+
+    pub(crate) fn from_env_source(source: &mut impl FnMut(&str) -> Option<String>) -> Self {
+        source(env::POWERTOOLS_LOG_LEVEL)
             .as_deref()
             .map_or(Self::Info, Self::from_name)
     }
@@ -394,7 +399,12 @@ impl Logger {
     }
 
     pub(crate) fn render_entry(&self, entry: &LogEntry<'_>) -> Option<String> {
-        self.render_entry_with_formatter(entry, &JsonLogFormatter)
+        let value = self.entry_value(entry)?;
+        Some(if self.config.pretty_print() {
+            value.to_json_pretty_string()
+        } else {
+            JsonLogFormatter.format(&value)
+        })
     }
 
     pub(crate) fn render_entry_with_formatter(
@@ -506,6 +516,19 @@ mod tests {
         assert_eq!(
             logger.info("created").render(),
             Some("{\"level\":\"INFO\",\"message\":\"created\",\"service\":\"orders\"}".to_owned())
+        );
+    }
+
+    #[test]
+    fn renders_pretty_entry_when_configured() {
+        let logger = Logger::with_config(LoggerConfig::new("orders").with_pretty_print(true));
+
+        assert_eq!(
+            logger.info("created").render(),
+            Some(
+                "{\n    \"level\": \"INFO\",\n    \"message\": \"created\",\n    \"service\": \"orders\"\n}"
+                    .to_owned()
+            )
         );
     }
 

@@ -11,7 +11,7 @@ first implementation tranche has landed:
   execution-environment metadata retrieval with process-level caching
 - structured JSON logging with levels, persistent and per-entry fields, optional event rendering, debug sampling,
   correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, optional `tracing`
-  subscriber integration, bounded log buffering, and stdout emission
+  subscriber integration, `POWERTOOLS_DEV` pretty rendering, bounded log buffering, and stdout emission
 - CloudWatch EMF JSON rendering with metrics, dimensions, default dimensions, metadata, validation, limits,
   high-resolution metrics, stdout flushing, explicit timestamps, overflow flush helpers, async capture helpers, and
   cold-start metric support

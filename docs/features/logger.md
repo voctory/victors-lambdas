@@ -18,12 +18,14 @@ environment variables.
 | `POWERTOOLS_LOG_LEVEL` | Sets the minimum emitted level. Unknown values fall back to `INFO`. |
 | `POWERTOOLS_LOGGER_LOG_EVENT` | Includes per-entry event payloads when truthy. |
 | `POWERTOOLS_LOGGER_SAMPLE_RATE` | Enables debug log sampling for a fraction from `0.0` to `1.0`. |
+| `POWERTOOLS_DEV` | Enables pretty JSON rendering for default log output. |
 
 ## Supported Behavior
 
 - Severity filtering with `TRACE`, `DEBUG`, `INFO`, `WARN`, and `ERROR`.
 - Persistent fields with per-entry overrides.
 - Optional event rendering.
+- Optional pretty JSON rendering for local development.
 - Debug sampling that can temporarily lower the effective threshold to `DEBUG`.
 - Correlation ID and Lambda context fields.
 - Recursive key redaction.

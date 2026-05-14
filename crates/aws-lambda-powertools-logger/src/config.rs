@@ -13,6 +13,7 @@ pub struct LoggerConfig {
     level: LogLevel,
     log_event: bool,
     sample_rate: u32,
+    pretty_print: bool,
 }
 
 impl LoggerConfig {
@@ -24,17 +25,28 @@ impl LoggerConfig {
             level: LogLevel::Info,
             log_event: false,
             sample_rate: 0,
+            pretty_print: false,
         }
     }
 
     /// Creates logger configuration from environment variables.
     #[must_use]
     pub fn from_env() -> Self {
+        Self::from_env_source(env::var)
+    }
+
+    /// Creates logger configuration from a custom environment source.
+    ///
+    /// This is useful for tests and for callers that keep configuration in an
+    /// injected map instead of process globals.
+    #[must_use]
+    pub fn from_env_source(mut source: impl FnMut(&str) -> Option<String>) -> Self {
         Self {
-            service: ServiceConfig::from_env(),
-            level: LogLevel::from_env(),
-            log_event: env::bool_var(env::POWERTOOLS_LOGGER_LOG_EVENT),
-            sample_rate: sample_rate_from_env(),
+            service: ServiceConfig::from_env_source(&mut source),
+            level: LogLevel::from_env_source(&mut source),
+            log_event: bool_from_source(&mut source, env::POWERTOOLS_LOGGER_LOG_EVENT),
+            sample_rate: sample_rate_from_source(&mut source),
+            pretty_print: bool_from_source(&mut source, env::POWERTOOLS_DEV),
         }
     }
 
@@ -61,6 +73,13 @@ impl LoggerConfig {
         self
     }
 
+    /// Returns a copy of the configuration with pretty JSON rendering enabled or disabled.
+    #[must_use]
+    pub fn with_pretty_print(mut self, pretty_print: bool) -> Self {
+        self.pretty_print = pretty_print;
+        self
+    }
+
     /// Returns the shared service configuration.
     #[must_use]
     pub fn service(&self) -> &ServiceConfig {
@@ -84,6 +103,12 @@ impl LoggerConfig {
     pub fn sample_rate(&self) -> f64 {
         f64::from(self.sample_rate) / f64::from(SAMPLE_RATE_SCALE)
     }
+
+    /// Returns whether default JSON rendering should be pretty-printed.
+    #[must_use]
+    pub fn pretty_print(&self) -> bool {
+        self.pretty_print
+    }
 }
 
 impl Default for LoggerConfig {
@@ -92,10 +117,17 @@ impl Default for LoggerConfig {
     }
 }
 
-fn sample_rate_from_env() -> u32 {
-    env::var(env::POWERTOOLS_LOGGER_SAMPLE_RATE)
+fn sample_rate_from_source(source: &mut impl FnMut(&str) -> Option<String>) -> u32 {
+    source(env::POWERTOOLS_LOGGER_SAMPLE_RATE)
         .and_then(|value| value.parse::<f64>().ok())
         .map_or(0, normalize_sample_rate)
+}
+
+fn bool_from_source(source: &mut impl FnMut(&str) -> Option<String>, name: &str) -> bool {
+    source(name)
+        .as_deref()
+        .and_then(|value| env::parse_bool(value).ok())
+        .unwrap_or(false)
 }
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -135,5 +167,29 @@ mod tests {
                 .abs()
                 < f64::EPSILON
         );
+    }
+
+    #[test]
+    fn from_env_source_reads_logger_settings() {
+        let config = LoggerConfig::from_env_source(|name| match name {
+            env::POWERTOOLS_SERVICE_NAME => Some("checkout".to_owned()),
+            env::POWERTOOLS_LOG_LEVEL => Some("debug".to_owned()),
+            env::POWERTOOLS_LOGGER_LOG_EVENT | env::POWERTOOLS_DEV => Some("true".to_owned()),
+            env::POWERTOOLS_LOGGER_SAMPLE_RATE => Some("0.25".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(config.service().service_name(), "checkout");
+        assert_eq!(config.level(), LogLevel::Debug);
+        assert!(config.log_event());
+        assert!((config.sample_rate() - 0.25).abs() < f64::EPSILON);
+        assert!(config.pretty_print());
+    }
+
+    #[test]
+    fn builder_updates_pretty_print() {
+        let config = LoggerConfig::new("orders").with_pretty_print(true);
+
+        assert!(config.pretty_print());
     }
 }

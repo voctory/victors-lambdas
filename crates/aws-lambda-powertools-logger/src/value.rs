@@ -114,6 +114,14 @@ impl LogValue {
         output
     }
 
+    /// Renders this value as pretty-printed valid JSON.
+    #[must_use]
+    pub fn to_json_pretty_string(&self) -> String {
+        let mut output = String::new();
+        self.write_json_pretty(&mut output, 0);
+        output
+    }
+
     /// Recursively replaces matching object keys with `"[REDACTED]"`.
     pub fn redact_fields<I, K>(&mut self, keys: I) -> &mut Self
     where
@@ -169,6 +177,55 @@ impl LogValue {
         }
     }
 
+    fn write_json_pretty(&self, output: &mut String, depth: usize) {
+        match &self.kind {
+            LogValueKind::Null
+            | LogValueKind::Bool(_)
+            | LogValueKind::Number(_)
+            | LogValueKind::String(_) => self.write_json(output),
+            LogValueKind::Array(values) => {
+                if values.is_empty() {
+                    output.push_str("[]");
+                    return;
+                }
+
+                output.push('[');
+                for (index, value) in values.iter().enumerate() {
+                    if index > 0 {
+                        output.push(',');
+                    }
+                    output.push('\n');
+                    write_indent(output, depth + 1);
+                    value.write_json_pretty(output, depth + 1);
+                }
+                output.push('\n');
+                write_indent(output, depth);
+                output.push(']');
+            }
+            LogValueKind::Object(fields) => {
+                if fields.is_empty() {
+                    output.push_str("{}");
+                    return;
+                }
+
+                output.push('{');
+                for (index, (key, value)) in fields.iter().enumerate() {
+                    if index > 0 {
+                        output.push(',');
+                    }
+                    output.push('\n');
+                    write_indent(output, depth + 1);
+                    write_json_string(key, output);
+                    output.push_str(": ");
+                    value.write_json_pretty(output, depth + 1);
+                }
+                output.push('\n');
+                write_indent(output, depth);
+                output.push('}');
+            }
+        }
+    }
+
     pub(crate) fn redact_keys(&mut self, keys: &BTreeSet<String>, replacement: &Self) {
         match &mut self.kind {
             LogValueKind::Array(values) => {
@@ -196,6 +253,12 @@ impl LogValue {
         Self {
             kind: LogValueKind::Number(value),
         }
+    }
+}
+
+fn write_indent(output: &mut String, depth: usize) {
+    for _ in 0..depth {
+        output.push_str("    ");
     }
 }
 
@@ -348,6 +411,23 @@ mod tests {
         let value = LogValue::array([1.5, f64::NAN]);
 
         assert_eq!(value.to_json_string(), "[1.5,null]");
+    }
+
+    #[test]
+    fn renders_pretty_json_values() {
+        let value = LogValue::object([
+            ("message", LogValue::from("created")),
+            (
+                "nested",
+                LogValue::object([("enabled", LogValue::from(true))]),
+            ),
+            ("items", LogValue::array([1, 2])),
+        ]);
+
+        assert_eq!(
+            value.to_json_pretty_string(),
+            "{\n    \"items\": [\n        1,\n        2\n    ],\n    \"message\": \"created\",\n    \"nested\": {\n        \"enabled\": true\n    }\n}"
+        );
     }
 
     #[test]
