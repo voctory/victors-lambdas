@@ -1,0 +1,29 @@
+{
+  "version": "2.0",
+  "routeKey": "POST /orders",
+  "rawPath": "/orders",
+  "rawQueryString": "",
+  "headers": {
+    "content-type": "application/json"
+  },
+  "requestContext": {
+    "accountId": "123456789012",
+    "apiId": "api-id",
+    "domainName": "api-id.execute-api.us-east-1.amazonaws.com",
+    "domainPrefix": "api-id",
+    "http": {
+      "method": "POST",
+      "path": "/orders",
+      "protocol": "HTTP/1.1",
+      "sourceIp": "203.0.113.10",
+      "userAgent": "fixture-client"
+    },
+    "requestId": "request-id",
+    "routeKey": "POST /orders",
+    "stage": "$default",
+    "time": "01/Jan/2026:00:00:00 +0000",
+    "timeEpoch": 1767225600000
+  },
+  "body": "{\"order_id\":\"order-apigw-1\",\"quantity\":2}",
+  "isBase64Encoded": false
+}

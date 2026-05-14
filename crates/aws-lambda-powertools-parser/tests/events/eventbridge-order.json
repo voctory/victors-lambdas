@@ -1,0 +1,14 @@
+{
+  "version": "0",
+  "id": "event-id",
+  "detail-type": "OrderCreated",
+  "source": "orders",
+  "account": "123456789012",
+  "time": "2026-01-01T00:00:00Z",
+  "region": "us-east-1",
+  "resources": [],
+  "detail": {
+    "order_id": "order-eventbridge-1",
+    "quantity": 3
+  }
+}
