@@ -88,6 +88,36 @@ pub use aws_lambda_events::event::cloudformation::UpdateRequest as CloudFormatio
 pub use aws_lambda_events::event::cloudwatch_logs::LogsEvent as CloudWatchLogsModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsCreateAuthChallenge as CognitoCreateAuthChallengeTriggerModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsCustomMessage as CognitoCustomMessageTriggerModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsDefineAuthChallenge as CognitoDefineAuthChallengeTriggerModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsPostAuthentication as CognitoPostAuthenticationTriggerModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsPostConfirmation as CognitoPostConfirmationTriggerModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsPreAuthentication as CognitoPreAuthenticationTriggerModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsPreSignup as CognitoPreSignupTriggerModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsPreTokenGen as CognitoPreTokenGenerationTriggerModelV1;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsPreTokenGenV2 as CognitoPreTokenGenerationTriggerModelV2AndV3;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsVerifyAuthChallenge as CognitoVerifyAuthChallengeTriggerModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::dynamodb::Event as DynamoDbStreamModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]

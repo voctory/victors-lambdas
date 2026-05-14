@@ -4,9 +4,7 @@
 
 use std::path::PathBuf;
 
-use aws_lambda_events::event::{
-    bedrock_agent_runtime::AgentEvent, cognito::CognitoEventUserPoolsPreSignup,
-};
+use aws_lambda_events::event::bedrock_agent_runtime::AgentEvent;
 use aws_lambda_powertools_parser::{
     ActiveMqModel, AlbModel, ApiGatewayAuthorizerHttpApiV1Request,
     ApiGatewayAuthorizerIamPolicyResponse, ApiGatewayAuthorizerRequest,
@@ -17,11 +15,12 @@ use aws_lambda_powertools_parser::{
     AppSyncEventsEvent, AppSyncResolverEvent, CloudFormationCustomResourceCreate,
     CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
     CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
-    CloudFormationCustomResourceUpdate, CloudWatchLogsModel, DynamoDbStreamModel, EventBridgeModel,
-    EventParser, KafkaMskEventModel, KafkaSelfManagedEventModel, KinesisDataStreamModel,
-    KinesisFirehoseModel, KinesisFirehoseSqsModel, LambdaFunctionUrlModel, RabbitMqModel,
-    S3BatchOperationModel, S3EventNotificationModel, S3Model, S3ObjectLambdaEvent,
-    S3SqsEventNotificationModel, SesModel, SnsModel, SqsModel, VpcLatticeModel, VpcLatticeV2Model,
+    CloudFormationCustomResourceUpdate, CloudWatchLogsModel, CognitoPreSignupTriggerModel,
+    DynamoDbStreamModel, EventBridgeModel, EventParser, KafkaMskEventModel,
+    KafkaSelfManagedEventModel, KinesisDataStreamModel, KinesisFirehoseModel,
+    KinesisFirehoseSqsModel, LambdaFunctionUrlModel, RabbitMqModel, S3BatchOperationModel,
+    S3EventNotificationModel, S3Model, S3ObjectLambdaEvent, S3SqsEventNotificationModel, SesModel,
+    SnsModel, SqsModel, VpcLatticeModel, VpcLatticeV2Model,
 };
 use aws_lambda_powertools_testing::load_json_fixture;
 use serde::Deserialize;
@@ -346,10 +345,9 @@ fn parses_bedrock_agent_input_fixture() {
 
 #[test]
 fn parses_cognito_pre_signup_user_attributes_fixture() {
-    let event = load_json_fixture::<CognitoEventUserPoolsPreSignup>(fixture(
-        "cognito-pre-signup-user.json",
-    ))
-    .expect("Cognito Pre sign-up fixture should decode");
+    let event =
+        load_json_fixture::<CognitoPreSignupTriggerModel>(fixture("cognito-pre-signup-user.json"))
+            .expect("Cognito Pre sign-up fixture should decode");
 
     let parsed = EventParser::new()
         .parse_cognito_pre_signup_user_attributes::<CognitoUserAttributes>(event)

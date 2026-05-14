@@ -223,11 +223,17 @@ pub mod prelude {
         AppSyncBatchResolverEvent, AppSyncResolverEvent, CloudFormationCustomResourceCreate,
         CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
         CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
-        CloudFormationCustomResourceUpdate, CloudWatchLogsModel, DynamoDbStreamModel,
-        EventBridgeModel, KafkaMskEventModel, KafkaSelfManagedEventModel, KinesisDataStreamModel,
-        KinesisFirehoseModel, KinesisFirehoseSqsModel, LambdaFunctionUrlModel, RabbitMqModel,
-        S3BatchOperationModel, S3Model, S3ObjectLambdaEvent, S3SqsEventNotificationModel, SesModel,
-        SnsModel, SqsModel, VpcLatticeModel, VpcLatticeV2Model,
+        CloudFormationCustomResourceUpdate, CloudWatchLogsModel,
+        CognitoCreateAuthChallengeTriggerModel, CognitoCustomMessageTriggerModel,
+        CognitoDefineAuthChallengeTriggerModel, CognitoPostAuthenticationTriggerModel,
+        CognitoPostConfirmationTriggerModel, CognitoPreAuthenticationTriggerModel,
+        CognitoPreSignupTriggerModel, CognitoPreTokenGenerationTriggerModelV1,
+        CognitoPreTokenGenerationTriggerModelV2AndV3, CognitoVerifyAuthChallengeTriggerModel,
+        DynamoDbStreamModel, EventBridgeModel, KafkaMskEventModel, KafkaSelfManagedEventModel,
+        KinesisDataStreamModel, KinesisFirehoseModel, KinesisFirehoseSqsModel,
+        LambdaFunctionUrlModel, RabbitMqModel, S3BatchOperationModel, S3Model, S3ObjectLambdaEvent,
+        S3SqsEventNotificationModel, SesModel, SnsModel, SqsModel, VpcLatticeModel,
+        VpcLatticeV2Model,
     };
 
     #[cfg(feature = "tracer")]
