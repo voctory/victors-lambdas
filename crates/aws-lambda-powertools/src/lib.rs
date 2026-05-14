@@ -93,9 +93,12 @@ pub mod prelude {
     #[cfg(feature = "data-masking")]
     pub use aws_lambda_powertools_data_masking::{
         DATA_MASKING_STRING, DataMasking, DataMaskingConfig, DataMaskingError,
-        DataMaskingErrorKind, DataMaskingResult, MaskingOptions, MaskingStrategy, erase,
-        erase_fields,
+        DataMaskingErrorKind, DataMaskingProvider, DataMaskingResult, EncryptionContext,
+        MaskingOptions, MaskingStrategy, erase, erase_fields,
     };
+
+    #[cfg(feature = "data-masking-kms")]
+    pub use aws_lambda_powertools_data_masking::KmsDataMaskingProvider;
 
     #[cfg(feature = "event-handler")]
     pub use aws_lambda_powertools_event_handler::{

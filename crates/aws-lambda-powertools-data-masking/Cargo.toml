@@ -10,9 +10,16 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = []
+kms = ["dep:aws-sdk-kms", "dep:tokio"]
+
 [dependencies]
+aws-sdk-kms = { version = "=1.76.0", optional = true }
+base64 = "0.22"
 regex = "1.11"
 serde_json = "1.0"
+tokio = { version = "1", features = ["rt"], optional = true }
 
 [lints]
 workspace = true

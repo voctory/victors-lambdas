@@ -16,6 +16,7 @@ default = []
 all = [
     "batch",
     "data-masking",
+    "data-masking-kms",
     "event-handler",
     "event-handler-appsync-events",
     "event-handler-bedrock-agent-functions",
@@ -48,6 +49,7 @@ batch-parser = [
     "aws-lambda-powertools-batch/parser",
 ]
 data-masking = ["dep:aws-lambda-powertools-data-masking"]
+data-masking-kms = ["data-masking", "aws-lambda-powertools-data-masking/kms"]
 event-handler = ["dep:aws-lambda-powertools-event-handler"]
 event-handler-appsync-events = [
     "event-handler",

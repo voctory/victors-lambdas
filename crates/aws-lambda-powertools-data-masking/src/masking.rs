@@ -3,7 +3,10 @@
 use serde_json::Value;
 
 use crate::{
-    DataMaskingError, DataMaskingResult, MaskingOptions, mask::mask_value, path::to_json_pointer,
+    DataMaskingError, DataMaskingProvider, DataMaskingResult, EncryptionContext, MaskingOptions,
+    mask::mask_value,
+    path::to_json_pointer,
+    provider::{decode_ciphertext, encode_ciphertext},
 };
 
 /// Configuration for the data masking facade.
@@ -151,6 +154,70 @@ impl DataMasking {
         let value = serde_json::from_str(data).map_err(DataMaskingError::json)?;
         self.erase_fields(value, fields)
     }
+
+    /// Encrypts a JSON value with a provider and returns base64-encoded ciphertext.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when JSON serialization fails or the provider cannot encrypt the payload.
+    pub fn encrypt<P>(&self, data: &Value, provider: &mut P) -> DataMaskingResult<String>
+    where
+        P: DataMaskingProvider,
+    {
+        self.encrypt_with_context(data, provider, &EncryptionContext::new())
+    }
+
+    /// Encrypts a JSON value with an authenticated encryption context.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when JSON serialization fails or the provider cannot encrypt the payload.
+    pub fn encrypt_with_context<P>(
+        &self,
+        data: &Value,
+        provider: &mut P,
+        encryption_context: &EncryptionContext,
+    ) -> DataMaskingResult<String>
+    where
+        P: DataMaskingProvider,
+    {
+        let plaintext = serde_json::to_vec(data).map_err(DataMaskingError::json)?;
+        let ciphertext = provider.encrypt(&plaintext, encryption_context)?;
+        Ok(encode_ciphertext(&ciphertext))
+    }
+
+    /// Decrypts base64-encoded ciphertext into a JSON value.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when ciphertext decoding fails, the provider cannot decrypt the payload,
+    /// or decrypted plaintext is not valid JSON.
+    pub fn decrypt<P>(&self, ciphertext: &str, provider: &mut P) -> DataMaskingResult<Value>
+    where
+        P: DataMaskingProvider,
+    {
+        self.decrypt_with_context(ciphertext, provider, &EncryptionContext::new())
+    }
+
+    /// Decrypts base64-encoded ciphertext with an authenticated encryption context.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when ciphertext decoding fails, the provider cannot decrypt the payload,
+    /// or decrypted plaintext is not valid JSON.
+    pub fn decrypt_with_context<P>(
+        &self,
+        ciphertext: &str,
+        provider: &mut P,
+        encryption_context: &EncryptionContext,
+    ) -> DataMaskingResult<Value>
+    where
+        P: DataMaskingProvider,
+    {
+        let ciphertext = decode_ciphertext(ciphertext)?;
+        let plaintext = provider.decrypt(&ciphertext, encryption_context)?;
+        serde_json::from_slice(&plaintext).map_err(DataMaskingError::json)
+    }
 }
 
 /// Replaces an entire JSON value with the default mask.
@@ -173,6 +240,36 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+
+    #[derive(Debug, Default)]
+    struct ReversingProvider {
+        encrypt_context: Option<EncryptionContext>,
+        decrypt_context: Option<EncryptionContext>,
+    }
+
+    impl DataMaskingProvider for ReversingProvider {
+        fn encrypt(
+            &mut self,
+            plaintext: &[u8],
+            encryption_context: &EncryptionContext,
+        ) -> DataMaskingResult<Vec<u8>> {
+            self.encrypt_context = Some(encryption_context.clone());
+            let mut ciphertext = plaintext.to_vec();
+            ciphertext.reverse();
+            Ok(ciphertext)
+        }
+
+        fn decrypt(
+            &mut self,
+            ciphertext: &[u8],
+            encryption_context: &EncryptionContext,
+        ) -> DataMaskingResult<Vec<u8>> {
+            self.decrypt_context = Some(encryption_context.clone());
+            let mut plaintext = ciphertext.to_vec();
+            plaintext.reverse();
+            Ok(plaintext)
+        }
+    }
 
     #[test]
     fn erases_entire_payload() {
@@ -266,5 +363,51 @@ mod tests {
             .expect("JSON string should be masked");
 
         assert_eq!(masked["customer"]["password"], json!("*****"));
+    }
+
+    #[test]
+    fn encrypts_and_decrypts_json_with_provider() {
+        let data = json!({"customer": {"password": "secret"}});
+        let mut provider = ReversingProvider::default();
+        let data_masking = DataMasking::new();
+
+        let ciphertext = data_masking
+            .encrypt(&data, &mut provider)
+            .expect("encrypt should succeed");
+        let plaintext = data_masking
+            .decrypt(&ciphertext, &mut provider)
+            .expect("decrypt should succeed");
+
+        assert_ne!(ciphertext, data.to_string());
+        assert_eq!(plaintext, data);
+    }
+
+    #[test]
+    fn passes_encryption_context_to_provider() {
+        let data = json!({"tenant": "one"});
+        let mut provider = ReversingProvider::default();
+        let data_masking = DataMasking::new();
+        let mut context = EncryptionContext::new();
+        context.insert("tenant".to_string(), "one".to_string());
+
+        let ciphertext = data_masking
+            .encrypt_with_context(&data, &mut provider, &context)
+            .expect("encrypt should succeed");
+        let _plaintext = data_masking
+            .decrypt_with_context(&ciphertext, &mut provider, &context)
+            .expect("decrypt should succeed");
+
+        assert_eq!(provider.encrypt_context.as_ref(), Some(&context));
+        assert_eq!(provider.decrypt_context.as_ref(), Some(&context));
+    }
+
+    #[test]
+    fn decrypt_rejects_invalid_ciphertext_encoding() {
+        let mut provider = ReversingProvider::default();
+        let error = DataMasking::new()
+            .decrypt("not base64", &mut provider)
+            .expect_err("invalid ciphertext should fail");
+
+        assert_eq!(error.kind(), crate::DataMaskingErrorKind::Decrypt);
     }
 }

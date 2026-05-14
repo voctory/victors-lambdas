@@ -5,6 +5,10 @@ use std::{error::Error, fmt};
 /// High-level data masking error category.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DataMaskingErrorKind {
+    /// A provider could not decrypt ciphertext.
+    Decrypt,
+    /// A provider could not encrypt plaintext.
+    Encrypt,
     /// Input JSON could not be parsed.
     Json,
     /// A field path was empty or malformed.
@@ -38,6 +42,24 @@ impl DataMaskingError {
         Self::new(
             DataMaskingErrorKind::Json,
             format!("data masking input is not valid JSON: {error}"),
+        )
+    }
+
+    /// Creates a decryption error.
+    #[must_use]
+    pub fn decrypt(error: impl fmt::Display) -> Self {
+        Self::new(
+            DataMaskingErrorKind::Decrypt,
+            format!("data masking decrypt failed: {error}"),
+        )
+    }
+
+    /// Creates an encryption error.
+    #[must_use]
+    pub fn encrypt(error: impl fmt::Display) -> Self {
+        Self::new(
+            DataMaskingErrorKind::Encrypt,
+            format!("data masking encrypt failed: {error}"),
         )
     }
 

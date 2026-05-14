@@ -20,7 +20,8 @@ first implementation tranche has landed:
 - JMESPath extraction with reusable compiled expressions, typed extraction, common Lambda event envelope constants, and
   Powertools decode functions for JSON, base64, and base64-gzip payloads
 - data masking for JSON payloads with whole-value erasure, field masking by JSON Pointer or dot path, fixed/dynamic,
-  custom, and regex masking strategies, and configurable missing-field behavior
+  custom, and regex masking strategies, provider encryption/decryption, an optional direct AWS KMS provider, and
+  configurable missing-field behavior
 - Kafka consumer record materialization that flattens Lambda Kafka event records, decodes primitive or JSON base64 keys
   and values, provides optional Avro and Protobuf decode helpers, decodes headers, and preserves original encoded fields
 - seekable streaming over byte-range and AWS SDK-backed S3 object range sources with optional gzip, CSV, and ZIP
