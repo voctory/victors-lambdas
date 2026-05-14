@@ -16,6 +16,8 @@ pub use config::IdempotencyConfig;
 pub use dynamodb::DynamoDbIdempotencyStore;
 pub use error::{IdempotencyError, IdempotencyExecutionError, IdempotencyResult};
 pub use key::IdempotencyKey;
+#[cfg(feature = "jmespath")]
+pub use payload::key_from_jmespath;
 pub use payload::{hash_payload, key_from_json_pointer, key_from_payload};
 pub use record::IdempotencyRecord;
 pub use status::IdempotencyStatus;

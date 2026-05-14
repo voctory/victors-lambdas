@@ -25,6 +25,7 @@ all = [
     "feature-flags",
     "feature-flags-appconfig",
     "idempotency",
+    "idempotency-jmespath",
     "jmespath",
     "kafka",
     "kafka-avro",
@@ -82,6 +83,11 @@ feature-flags-appconfig = [
 ]
 idempotency = ["dep:aws-lambda-powertools-idempotency"]
 idempotency-dynamodb = ["idempotency", "aws-lambda-powertools-idempotency/dynamodb"]
+idempotency-jmespath = [
+    "idempotency",
+    "jmespath",
+    "aws-lambda-powertools-idempotency/jmespath",
+]
 jmespath = ["dep:aws-lambda-powertools-jmespath"]
 kafka = ["dep:aws-lambda-powertools-kafka"]
 kafka-avro = ["kafka", "aws-lambda-powertools-kafka/avro"]

@@ -37,6 +37,11 @@ pub enum IdempotencyError {
         /// Serialization error message.
         message: String,
     },
+    /// Idempotency key extraction failed.
+    KeyExtraction {
+        /// Key extraction error message.
+        message: String,
+    },
 }
 
 impl IdempotencyError {
@@ -52,6 +57,14 @@ impl IdempotencyError {
     #[must_use]
     pub fn serialization(message: impl Into<String>) -> Self {
         Self::Serialization {
+            message: message.into(),
+        }
+    }
+
+    /// Creates an idempotency key extraction error.
+    #[must_use]
+    pub fn key_extraction(message: impl Into<String>) -> Self {
+        Self::KeyExtraction {
             message: message.into(),
         }
     }
@@ -76,9 +89,9 @@ impl fmt::Display for IdempotencyError {
                     "stored response is missing for idempotency key {key}"
                 )
             }
-            Self::Store { message } | Self::Serialization { message } => {
-                formatter.write_str(message)
-            }
+            Self::Store { message }
+            | Self::Serialization { message }
+            | Self::KeyExtraction { message } => formatter.write_str(message),
         }
     }
 }

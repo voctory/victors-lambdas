@@ -225,6 +225,7 @@ dependencies = [
 name = "aws-lambda-powertools-idempotency"
 version = "0.1.0"
 dependencies = [
+ "aws-lambda-powertools-jmespath",
  "aws-sdk-dynamodb",
  "futures-executor",
  "serde",

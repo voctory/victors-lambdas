@@ -4,7 +4,7 @@ use std::{convert::Infallible, error::Error};
 
 use aws_lambda_powertools::prelude::{
     CachedIdempotencyStore, Idempotency, IdempotencyConfig, InMemoryIdempotencyStore,
-    key_from_json_pointer,
+    key_from_jmespath,
 };
 use serde::{Deserialize, Serialize};
 
@@ -30,8 +30,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         customer_id: "customer-456".to_owned(),
         amount_cents: 4_299,
     };
-    let payload = serde_json::to_value(&request)?;
-    let key = key_from_json_pointer(&payload, "/request_id")?;
+    let payload = serde_json::json!({
+        "body": serde_json::to_string(&request)?,
+    });
+    let key = key_from_jmespath(&payload, "powertools_json(body).request_id")?;
 
     let first = idempotency.execute_json_with_key(key.clone(), &payload, || {
         Ok::<CheckoutResponse, Infallible>(CheckoutResponse {

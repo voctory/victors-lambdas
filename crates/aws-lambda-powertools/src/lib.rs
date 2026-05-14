@@ -172,6 +172,9 @@ pub mod prelude {
     #[cfg(feature = "idempotency-dynamodb")]
     pub use aws_lambda_powertools_idempotency::DynamoDbIdempotencyStore;
 
+    #[cfg(feature = "idempotency-jmespath")]
+    pub use aws_lambda_powertools_idempotency::key_from_jmespath;
+
     #[cfg(feature = "jmespath")]
     pub use aws_lambda_powertools_jmespath::{
         API_GATEWAY_HTTP, API_GATEWAY_REST, CLOUDWATCH_EVENTS_SCHEDULED, CLOUDWATCH_LOGS,

@@ -5,6 +5,8 @@ use std::fmt;
 use serde::Serialize;
 use serde_json::Value;
 
+#[cfg(feature = "jmespath")]
+use crate::key_from_jmespath;
 use crate::{IdempotencyResult, key_from_json_pointer, key_from_payload};
 
 /// Stable key used to deduplicate handler work.
@@ -61,6 +63,21 @@ impl IdempotencyKey {
     pub fn from_json_pointer(payload: &Value, pointer: &str) -> IdempotencyResult<Self> {
         key_from_json_pointer(payload, pointer)
     }
+
+    /// Creates an idempotency key from a hashed `JMESPath` selection.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the expression cannot be compiled or evaluated,
+    /// when the expression selects an empty value, or when the selected value
+    /// cannot be represented as JSON.
+    #[cfg(feature = "jmespath")]
+    pub fn from_jmespath<T>(payload: &T, expression: &str) -> IdempotencyResult<Self>
+    where
+        T: Serialize + ?Sized,
+    {
+        key_from_jmespath(payload, expression)
+    }
 }
 
 impl fmt::Display for IdempotencyKey {
@@ -113,6 +130,18 @@ mod tests {
     fn key_can_be_derived_from_payload_hash() {
         let key = IdempotencyKey::from_payload(&serde_json::json!({"request": 1}))
             .expect("payload hashes");
+
+        assert!(!key.is_empty());
+    }
+
+    #[cfg(feature = "jmespath")]
+    #[test]
+    fn key_can_be_derived_from_jmespath_selection() {
+        let key = IdempotencyKey::from_jmespath(
+            &serde_json::json!({"body": "{\"request\": 1}"}),
+            "powertools_json(body).request",
+        )
+        .expect("JMESPath selection hashes");
 
         assert!(!key.is_empty());
     }
