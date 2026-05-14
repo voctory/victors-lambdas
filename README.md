@@ -33,11 +33,12 @@ first implementation tranche has landed:
   Events publish payload, Bedrock Agent OpenAPI input text, ActiveMQ message data, ALB, Lambda Function URL, and VPC
   Lattice body, SQS, SNS, SNS-over-SQS, RabbitMQ message data, S3, S3-over-SQS, S3 Object Lambda configuration payload,
   S3 Batch job task, EventBridge, CloudFormation custom resource aliases/properties, Cognito User Pool user attributes,
-  Cognito User Pool trigger aliases, SES, CloudWatch Logs, Kinesis, Kinesis-delivered DynamoDB stream image, Firehose,
-  Firehose-delivered SQS, Kinesis-delivered CloudWatch Logs, DynamoDB stream image pairs, and Kafka envelopes, plus
-  Transfer Family authorizer event/response, AppSync Events, Bedrock Agent OpenAPI and function-details event
-  models/input text, DynamoDB stream on-failure destination, S3 EventBridge notification, S3 event notification with
-  Intelligent-Tiering support, IoT Core registry, Cognito migrate-user, and Cognito custom sender event models
+  Cognito User Pool trigger aliases, CloudWatch Alarms, SES, CloudWatch Logs, Kinesis, Kinesis-delivered DynamoDB stream
+  image, Firehose, Firehose-delivered SQS, Kinesis-delivered CloudWatch Logs, DynamoDB stream image pairs, Kafka
+  envelopes, and Secrets Manager rotation, plus Transfer Family authorizer event/response, AppSync Events, Bedrock Agent
+  OpenAPI and function-details event models/input text, DynamoDB stream on-failure destination, S3 EventBridge
+  notification, S3 event notification with Intelligent-Tiering support, IoT Core registry, Cognito migrate-user, and
+  Cognito custom sender event models
 - sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and
   optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior and
   parser-integrated SQS message body, Kinesis record data, and DynamoDB stream image processing

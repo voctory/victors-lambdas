@@ -85,6 +85,15 @@ pub use aws_lambda_events::event::cloudformation::DeleteRequest as CloudFormatio
 pub use aws_lambda_events::event::cloudformation::UpdateRequest as CloudFormationCustomResourceUpdate;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::cloudwatch_alarms::CloudWatchAlarm as CloudWatchAlarmModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cloudwatch_alarms::CloudWatchCompositeAlarm as CloudWatchCompositeAlarmModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::cloudwatch_alarms::CloudWatchMetricAlarm as CloudWatchMetricAlarmModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::cloudwatch_logs::LogsEvent as CloudWatchLogsModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
@@ -152,6 +161,9 @@ pub use aws_lambda_events::event::s3::batch_job::S3BatchJobEvent as S3BatchOpera
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::s3::object_lambda::S3ObjectLambdaEvent;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::secretsmanager::SecretsManagerSecretRotationEvent as SecretsManagerRotationEventModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::ses::SimpleEmailEvent as SesModel;

@@ -15,19 +15,20 @@ use aws_lambda_powertools_parser::{
     AppSyncEventsEvent, AppSyncResolverEvent, CloudFormationCustomResourceCreate,
     CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
     CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
-    CloudFormationCustomResourceUpdate, CloudWatchLogsModel, CognitoCustomEmailSenderTriggerModel,
-    CognitoCustomEmailSenderTriggerSource, CognitoCustomSMSSenderTriggerModel,
-    CognitoCustomSenderRequestType, CognitoCustomSmsSenderTriggerSource,
-    CognitoMigrateUserTriggerModel, CognitoMigrateUserTriggerSource, CognitoPreSignupTriggerModel,
-    DynamoDbStreamModel, DynamoDbStreamOnFailureDestination, EventBridgeModel, EventParser,
+    CloudFormationCustomResourceUpdate, CloudWatchLogsModel, CloudWatchMetricAlarmModel,
+    CognitoCustomEmailSenderTriggerModel, CognitoCustomEmailSenderTriggerSource,
+    CognitoCustomSMSSenderTriggerModel, CognitoCustomSenderRequestType,
+    CognitoCustomSmsSenderTriggerSource, CognitoMigrateUserTriggerModel,
+    CognitoMigrateUserTriggerSource, CognitoPreSignupTriggerModel, DynamoDbStreamModel,
+    DynamoDbStreamOnFailureDestination, EventBridgeModel, EventParser,
     IoTCoreRegistryCrudOperation, IoTCoreRegistryEventType, IoTCoreRegistryMembershipOperation,
     IoTCoreThingEvent, IoTCoreThingGroupEvent, IoTCoreThingGroupHierarchyEvent,
     IoTCoreThingGroupMembershipEvent, IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent,
     KafkaMskEventModel, KafkaSelfManagedEventModel, KinesisDataStreamModel, KinesisFirehoseModel,
     KinesisFirehoseSqsModel, LambdaFunctionUrlModel, RabbitMqModel, S3BatchOperationModel,
     S3EventNotificationEventBridgeModel, S3EventNotificationModel, S3Model, S3ObjectLambdaEvent,
-    S3SqsEventNotificationModel, SesModel, SnsModel, SqsModel, TransferFamilyAuthorizerEvent,
-    TransferFamilyProtocol, VpcLatticeModel, VpcLatticeV2Model,
+    S3SqsEventNotificationModel, SecretsManagerRotationEventModel, SesModel, SnsModel, SqsModel,
+    TransferFamilyAuthorizerEvent, TransferFamilyProtocol, VpcLatticeModel, VpcLatticeV2Model,
 };
 use aws_lambda_powertools_testing::load_json_fixture;
 use serde::Deserialize;
@@ -696,6 +697,21 @@ fn parses_ses_record_fixture() {
 }
 
 #[test]
+fn parses_secretsmanager_rotation_fixture() {
+    let event = load_json_fixture::<SecretsManagerRotationEventModel>(fixture(
+        "secretsmanager-rotation-order-db.json",
+    ))
+    .expect("Secrets Manager rotation fixture should decode");
+
+    assert_eq!(event.step, "createSecret");
+    assert_eq!(
+        event.secret_id,
+        "arn:aws:secretsmanager:us-west-2:123456789012:secret:orders/db-AbCdEf"
+    );
+    assert_eq!(event.client_request_token, "rotation-token-123");
+}
+
+#[test]
 fn parses_cloudformation_resource_properties_fixture() {
     let event = load_json_fixture::<CloudFormationCustomResourceRequest<Value, Value>>(fixture(
         "cloudformation-bucket-policy-update.json",
@@ -830,6 +846,31 @@ fn parses_cloudwatch_log_message_fixture() {
     assert_eq!(parsed.len(), 1);
     assert_eq!(parsed[0].payload().order_id, "order-log-1");
     assert_eq!(parsed[0].payload().quantity, 7);
+}
+
+#[test]
+fn parses_cloudwatch_alarm_fixture() {
+    let event = load_json_fixture::<CloudWatchMetricAlarmModel>(fixture(
+        "cloudwatch-alarm-order-latency.json",
+    ))
+    .expect("CloudWatch alarm fixture should decode");
+
+    assert_eq!(event.region.as_deref(), Some("us-west-2"));
+    assert_eq!(event.alarm_data.alarm_name, "order-latency-high");
+    assert_eq!(
+        event.alarm_data.configuration.metrics[0]
+            .metric_stat
+            .metric
+            .name,
+        "OrderLatency"
+    );
+    assert!(
+        event
+            .alarm_data
+            .state
+            .as_ref()
+            .is_some_and(|state| state.reason.contains("latency"))
+    );
 }
 
 #[test]

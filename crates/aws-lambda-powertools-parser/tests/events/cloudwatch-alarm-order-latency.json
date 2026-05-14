@@ -1,0 +1,46 @@
+{
+  "accountId": "123456789012",
+  "alarmArn": "arn:aws:cloudwatch:us-west-2:123456789012:alarm:order-latency-high",
+  "source": "aws.cloudwatch",
+  "region": "us-west-2",
+  "time": "2026-05-13T12:00:00Z",
+  "alarmData": {
+    "alarmName": "order-latency-high",
+    "state": {
+      "value": "ALARM",
+      "reason": "Threshold crossed for order processing latency",
+      "reasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-05-13T11:59:00.000+0000\",\"startDate\":\"2026-05-13T11:54:00.000+0000\",\"statistic\":\"Average\",\"period\":60,\"recentDatapoints\":[950.0,1200.0,1300.0],\"threshold\":1000.0}",
+      "timestamp": "2026-05-13T12:00:00Z",
+      "actionsSuppressedBy": null,
+      "actionsSuppressedReason": null
+    },
+    "previousState": {
+      "value": "OK",
+      "reason": "Threshold was not crossed",
+      "timestamp": "2026-05-13T11:55:00Z",
+      "actionsSuppressedBy": null,
+      "actionsSuppressedReason": null
+    },
+    "configuration": {
+      "description": "Order processing latency is above threshold",
+      "metrics": [
+        {
+          "id": "m1",
+          "returnData": true,
+          "metricStat": {
+            "metric": {
+              "namespace": "Powertools/Orders",
+              "name": "OrderLatency",
+              "dimensions": {
+                "Service": "checkout"
+              }
+            },
+            "period": 60,
+            "stat": "Average",
+            "unit": "Milliseconds"
+          }
+        }
+      ]
+    }
+  }
+}
