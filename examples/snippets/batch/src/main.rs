@@ -2,7 +2,10 @@
 
 use std::error::Error;
 
-use aws_lambda_events::event::sqs::{SqsEvent, SqsMessage};
+use aws_lambda_events::event::{
+    kinesis::{KinesisEvent, KinesisEventRecord},
+    sqs::{SqsEvent, SqsMessage},
+};
 use aws_lambda_powertools::prelude::{BatchProcessor, BatchRecord, EventParser};
 use serde::Deserialize;
 
@@ -17,6 +20,13 @@ fn sqs_message(id: &str, body: &str) -> SqsMessage {
     message.message_id = Some(id.to_owned());
     message.body = Some(body.to_owned());
     message
+}
+
+fn kinesis_record(sequence_number: &str, data: &[u8]) -> KinesisEventRecord {
+    let mut record = KinesisEventRecord::default();
+    sequence_number.clone_into(&mut record.kinesis.sequence_number);
+    record.kinesis.data.extend_from_slice(data);
+    record
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -79,6 +89,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     let parsed_failures = parsed_response.batch_item_failures();
     assert_eq!(parsed_failures.len(), 1);
     assert_eq!(parsed_failures[0].item_identifier(), "message-5");
+
+    let mut kinesis_event = KinesisEvent::default();
+    kinesis_event.records = vec![
+        kinesis_record("sequence-1", br#"{"order_id":"order-6","quantity":1}"#),
+        kinesis_record("sequence-2", br#"{"order_id":"order-7","quantity":"many"}"#),
+    ];
+
+    let kinesis_report = BatchProcessor::new().process_kinesis_records::<OrderEvent, _>(
+        &kinesis_event,
+        &EventParser::new(),
+        |record| {
+            assert_eq!(record.item_identifier(), "sequence-1");
+            assert_eq!(record.payload().quantity, 1);
+            Ok::<(), &str>(())
+        },
+    );
+    assert_eq!(kinesis_report.stream_checkpoint(), Some("sequence-2"));
 
     println!("reported {} FIFO failures", failures.len());
 
