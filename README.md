@@ -42,7 +42,8 @@ first implementation tranche has landed:
   optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior and
   parser-integrated SQS message body, Kinesis record data, and DynamoDB stream image processing
 - validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,
-  and optional local JSON Schema validation with a compiled schema cache
+  optional local JSON Schema validation with a compiled schema cache, and optional JMESPath envelope extraction before
+  schema validation
 - idempotency keys, payload hashing, JSON Pointer and optional JMESPath key extraction, configurable full/subset/no
   payload validation, sync and async handler workflows, replay behavior, Lambda remaining-time in-progress expiry, sync
   and async store traits, an in-memory store, an optional local cache wrapper, an optional DynamoDB store, and buildable

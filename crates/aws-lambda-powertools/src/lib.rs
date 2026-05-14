@@ -343,6 +343,9 @@ pub mod prelude {
         Validate, ValidationError, ValidationErrorKind, ValidationResult, Validator,
     };
 
+    #[cfg(feature = "validation-jmespath")]
+    pub use aws_lambda_powertools_validation::extract_envelope as extract_validation_envelope;
+
     #[cfg(feature = "validation-jsonschema")]
     pub use aws_lambda_powertools_validation::JsonSchemaCache;
 }

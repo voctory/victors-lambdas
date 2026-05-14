@@ -56,6 +56,30 @@ impl JsonSchemaCache {
             .map_err(|error| ValidationError::json_schema(error.to_string()))
     }
 
+    /// Validates an event envelope against a cached schema.
+    ///
+    /// The `JMESPath` envelope expression selects the JSON value to validate.
+    /// Powertools helper functions such as `powertools_json`,
+    /// `powertools_base64`, and `powertools_base64_gzip` are available in the
+    /// expression.
+    ///
+    /// # Errors
+    ///
+    /// Returns a validation error when `name` is not cached, when the envelope
+    /// cannot be extracted, or when the selected value does not satisfy the
+    /// cached schema.
+    #[cfg(feature = "jmespath")]
+    pub fn validate_envelope(
+        &self,
+        name: &str,
+        event: &serde_json::Value,
+        envelope: &str,
+    ) -> ValidationResult {
+        let instance = crate::extract_envelope(event, envelope)?;
+
+        self.validate(name, &instance)
+    }
+
     /// Validates an instance, compiling and caching `schema` first when needed.
     ///
     /// # Errors
@@ -75,6 +99,26 @@ impl JsonSchemaCache {
         }
 
         self.validate(&name, instance)
+    }
+
+    /// Validates an event envelope, compiling and caching `schema` first when needed.
+    ///
+    /// # Errors
+    ///
+    /// Returns a validation error when the schema must be compiled and is
+    /// invalid, when the envelope cannot be extracted, or when the selected
+    /// value does not satisfy the cached schema.
+    #[cfg(feature = "jmespath")]
+    pub fn validate_or_compile_envelope(
+        &mut self,
+        name: impl Into<String>,
+        schema: &serde_json::Value,
+        event: &serde_json::Value,
+        envelope: &str,
+    ) -> ValidationResult {
+        let instance = crate::extract_envelope(event, envelope)?;
+
+        self.validate_or_compile(name, schema, &instance)
     }
 
     /// Returns true when a schema is cached under `name`.
@@ -230,5 +274,32 @@ mod tests {
         cache.clear();
 
         assert!(cache.is_empty());
+    }
+
+    #[cfg(feature = "jmespath")]
+    #[test]
+    fn validates_envelope_against_cached_schema() {
+        let schema = json!({
+            "type": "object",
+            "required": ["order_id", "quantity"],
+            "properties": {
+                "order_id": { "type": "string" },
+                "quantity": { "type": "integer", "minimum": 1 }
+            }
+        });
+        let event = json!({
+            "body": "{\"order_id\":\"order-1\",\"quantity\":2}",
+            "requestContext": {"requestId": "ignored"}
+        });
+        let mut cache = JsonSchemaCache::new();
+
+        cache
+            .validate_or_compile_envelope("order", &schema, &event, "powertools_json(body)")
+            .expect("selected payload should validate");
+        cache
+            .validate_envelope("order", &event, "powertools_json(body)")
+            .expect("cached schema should validate selected payload");
+
+        assert!(cache.contains("order"));
     }
 }

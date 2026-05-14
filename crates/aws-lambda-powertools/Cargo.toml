@@ -42,6 +42,7 @@ all = [
     "streaming-zip",
     "tracer",
     "validation",
+    "validation-jmespath",
 ]
 batch = ["dep:aws-lambda-powertools-batch"]
 batch-aws-lambda-events = ["batch", "aws-lambda-powertools-batch/aws-lambda-events"]
@@ -114,6 +115,11 @@ tracer-tracing = ["tracer", "aws-lambda-powertools-tracer/tracing"]
 tracer-xray = ["tracer", "aws-lambda-powertools-tracer/xray"]
 tracer-xray-daemon = ["tracer-xray", "aws-lambda-powertools-tracer/xray-daemon"]
 validation = ["dep:aws-lambda-powertools-validation"]
+validation-jmespath = [
+    "validation-jsonschema",
+    "jmespath",
+    "aws-lambda-powertools-validation/jmespath",
+]
 validation-jsonschema = ["validation", "aws-lambda-powertools-validation/jsonschema"]
 
 [dependencies]

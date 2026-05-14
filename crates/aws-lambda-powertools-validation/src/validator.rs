@@ -206,6 +206,30 @@ impl Validator {
             .validate(instance)
             .map_err(|error| ValidationError::json_schema(error.to_string()))
     }
+
+    /// Validates a JSON value selected by a `JMESPath` envelope against a JSON Schema document.
+    ///
+    /// This method is available with the `jmespath` feature, which also enables
+    /// JSON Schema validation. Powertools `JMESPath` helper functions such as
+    /// `powertools_json`, `powertools_base64`, and `powertools_base64_gzip` are
+    /// available in the envelope expression.
+    ///
+    /// # Errors
+    ///
+    /// Returns a validation error when the envelope cannot be extracted, when
+    /// the schema is invalid, or when the selected instance does not satisfy
+    /// the schema.
+    #[cfg(feature = "jmespath")]
+    pub fn json_schema_envelope(
+        &self,
+        schema: &serde_json::Value,
+        event: &serde_json::Value,
+        envelope: &str,
+    ) -> ValidationResult {
+        let instance = crate::extract_envelope(event, envelope)?;
+
+        self.json_schema(schema, &instance)
+    }
 }
 
 #[cfg(test)]
@@ -357,5 +381,40 @@ mod tests {
 
         assert_eq!(error.kind(), ValidationErrorKind::Schema);
         assert!(error.message().contains("minimum"));
+    }
+
+    #[cfg(feature = "jmespath")]
+    #[test]
+    fn json_schema_envelope_validates_selected_payload() {
+        use serde_json::json;
+
+        let schema = json!({
+            "type": "object",
+            "required": ["order_id", "quantity"],
+            "properties": {
+                "order_id": { "type": "string" },
+                "quantity": { "type": "integer", "minimum": 1 }
+            }
+        });
+        let event = json!({
+            "body": "{\"order_id\":\"order-1\",\"quantity\":2}",
+            "requestContext": {"requestId": "ignored"}
+        });
+
+        Validator::new()
+            .json_schema_envelope(&schema, &event, "powertools_json(body)")
+            .expect("selected payload should validate");
+    }
+
+    #[cfg(feature = "jmespath")]
+    #[test]
+    fn json_schema_envelope_reports_envelope_errors() {
+        let schema = serde_json::json!({"type": "object"});
+        let error = Validator::new()
+            .json_schema_envelope(&schema, &serde_json::json!({}), "body[")
+            .expect_err("invalid envelope should fail");
+
+        assert_eq!(error.kind(), ValidationErrorKind::Envelope);
+        assert_eq!(error.field(), Some("envelope"));
     }
 }

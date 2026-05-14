@@ -38,8 +38,19 @@ fn main() -> Result<(), Box<dyn Error>> {
         "order_id": order.order_id,
         "quantity": order.quantity
     });
+    let event = json!({
+        "body": serde_json::to_string(&instance)?,
+        "requestContext": {
+            "requestId": "ignored",
+        },
+    });
     let mut schemas = JsonSchemaCache::new();
-    schemas.validate_or_compile("create-order", &schema, &instance)?;
+    schemas.validate_or_compile_envelope(
+        "create-order",
+        &schema,
+        &event,
+        "powertools_json(body)",
+    )?;
 
     println!("accepted {}", instance["order_id"]);
 

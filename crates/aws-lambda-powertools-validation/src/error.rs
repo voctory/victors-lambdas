@@ -15,6 +15,8 @@ pub enum ValidationErrorKind {
     Invalid,
     /// A JSON value did not satisfy a JSON Schema document.
     Schema,
+    /// An envelope expression could not select a value for validation.
+    Envelope,
     /// A caller-provided validation error.
     Custom,
 }
@@ -98,6 +100,16 @@ impl ValidationError {
         Self {
             kind: ValidationErrorKind::Schema,
             field: None,
+            message: message.into(),
+        }
+    }
+
+    /// Creates an error for an envelope extraction failure.
+    #[must_use]
+    pub fn envelope(message: impl Into<String>) -> Self {
+        Self {
+            kind: ValidationErrorKind::Envelope,
+            field: Some("envelope".to_owned()),
             message: message.into(),
         }
     }

@@ -14,6 +14,7 @@ aws-lambda-powertools = { version = "0.1", features = ["validation"] }
 - Required text, text length, numeric range, and custom predicate helpers.
 - Structured validation errors with kind, field, and message accessors.
 - Optional JSON Schema validation and compiled schema caching through `validation-jsonschema`.
+- Optional JMESPath envelope extraction before JSON Schema validation through `validation-jmespath`.
 - Event-handler validation hooks when combined with the `event-handler-validation` feature.
 
 ## JSON Schema
@@ -27,10 +28,26 @@ aws-lambda-powertools = { version = "0.1", features = ["validation-jsonschema"] 
 `JsonSchemaCache` lets Lambda handlers compile schemas once during initialization or first use and reuse them across warm
 invocations. Remote reference resolution is intentionally not enabled by default.
 
+Enable `validation-jmespath` to select the JSON value to validate from a Lambda event envelope. This also enables JSON
+Schema validation and the Powertools JMESPath helper functions:
+
+```toml
+aws-lambda-powertools = { version = "0.1", features = ["validation-jmespath"] }
+```
+
+```rust
+# use aws_lambda_powertools::prelude::Validator;
+# let schema = serde_json::json!({"type": "object"});
+# let event = serde_json::json!({"body": "{}"});
+Validator::new().json_schema_envelope(&schema, &event, "powertools_json(body)")?;
+# Ok::<(), aws_lambda_powertools::prelude::ValidationError>(())
+```
+
 ## Snippet
 
 The buildable snippet in [examples/snippets/validation/src/main.rs](../../examples/snippets/validation/src/main.rs)
-validates a Rust request type with the `Validate` trait and then validates the same payload against a cached JSON Schema.
+validates a Rust request type with the `Validate` trait and then validates an API Gateway-style body envelope against a
+cached JSON Schema.
 
 Run it locally with:
 

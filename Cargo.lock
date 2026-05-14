@@ -342,6 +342,7 @@ name = "aws-lambda-powertools-validation"
 version = "0.1.0"
 dependencies = [
  "aws-lambda-powertools-core",
+ "aws-lambda-powertools-jmespath",
  "jsonschema",
  "serde_json",
 ]
