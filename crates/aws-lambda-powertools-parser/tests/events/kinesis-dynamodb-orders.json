@@ -1,0 +1,20 @@
+{
+  "Records": [
+    {
+      "kinesis": {
+        "kinesisSchemaVersion": "1.0",
+        "partitionKey": "orders",
+        "sequenceNumber": "49568167373333333333333333333333333333333333333333333334",
+        "data": "eyJhd3NSZWdpb24iOiJ1cy1lYXN0LTEiLCJldmVudElEIjoiZXZlbnQta2luZXNpcy1keW5hbW9kYi0xIiwiZXZlbnROYW1lIjoiSU5TRVJUIiwiZXZlbnRTb3VyY2UiOiJhd3M6ZHluYW1vZGIiLCJyZWNvcmRGb3JtYXQiOiJhcHBsaWNhdGlvbi9qc29uIiwidGFibGVOYW1lIjoib3JkZXJzIiwiZHluYW1vZGIiOnsiS2V5cyI6eyJvcmRlcl9pZCI6eyJTIjoib3JkZXIta2luZXNpcy1keW5hbW9kYi0xIn19LCJOZXdJbWFnZSI6eyJvcmRlcl9pZCI6eyJTIjoib3JkZXIta2luZXNpcy1keW5hbW9kYi0xIn0sInF1YW50aXR5Ijp7Ik4iOiIxOSJ9fSwiU2l6ZUJ5dGVzIjo0Mn19",
+        "approximateArrivalTimestamp": 1700000000.0
+      },
+      "eventSource": "aws:kinesis",
+      "eventVersion": "1.0",
+      "eventID": "shardId-000000000000:49568167373333333333333333333333333333333333333333333334",
+      "eventName": "aws:kinesis:record",
+      "invokeIdentityArn": "arn:aws:iam::123456789012:role/LambdaRole",
+      "awsRegion": "us-east-1",
+      "eventSourceARN": "arn:aws:kinesis:us-east-1:123456789012:stream/orders"
+    }
+  ]
+}

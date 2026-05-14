@@ -12,6 +12,7 @@ use aws_lambda_events::event::{
     dynamodb::Event as DynamoDbEvent,
     eventbridge::EventBridgeEvent,
     firehose::KinesisFirehoseEvent,
+    kafka::KafkaEvent,
     kinesis::KinesisEvent,
     lambda_function_urls::LambdaFunctionUrlRequest,
     s3::{S3Event, batch_job::S3BatchJobEvent, object_lambda::S3ObjectLambdaEvent},
@@ -371,6 +372,20 @@ fn parses_firehose_record_fixture() {
 }
 
 #[test]
+fn parses_firehose_sqs_message_body_fixture() {
+    let event = load_json_fixture::<KinesisFirehoseEvent>(fixture("firehose-sqs-orders.json"))
+        .expect("Firehose-delivered SQS fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_firehose_sqs_message_bodies::<OrderEvent>(event)
+        .expect("fixture Firehose-delivered SQS body should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].payload().order_id, "order-firehose-sqs-1");
+    assert_eq!(parsed[0].payload().quantity, 18);
+}
+
+#[test]
 fn parses_cloudwatch_log_message_fixture() {
     let event = load_json_fixture::<LogsEvent>(fixture("cloudwatch-logs-orders.json"))
         .expect("CloudWatch Logs fixture should decode");
@@ -396,6 +411,34 @@ fn parses_dynamodb_new_image_fixture() {
     assert_eq!(parsed.len(), 1);
     assert_eq!(parsed[0].payload().order_id, "order-dynamodb-1");
     assert_eq!(parsed[0].payload().quantity, 8);
+}
+
+#[test]
+fn parses_kinesis_dynamodb_new_image_fixture() {
+    let event = load_json_fixture::<KinesisEvent>(fixture("kinesis-dynamodb-orders.json"))
+        .expect("Kinesis-delivered DynamoDB fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_kinesis_dynamodb_new_images::<OrderEvent>(event)
+        .expect("fixture Kinesis-delivered DynamoDB NewImage should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].payload().order_id, "order-kinesis-dynamodb-1");
+    assert_eq!(parsed[0].payload().quantity, 19);
+}
+
+#[test]
+fn parses_kafka_record_value_fixture() {
+    let event = load_json_fixture::<KafkaEvent>(fixture("kafka-orders.json"))
+        .expect("Kafka fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_kafka_record_values::<OrderEvent>(event)
+        .expect("fixture Kafka record value should parse");
+
+    assert_eq!(parsed["orders-0"].len(), 1);
+    assert_eq!(parsed["orders-0"][0].payload().order_id, "order-kafka-1");
+    assert_eq!(parsed["orders-0"][0].payload().quantity, 20);
 }
 
 fn fixture(name: &str) -> PathBuf {

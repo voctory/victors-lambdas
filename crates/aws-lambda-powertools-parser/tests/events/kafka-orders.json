@@ -1,0 +1,19 @@
+{
+  "eventSource": "aws:kafka",
+  "eventSourceArn": "arn:aws:kafka:us-east-1:123456789012:cluster/orders/abcdef",
+  "bootstrapServers": "b-1.orders.kafka.us-east-1.amazonaws.com:9092",
+  "records": {
+    "orders-0": [
+      {
+        "topic": "orders",
+        "partition": 0,
+        "offset": 1,
+        "timestamp": 1700000000000,
+        "timestampType": "CREATE_TIME",
+        "key": null,
+        "value": "eyJvcmRlcl9pZCI6Im9yZGVyLWthZmthLTEiLCJxdWFudGl0eSI6MjB9",
+        "headers": []
+      }
+    ]
+  }
+}

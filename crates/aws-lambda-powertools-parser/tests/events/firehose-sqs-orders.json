@@ -1,0 +1,12 @@
+{
+  "invocationId": "invoked-firehose-sqs-orders",
+  "deliveryStreamArn": "arn:aws:firehose:us-east-1:123456789012:deliverystream/orders",
+  "region": "us-east-1",
+  "records": [
+    {
+      "recordId": "record-firehose-sqs-1",
+      "approximateArrivalTimestamp": 1700000000000,
+      "data": "eyJtZXNzYWdlSWQiOiJtZXNzYWdlLWZpcmVob3NlLXNxcy0xIiwiYm9keSI6IntcIm9yZGVyX2lkXCI6XCJvcmRlci1maXJlaG9zZS1zcXMtMVwiLFwicXVhbnRpdHlcIjoxOH0iLCJldmVudFNvdXJjZSI6ImF3czpzcXMiLCJhd3NSZWdpb24iOiJ1cy1lYXN0LTEifQ=="
+    }
+  ]
+}
