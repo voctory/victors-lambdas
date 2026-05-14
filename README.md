@@ -48,8 +48,7 @@ first implementation tranche has landed:
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
 Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, richer idempotency examples, OpenTelemetry
-tracing integration, X-Ray daemon transport, additional event-handler adapters, crates.io publishing, and remaining
-feature docs. See
+tracing integration, X-Ray daemon transport, additional event-handler adapters, and crates.io publishing. See
 [docs/porting-plan.md](docs/porting-plan.md) for the current backlog.
 
 ## Workspace
