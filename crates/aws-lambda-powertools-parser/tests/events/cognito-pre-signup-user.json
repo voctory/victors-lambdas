@@ -1,0 +1,25 @@
+{
+  "version": "1",
+  "triggerSource": "PreSignUp_SignUp",
+  "region": "us-east-1",
+  "userPoolId": "us-east-1_orders",
+  "userName": "user-cognito-1",
+  "callerContext": {
+    "awsSdkVersion": "aws-sdk-rust",
+    "clientId": "client-orders"
+  },
+  "request": {
+    "userAttributes": {
+      "sub": "user-cognito-1",
+      "email": "user@example.com",
+      "custom:tenant": "orders"
+    },
+    "validationData": {},
+    "clientMetadata": {}
+  },
+  "response": {
+    "autoConfirmUser": false,
+    "autoVerifyEmail": true,
+    "autoVerifyPhone": false
+  }
+}

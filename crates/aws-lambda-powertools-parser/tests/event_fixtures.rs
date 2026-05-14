@@ -11,6 +11,7 @@ use aws_lambda_events::event::{
     bedrock_agent_runtime::AgentEvent,
     cloudformation::CloudFormationCustomResourceRequest,
     cloudwatch_logs::LogsEvent,
+    cognito::CognitoEventUserPoolsPreSignup,
     dynamodb::Event as DynamoDbEvent,
     eventbridge::EventBridgeEvent,
     firehose::KinesisFirehoseEvent,
@@ -39,6 +40,14 @@ struct OrderEvent {
 struct CustomResourceProperties {
     bucket_name: String,
     retention_days: u32,
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq)]
+struct CognitoUserAttributes {
+    sub: String,
+    email: String,
+    #[serde(rename = "custom:tenant")]
+    custom_tenant: String,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -191,6 +200,22 @@ fn parses_bedrock_agent_input_fixture() {
 
     assert_eq!(parsed.payload().order_id, "order-bedrock-agent-1");
     assert_eq!(parsed.payload().quantity, 25);
+}
+
+#[test]
+fn parses_cognito_pre_signup_user_attributes_fixture() {
+    let event = load_json_fixture::<CognitoEventUserPoolsPreSignup>(fixture(
+        "cognito-pre-signup-user.json",
+    ))
+    .expect("Cognito Pre sign-up fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_cognito_pre_signup_user_attributes::<CognitoUserAttributes>(event)
+        .expect("fixture Cognito user attributes should parse");
+
+    assert_eq!(parsed.payload().sub, "user-cognito-1");
+    assert_eq!(parsed.payload().email, "user@example.com");
+    assert_eq!(parsed.payload().custom_tenant, "orders");
 }
 
 #[test]
