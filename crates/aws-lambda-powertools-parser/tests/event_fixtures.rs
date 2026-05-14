@@ -11,17 +11,18 @@ use aws_lambda_powertools_parser::{
     ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
     ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, ApiGatewayProxyEventModel,
     ApiGatewayProxyEventV2Model, ApiGatewayWebsocketConnectEvent,
-    ApiGatewayWebsocketDisconnectEvent, ApiGatewayWebsocketMessageEvent, AppSyncBatchResolverEvent,
-    AppSyncEventsEvent, AppSyncResolverEvent, AutoScalingModel, AwsConfigModel,
-    CloudFormationCustomResourceCreate, CloudFormationCustomResourceDelete,
-    CloudFormationCustomResourceRequest, CloudFormationCustomResourceResponse,
-    CloudFormationCustomResourceResponseStatus, CloudFormationCustomResourceUpdate,
-    CloudWatchLogsModel, CloudWatchMetricAlarmModel, CodeCommitModel,
+    ApiGatewayWebsocketDisconnectEvent, ApiGatewayWebsocketMessageEvent, AppSyncAuthorizerEvent,
+    AppSyncAuthorizerResponse, AppSyncBatchResolverEvent, AppSyncEventsEvent, AppSyncResolverEvent,
+    AutoScalingModel, AwsConfigModel, CloudFormationCustomResourceCreate,
+    CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
+    CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
+    CloudFormationCustomResourceUpdate, CloudWatchLogsModel, CloudWatchMetricAlarmModel,
+    CodeCommitModel, CodeDeployLifecycleHookEventModel, CodePipelineJobEventModel,
     CognitoCustomEmailSenderTriggerModel, CognitoCustomEmailSenderTriggerSource,
     CognitoCustomSMSSenderTriggerModel, CognitoCustomSenderRequestType,
     CognitoCustomSmsSenderTriggerSource, CognitoMigrateUserTriggerModel,
-    CognitoMigrateUserTriggerSource, CognitoPreSignupTriggerModel, DynamoDbStreamModel,
-    DynamoDbStreamOnFailureDestination, EventBridgeModel, EventParser,
+    CognitoMigrateUserTriggerSource, CognitoPreSignupTriggerModel, ConnectContactFlowEventModel,
+    DynamoDbStreamModel, DynamoDbStreamOnFailureDestination, EventBridgeModel, EventParser,
     IoTCoreRegistryCrudOperation, IoTCoreRegistryEventType, IoTCoreRegistryMembershipOperation,
     IoTCoreThingEvent, IoTCoreThingGroupEvent, IoTCoreThingGroupHierarchyEvent,
     IoTCoreThingGroupMembershipEvent, IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent,
@@ -385,6 +386,35 @@ fn parses_appsync_events_payload_fixture() {
     assert_eq!(parsed[0].payload().quantity, 23);
     assert_eq!(parsed[1].payload().order_id, "order-appsync-events-2");
     assert_eq!(parsed[1].payload().quantity, 24);
+}
+
+#[test]
+fn parses_appsync_authorizer_fixture() {
+    let event =
+        load_json_fixture::<AppSyncAuthorizerEvent>(fixture("appsync-authorizer-request.json"))
+            .expect("AppSync authorizer fixture should decode");
+    let response =
+        load_json_fixture::<AppSyncAuthorizerResponse>(fixture("appsync-authorizer-response.json"))
+            .expect("AppSync authorizer response fixture should decode");
+
+    assert_eq!(
+        event.authorization_token.as_deref(),
+        Some("Bearer order-token")
+    );
+    assert_eq!(event.request_context.apiid.as_deref(), Some("orders-api"));
+    assert_eq!(
+        event.request_context.variables.get("orderId"),
+        Some(&Value::String("order-appsync-auth-1".to_owned()))
+    );
+    assert!(response.is_authorized);
+    assert_eq!(response.ttl_override, Some(60));
+    assert_eq!(
+        response
+            .resolver_context
+            .get("tenant")
+            .and_then(Value::as_str),
+        Some("orders")
+    );
 }
 
 #[test]
@@ -758,6 +788,67 @@ fn parses_secretsmanager_rotation_fixture() {
         "arn:aws:secretsmanager:us-west-2:123456789012:secret:orders/db-AbCdEf"
     );
     assert_eq!(event.client_request_token, "rotation-token-123");
+}
+
+#[test]
+fn parses_codedeploy_lifecycle_hook_fixture() {
+    let event = load_json_fixture::<CodeDeployLifecycleHookEventModel>(fixture(
+        "codedeploy-lifecycle-hook.json",
+    ))
+    .expect("CodeDeploy lifecycle hook fixture should decode");
+
+    assert_eq!(event.deployment_id, "d-orders");
+    assert_eq!(event.lifecycle_event_hook_execution_id, "hook-orders");
+}
+
+#[test]
+fn parses_codepipeline_job_fixture() {
+    let event = load_json_fixture::<CodePipelineJobEventModel>(fixture("codepipeline-job.json"))
+        .expect("CodePipeline job fixture should decode");
+
+    assert_eq!(event.code_pipeline_job.id.as_deref(), Some("job-orders"));
+    assert_eq!(
+        event
+            .code_pipeline_job
+            .data
+            .action_configuration
+            .configuration
+            .function_name
+            .as_deref(),
+        Some("orders-handler")
+    );
+    assert_eq!(
+        event.code_pipeline_job.data.input_artifacts[0]
+            .name
+            .as_deref(),
+        Some("Source")
+    );
+}
+
+#[test]
+fn parses_connect_contact_flow_fixture() {
+    let event =
+        load_json_fixture::<ConnectContactFlowEventModel>(fixture("connect-contact-flow.json"))
+            .expect("Connect contact flow fixture should decode");
+
+    assert_eq!(event.name.as_deref(), Some("ContactFlowEvent"));
+    assert_eq!(
+        event.details.contact_data.contact_id.as_deref(),
+        Some("contact-orders")
+    );
+    assert_eq!(
+        event
+            .details
+            .contact_data
+            .attributes
+            .get("tenant")
+            .map(String::as_str),
+        Some("orders")
+    );
+    assert_eq!(
+        event.details.parameters.get("orderId").map(String::as_str),
+        Some("order-connect-1")
+    );
 }
 
 #[test]

@@ -67,6 +67,12 @@ pub use aws_lambda_events::event::apigw::ApiGatewayWebsocketProxyRequest as ApiG
 pub use aws_lambda_events::event::apigw::ApiGatewayWebsocketProxyRequest as ApiGatewayWebsocketMessageEvent;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::appsync::AppSyncLambdaAuthorizerRequest as AppSyncAuthorizerEvent;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::appsync::AppSyncLambdaAuthorizerResponse as AppSyncAuthorizerResponse;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::autoscaling::AutoScalingEvent as AutoScalingModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
@@ -103,6 +109,12 @@ pub use aws_lambda_events::event::cloudwatch_logs::LogsEvent as CloudWatchLogsMo
 pub use aws_lambda_events::event::code_commit::CodeCommitEvent as CodeCommitModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::codedeploy::CodeDeployLifecycleEvent as CodeDeployLifecycleHookEventModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::codepipeline_job::CodePipelineJobEvent as CodePipelineJobEventModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsCreateAuthChallenge as CognitoCreateAuthChallengeTriggerModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
@@ -134,6 +146,9 @@ pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsVerifyAuthChalle
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::config::ConfigEvent as AwsConfigModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::connect::ConnectEvent as ConnectContactFlowEventModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::dynamodb::Event as DynamoDbStreamModel;

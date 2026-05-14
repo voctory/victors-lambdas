@@ -1,0 +1,13 @@
+{
+  "authorizationToken": "Bearer order-token",
+  "requestContext": {
+    "apiId": "orders-api",
+    "accountId": "123456789012",
+    "requestId": "request-appsync-auth-1",
+    "queryString": "query GetOrder($orderId: ID!) { getOrder(id: $orderId) { id } }",
+    "operationName": "GetOrder",
+    "variables": {
+      "orderId": "order-appsync-auth-1"
+    }
+  }
+}

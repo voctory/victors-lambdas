@@ -1,0 +1,45 @@
+{
+  "CodePipeline.job": {
+    "id": "job-orders",
+    "accountId": "123456789012",
+    "data": {
+      "actionConfiguration": {
+        "configuration": {
+          "FunctionName": "orders-handler",
+          "UserParameters": "{\"tenant\":\"orders\"}"
+        }
+      },
+      "inputArtifacts": [
+        {
+          "name": "Source",
+          "revision": "main",
+          "location": {
+            "type": "S3",
+            "s3Location": {
+              "bucketName": "orders-artifacts",
+              "objectKey": "source.zip"
+            }
+          }
+        }
+      ],
+      "outputArtifacts": [
+        {
+          "name": "Output",
+          "revision": null,
+          "location": {
+            "type": "S3",
+            "s3Location": {
+              "bucketName": "orders-artifacts",
+              "objectKey": "output.zip"
+            }
+          }
+        }
+      ],
+      "artifactCredentials": {
+        "accessKeyId": "access-key",
+        "secretAccessKey": "secret-key",
+        "sessionToken": "session-token"
+      }
+    }
+  }
+}

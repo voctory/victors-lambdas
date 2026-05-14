@@ -1,0 +1,31 @@
+{
+  "Name": "ContactFlowEvent",
+  "Details": {
+    "ContactData": {
+      "Attributes": {
+        "tenant": "orders"
+      },
+      "Channel": "VOICE",
+      "ContactId": "contact-orders",
+      "CustomerEndpoint": {
+        "Address": "+12065550100",
+        "Type": "TELEPHONE_NUMBER"
+      },
+      "InitialContactId": "contact-orders",
+      "InitiationMethod": "INBOUND",
+      "PreviousContactId": "contact-previous",
+      "Queue": {
+        "Name": "Orders",
+        "ARN": "arn:aws:connect:us-west-2:123456789012:instance/instance-id/queue/queue-id"
+      },
+      "SystemEndpoint": {
+        "Address": "+12065550199",
+        "Type": "TELEPHONE_NUMBER"
+      },
+      "InstanceARN": "arn:aws:connect:us-west-2:123456789012:instance/instance-id"
+    },
+    "Parameters": {
+      "orderId": "order-connect-1"
+    }
+  }
+}

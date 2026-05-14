@@ -1,0 +1,10 @@
+{
+  "isAuthorized": true,
+  "resolverContext": {
+    "tenant": "orders"
+  },
+  "deniedFields": [
+    "Mutation.cancelOrder"
+  ],
+  "ttlOverride": 60
+}
