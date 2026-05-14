@@ -5,10 +5,12 @@
 use std::path::PathBuf;
 
 use aws_lambda_events::event::{
-    alb::AlbTargetGroupRequest, apigw::ApiGatewayV2httpRequest, cloudwatch_logs::LogsEvent,
+    alb::AlbTargetGroupRequest, apigw::ApiGatewayV2httpRequest,
+    cloudformation::CloudFormationCustomResourceRequest, cloudwatch_logs::LogsEvent,
     dynamodb::Event as DynamoDbEvent, eventbridge::EventBridgeEvent,
     firehose::KinesisFirehoseEvent, kinesis::KinesisEvent,
-    lambda_function_urls::LambdaFunctionUrlRequest, sns::SnsEvent, sqs::SqsEvent,
+    lambda_function_urls::LambdaFunctionUrlRequest, s3::S3Event, ses::SimpleEmailEvent,
+    sns::SnsEvent, sqs::SqsEvent,
 };
 use aws_lambda_powertools_parser::EventParser;
 use aws_lambda_powertools_testing::load_json_fixture;
@@ -19,6 +21,13 @@ use serde_json::Value;
 struct OrderEvent {
     order_id: String,
     quantity: u32,
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+struct CustomResourceProperties {
+    bucket_name: String,
+    retention_days: u32,
 }
 
 #[test]
@@ -106,6 +115,88 @@ fn parses_sns_message_fixture() {
     assert_eq!(parsed.len(), 1);
     assert_eq!(parsed[0].payload().order_id, "order-sns-1");
     assert_eq!(parsed[0].payload().quantity, 11);
+}
+
+#[test]
+fn parses_s3_record_fixture() {
+    let event = load_json_fixture::<S3Event>(fixture("s3-order-object.json"))
+        .expect("S3 fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_s3_records::<Value>(event)
+        .expect("fixture S3 records should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(
+        parsed[0]
+            .payload()
+            .pointer("/s3/bucket/name")
+            .and_then(Value::as_str),
+        Some("orders")
+    );
+    assert_eq!(
+        parsed[0]
+            .payload()
+            .pointer("/s3/object/key")
+            .and_then(Value::as_str),
+        Some("orders/order-s3-1.json")
+    );
+}
+
+#[test]
+fn parses_ses_record_fixture() {
+    let event = load_json_fixture::<SimpleEmailEvent>(fixture("ses-order-email.json"))
+        .expect("SES fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_ses_records::<Value>(event)
+        .expect("fixture SES records should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(
+        parsed[0]
+            .payload()
+            .pointer("/ses/mail/messageId")
+            .and_then(Value::as_str),
+        Some("message-ses-1")
+    );
+    assert_eq!(
+        parsed[0]
+            .payload()
+            .pointer("/ses/mail/commonHeaders/subject")
+            .and_then(Value::as_str),
+        Some("Order received")
+    );
+}
+
+#[test]
+fn parses_cloudformation_resource_properties_fixture() {
+    let event = load_json_fixture::<CloudFormationCustomResourceRequest<Value, Value>>(fixture(
+        "cloudformation-bucket-policy-update.json",
+    ))
+    .expect("CloudFormation fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_cloudformation_resource_properties::<CustomResourceProperties>(event)
+        .expect("fixture CloudFormation resource properties should parse");
+
+    assert_eq!(parsed.payload().bucket_name, "orders");
+    assert_eq!(parsed.payload().retention_days, 30);
+}
+
+#[test]
+fn parses_cloudformation_old_resource_properties_fixture() {
+    let event = load_json_fixture::<CloudFormationCustomResourceRequest<Value, Value>>(fixture(
+        "cloudformation-bucket-policy-update.json",
+    ))
+    .expect("CloudFormation fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_cloudformation_old_resource_properties::<CustomResourceProperties>(event)
+        .expect("fixture CloudFormation old resource properties should parse");
+
+    assert_eq!(parsed.payload().bucket_name, "orders");
+    assert_eq!(parsed.payload().retention_days, 7);
 }
 
 #[test]

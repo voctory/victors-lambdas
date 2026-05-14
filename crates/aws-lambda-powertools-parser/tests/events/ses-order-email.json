@@ -1,0 +1,62 @@
+{
+  "Records": [
+    {
+      "eventVersion": "1.0",
+      "eventSource": "aws:ses",
+      "ses": {
+        "mail": {
+          "timestamp": "2024-01-01T00:00:00.000Z",
+          "source": "sender@example.com",
+          "messageId": "message-ses-1",
+          "destination": [
+            "recipient@example.com"
+          ],
+          "headersTruncated": false,
+          "headers": [
+            {
+              "name": "Subject",
+              "value": "Order received"
+            }
+          ],
+          "commonHeaders": {
+            "from": [
+              "sender@example.com"
+            ],
+            "to": [
+              "recipient@example.com"
+            ],
+            "messageId": "message-ses-1",
+            "subject": "Order received"
+          }
+        },
+        "receipt": {
+          "timestamp": "2024-01-01T00:00:00.000Z",
+          "processingTimeMillis": 100,
+          "recipients": [
+            "recipient@example.com"
+          ],
+          "spamVerdict": {
+            "status": "PASS"
+          },
+          "virusVerdict": {
+            "status": "PASS"
+          },
+          "spfVerdict": {
+            "status": "PASS"
+          },
+          "dkimVerdict": {
+            "status": "PASS"
+          },
+          "dmarcVerdict": {
+            "status": "PASS"
+          },
+          "action": {
+            "type": "Lambda",
+            "functionArn": "arn:aws:lambda:us-east-1:123456789012:function:handler",
+            "invocationType": "Event"
+          }
+        }
+      }
+    }
+  ]
+}

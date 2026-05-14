@@ -1,0 +1,37 @@
+{
+  "Records": [
+    {
+      "eventVersion": "2.1",
+      "eventSource": "aws:s3",
+      "awsRegion": "us-east-1",
+      "eventTime": "2024-01-01T00:00:00.000Z",
+      "eventName": "ObjectCreated:Put",
+      "userIdentity": {
+        "principalId": "A1YQ72UWCM96UF"
+      },
+      "requestParameters": {
+        "sourceIPAddress": "127.0.0.1"
+      },
+      "responseElements": {
+        "x-amz-request-id": "request-s3-1"
+      },
+      "s3": {
+        "s3SchemaVersion": "1.0",
+        "configurationId": "orders-config",
+        "bucket": {
+          "name": "orders",
+          "ownerIdentity": {
+            "principalId": "A1YQ72UWCM96UF"
+          },
+          "arn": "arn:aws:s3:::orders"
+        },
+        "object": {
+          "key": "orders/order-s3-1.json",
+          "size": 512,
+          "eTag": "etag-s3-1",
+          "sequencer": "001"
+        }
+      }
+    }
+  ]
+}
