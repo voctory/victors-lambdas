@@ -1,0 +1,54 @@
+[
+  {
+    "arguments": {
+      "order_id": "order-appsync-batch-1",
+      "quantity": 27
+    },
+    "identity": null,
+    "info": {
+      "fieldName": "batchCreateOrders",
+      "parentTypeName": "Mutation",
+      "selectionSetGraphQL": "",
+      "selectionSetList": [],
+      "variables": {}
+    },
+    "prev": null,
+    "request": {
+      "domainName": "orders.appsync-api.us-east-1.amazonaws.com",
+      "headers": {
+        "content-type": "application/json"
+      }
+    },
+    "source": {
+      "order_id": "order-appsync-source-batch-1",
+      "quantity": 27
+    },
+    "stash": {}
+  },
+  {
+    "arguments": {
+      "order_id": "order-appsync-batch-2",
+      "quantity": 28
+    },
+    "identity": null,
+    "info": {
+      "fieldName": "batchCreateOrders",
+      "parentTypeName": "Mutation",
+      "selectionSetGraphQL": "",
+      "selectionSetList": [],
+      "variables": {}
+    },
+    "prev": null,
+    "request": {
+      "domainName": "orders.appsync-api.us-east-1.amazonaws.com",
+      "headers": {
+        "content-type": "application/json"
+      }
+    },
+    "source": {
+      "order_id": "order-appsync-source-batch-2",
+      "quantity": 28
+    },
+    "stash": {}
+  }
+]

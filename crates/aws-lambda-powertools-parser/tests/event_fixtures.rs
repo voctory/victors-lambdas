@@ -8,7 +8,6 @@ use aws_lambda_events::event::{
     activemq::ActiveMqEvent,
     alb::AlbTargetGroupRequest,
     apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
-    appsync::AppSyncDirectResolverEvent,
     bedrock_agent_runtime::AgentEvent,
     cloudwatch_logs::LogsEvent,
     cognito::CognitoEventUserPoolsPreSignup,
@@ -28,10 +27,11 @@ use aws_lambda_events::event::{
 use aws_lambda_powertools_parser::{
     ApiGatewayAuthorizerHttpApiV1Request, ApiGatewayAuthorizerIamPolicyResponse,
     ApiGatewayAuthorizerRequest, ApiGatewayAuthorizerRequestV2, ApiGatewayAuthorizerResponse,
-    ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, AppSyncEventsEvent,
-    CloudFormationCustomResourceCreate, CloudFormationCustomResourceDelete,
-    CloudFormationCustomResourceRequest, CloudFormationCustomResourceResponse,
-    CloudFormationCustomResourceResponseStatus, CloudFormationCustomResourceUpdate, EventParser,
+    ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, AppSyncBatchResolverEvent,
+    AppSyncEventsEvent, AppSyncResolverEvent, CloudFormationCustomResourceCreate,
+    CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
+    CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
+    CloudFormationCustomResourceUpdate, EventParser,
 };
 use aws_lambda_powertools_testing::load_json_fixture;
 use serde::Deserialize;
@@ -242,7 +242,7 @@ fn parses_eventbridge_scheduler_empty_detail_fixture() {
 
 #[test]
 fn parses_appsync_arguments_fixture() {
-    let event = load_json_fixture::<AppSyncDirectResolverEvent<Value, Value, Value>>(fixture(
+    let event = load_json_fixture::<AppSyncResolverEvent<Value, Value, Value>>(fixture(
         "appsync-direct-order.json",
     ))
     .expect("AppSync direct resolver fixture should decode");
@@ -257,7 +257,7 @@ fn parses_appsync_arguments_fixture() {
 
 #[test]
 fn parses_appsync_source_fixture() {
-    let event = load_json_fixture::<AppSyncDirectResolverEvent<Value, Value, Value>>(fixture(
+    let event = load_json_fixture::<AppSyncResolverEvent<Value, Value, Value>>(fixture(
         "appsync-direct-order.json",
     ))
     .expect("AppSync direct resolver fixture should decode");
@@ -268,6 +268,32 @@ fn parses_appsync_source_fixture() {
 
     assert_eq!(parsed.payload().order_id, "order-appsync-source-1");
     assert_eq!(parsed.payload().quantity, 22);
+}
+
+#[test]
+fn parses_appsync_batch_resolver_fixture() {
+    let event = load_json_fixture::<AppSyncBatchResolverEvent<Value, Value, Value>>(fixture(
+        "appsync-direct-batch-orders.json",
+    ))
+    .expect("AppSync batch resolver fixture should decode");
+
+    assert_eq!(event.len(), 2);
+    assert_eq!(
+        event[0]
+            .arguments
+            .as_ref()
+            .and_then(|arguments| arguments.pointer("/order_id"))
+            .and_then(Value::as_str),
+        Some("order-appsync-batch-1")
+    );
+    assert_eq!(
+        event[1]
+            .source
+            .as_ref()
+            .and_then(|source| source.pointer("/quantity"))
+            .and_then(Value::as_u64),
+        Some(28)
+    );
 }
 
 #[test]

@@ -1,5 +1,7 @@
 //! Event parsing utility.
 
+#[cfg(feature = "aws-lambda-events")]
+mod appsync;
 mod appsync_events;
 mod bedrock_agent;
 mod cognito;
@@ -12,6 +14,8 @@ mod parser;
 mod s3_eventbridge;
 mod transfer_family;
 
+#[cfg(feature = "aws-lambda-events")]
+pub use appsync::{AppSyncBatchResolverEvent, AppSyncResolverEvent};
 pub use appsync_events::{
     AppSyncEventsChannel, AppSyncEventsChannelNamespace, AppSyncEventsCognitoIdentity,
     AppSyncEventsEvent, AppSyncEventsIamIdentity, AppSyncEventsIdentity,
