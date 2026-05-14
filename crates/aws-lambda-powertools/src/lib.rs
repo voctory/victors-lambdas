@@ -129,6 +129,12 @@ pub mod prelude {
         response_to_bedrock_agent, response_to_lambda_function_url, response_to_vpc_lattice,
     };
 
+    #[cfg(feature = "event-handler-appsync-scalars")]
+    pub use aws_lambda_powertools_event_handler::{
+        AppSyncScalarError, AppSyncScalarResult, AppSyncTimeOffset, aws_date, aws_date_time,
+        aws_time, aws_timestamp, make_id,
+    };
+
     #[cfg(feature = "event-handler-appsync-events")]
     pub use aws_lambda_powertools_event_handler::{
         AppSyncEventsAggregatePublishHandler, AppSyncEventsHandlerError,

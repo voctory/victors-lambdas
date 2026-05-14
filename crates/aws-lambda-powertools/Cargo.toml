@@ -18,6 +18,7 @@ all = [
     "data-masking",
     "data-masking-kms",
     "event-handler",
+    "event-handler-appsync-scalars",
     "event-handler-appsync-events",
     "event-handler-bedrock-agent-functions",
     "event-handler-compression",
@@ -54,6 +55,10 @@ batch-parser = [
 data-masking = ["dep:aws-lambda-powertools-data-masking"]
 data-masking-kms = ["data-masking", "aws-lambda-powertools-data-masking/kms"]
 event-handler = ["dep:aws-lambda-powertools-event-handler"]
+event-handler-appsync-scalars = [
+    "event-handler",
+    "aws-lambda-powertools-event-handler/appsync-scalars",
+]
 event-handler-appsync-events = [
     "event-handler",
     "parser",

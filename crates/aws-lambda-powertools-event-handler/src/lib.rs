@@ -8,6 +8,8 @@ mod apigateway;
 mod appsync;
 #[cfg(feature = "appsync-events")]
 mod appsync_events;
+#[cfg(feature = "appsync-scalars")]
+mod appsync_scalar;
 #[cfg(feature = "aws-lambda-events")]
 mod bedrock;
 #[cfg(feature = "bedrock-agent-functions")]
@@ -50,6 +52,11 @@ pub use appsync_events::{
     AppSyncEventsPublishHandler, AppSyncEventsPublishRoute, AppSyncEventsResolver,
     AppSyncEventsResolverError, AppSyncEventsResolverResult, AppSyncEventsSubscribeHandler,
     AppSyncEventsSubscribeRoute,
+};
+#[cfg(feature = "appsync-scalars")]
+pub use appsync_scalar::{
+    AppSyncScalarError, AppSyncScalarResult, AppSyncTimeOffset, aws_date, aws_date_time, aws_time,
+    aws_timestamp, make_id,
 };
 #[cfg(feature = "aws-lambda-events")]
 pub use bedrock::{

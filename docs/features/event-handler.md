@@ -19,6 +19,7 @@ aws-lambda-powertools = { version = "0.1", features = ["event-handler"] }
   across requests.
 - Optional CORS preflight handling and response headers with request `Origin` matching, wildcard/additional origins,
   and AWS-friendly default request headers.
+- Optional AppSync GraphQL scalar helpers for `ID`, `AWSDate`, `AWSTime`, `AWSDateTime`, and `AWSTimestamp`.
 - Optional request/response validation hooks through `event-handler-validation`.
 - Optional gzip and deflate response compression through `event-handler-compression`.
 - Optional adapters for API Gateway REST API, HTTP API, and WebSocket API events, Application Load Balancer events,
@@ -34,11 +35,12 @@ dependency-free `Request` and `Response` types:
 aws-lambda-powertools = { version = "0.1", features = ["event-handler-aws-lambda-events"] }
 ```
 
-AppSync Events and Bedrock Agent function-details resolvers have separate feature flags so applications can opt into
-only the adapters they use:
+AppSync scalar helpers, AppSync Events, and Bedrock Agent function-details resolvers have separate feature flags so
+applications can opt into only the helpers and adapters they use:
 
 ```toml
 aws-lambda-powertools = { version = "0.1", features = [
+  "event-handler-appsync-scalars",
   "event-handler-appsync-events",
   "event-handler-bedrock-agent-functions",
 ] }
