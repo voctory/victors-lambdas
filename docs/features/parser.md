@@ -31,7 +31,8 @@ aws-lambda-powertools = { version = "0.1", features = ["parser"] }
   Cognito user attributes, SQS bodies, SNS messages, SNS-over-SQS messages, RabbitMQ message data, S3 records,
   owned S3 event notification records, S3-over-SQS records, owned S3-over-SQS notification records, S3 Object Lambda
   configuration payloads, S3 Batch tasks, SES records, CloudWatch Logs messages, Kinesis records, Firehose records,
-  DynamoDB stream image pairs and image-specific helpers, and Kafka record values.
+  Kinesis-delivered CloudWatch Logs messages, DynamoDB stream image pairs and image-specific helpers, and Kafka record
+  values.
 - EventBridge Scheduler empty-detail compatibility: Scheduler events with `source` set to `aws.scheduler` and `detail`
   set to the string `"{}"` parse as an empty JSON object.
 

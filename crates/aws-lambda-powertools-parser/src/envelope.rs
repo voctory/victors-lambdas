@@ -596,6 +596,47 @@ impl EventParser {
             .collect()
     }
 
+    /// Parses JSON `CloudWatch Logs` messages delivered through Kinesis data.
+    ///
+    /// Each Kinesis record data blob must contain the compressed `CloudWatch
+    /// Logs` subscription payload. Log event messages are decoded into `T` and
+    /// returned in Kinesis record order, preserving log event order within each
+    /// record.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any Kinesis record data is not a valid
+    /// `CloudWatch Logs` payload or any log event message cannot be decoded
+    /// into `T`.
+    pub fn parse_kinesis_cloudwatch_log_messages<T>(
+        &self,
+        event: KinesisEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let mut parsed = Vec::new();
+
+        for (record_index, record) in event.records.into_iter().enumerate() {
+            let logs = parse_kinesis_cloudwatch_logs(record_index, &record.kinesis.data)?;
+
+            for (message_index, entry) in logs.aws_logs.data.log_events.into_iter().enumerate() {
+                let message = self.parse_json_str(&entry.message).map_err(|error| {
+                    ParseError::new(
+                        error.kind(),
+                        format!(
+                            "Kinesis record at index {record_index} CloudWatch Logs message at index {message_index} is not a valid payload: {}",
+                            error.message()
+                        ),
+                    )
+                })?;
+                parsed.push(message);
+            }
+        }
+
+        Ok(parsed)
+    }
+
     /// Parses `DynamoDB` stream `NewImage` records delivered through Kinesis data.
     ///
     /// Each Kinesis record data blob must contain a JSON `DynamoDB` stream
@@ -1178,6 +1219,22 @@ fn parse_kinesis_record_json(index: usize, data: &[u8]) -> Result<DynamoDbEventR
             error.kind(),
             format!(
                 "Kinesis record at index {index} data is not a valid DynamoDB stream record: {}",
+                error.message()
+            ),
+        )
+    })
+}
+
+fn parse_kinesis_cloudwatch_logs(index: usize, data: &[u8]) -> Result<LogsEvent, ParseError> {
+    let encoded = base64::engine::general_purpose::STANDARD.encode(data);
+    let value = format!(r#"{{"awslogs":{{"data":"{encoded}"}}}}"#);
+
+    serde_json::from_str(&value).map_err(|error| {
+        let error = ParseError::from_json_error(&error);
+        ParseError::new(
+            error.kind(),
+            format!(
+                "Kinesis record at index {index} data is not a valid CloudWatch Logs payload: {}",
                 error.message()
             ),
         )
@@ -2297,6 +2354,57 @@ mod tests {
         assert_eq!(parsed.len(), 2);
         assert_eq!(parsed[0].payload().order_id, "order-1");
         assert_eq!(parsed[1].payload().quantity, 3);
+    }
+
+    #[test]
+    fn parses_kinesis_cloudwatch_log_messages() {
+        let event: KinesisEvent = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "kinesis": {
+                        "kinesisSchemaVersion": "1.0",
+                        "partitionKey": "logs",
+                        "sequenceNumber": "1",
+                        "data": "H4sIACNFBWoAA4WOPQ+CMBCG/8vNZWjxk41EZHKCzRKC0pAm0GJbNITw3z1EBlzc7p6797kboBHWFpVI+1ZAAKcwDfNLlCRhHAEB/VLCIKbM32x3+8MRC8S1rmKjuxYn2pTC2JklzoiiQWjngoDtbvZuZOukVmdZu2k1uC6h7JOKnkK5CQ8gSwyLqfcopp3E51zR4B1KlkdxY+CzIZclh+DbeJQD4fDoCuWk63HARhjJSsrWUvZfyn6lPkqz8Q3Yvl/uNwEAAA==",
+                        "approximateArrivalTimestamp": 1
+                    }
+                }
+            ]
+        }))
+        .expect("Kinesis event should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_kinesis_cloudwatch_log_messages::<OrderEvent>(event)
+            .expect("Kinesis CloudWatch Logs messages should parse");
+
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed[0].payload().order_id, "order-1");
+        assert_eq!(parsed[1].payload().quantity, 3);
+    }
+
+    #[test]
+    fn rejects_invalid_kinesis_cloudwatch_log_payloads() {
+        let event: KinesisEvent = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "kinesis": {
+                        "kinesisSchemaVersion": "1.0",
+                        "partitionKey": "logs",
+                        "sequenceNumber": "1",
+                        "data": "e30=",
+                        "approximateArrivalTimestamp": 1
+                    }
+                }
+            ]
+        }))
+        .expect("Kinesis event should deserialize");
+
+        let error = EventParser::new()
+            .parse_kinesis_cloudwatch_log_messages::<OrderEvent>(event)
+            .expect_err("invalid CloudWatch Logs payload should fail");
+
+        assert_eq!(error.kind(), ParseErrorKind::Data);
+        assert!(error.message().contains("CloudWatch Logs payload"));
     }
 
     #[test]
