@@ -50,8 +50,8 @@ first implementation tranche has landed:
   schema validation
 - idempotency keys, payload hashing, JSON Pointer and optional JMESPath key extraction, configurable full/subset/no
   payload validation, sync and async handler workflows, replay behavior, Lambda remaining-time in-progress expiry, sync
-  and async store traits, an in-memory store, an optional local cache wrapper, an optional DynamoDB store, and buildable
-  local/AWS snippets
+  and async store traits, an in-memory store, a generic async TTL cache store for Redis/Valkey-style clients, an
+  optional local cache wrapper, an optional DynamoDB store, and buildable local/AWS snippets
 - feature flag schema parsing, sync/async store traits, in-memory and optional AppConfig stores, boolean and JSON-valued
   evaluation, enabled-feature listing, configuration cache policies, common context comparators, modulo range matching,
   and time-window rules

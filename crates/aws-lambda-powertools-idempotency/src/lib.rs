@@ -1,5 +1,6 @@
 //! Idempotency utility.
 
+mod cache;
 mod config;
 #[cfg(feature = "dynamodb")]
 mod dynamodb;
@@ -11,6 +12,7 @@ mod status;
 mod store;
 mod workflow;
 
+pub use cache::{AsyncIdempotencyCacheClient, CacheIdempotencyStore};
 pub use config::{IdempotencyConfig, PayloadValidation};
 #[cfg(feature = "dynamodb")]
 pub use dynamodb::DynamoDbIdempotencyStore;

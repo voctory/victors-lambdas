@@ -51,6 +51,9 @@ aws-lambda-powertools = { version = "0.1", features = ["idempotency-dynamodb"] }
 The DynamoDB store defaults to a string partition key named `id`; composite-key tables can set a sort key attribute and
 static partition key value.
 
+Use `CacheIdempotencyStore` with an `AsyncIdempotencyCacheClient` implementation for Redis, Valkey, or another external
+TTL cache. The adapter stores opaque idempotency record bytes and lets the cache service expire entries.
+
 Wrap a durable store in `CachedIdempotencyStore` to keep recently read and written records in the current Lambda
 execution environment:
 
@@ -71,7 +74,7 @@ cold starts, and different execution environments.
 - In-progress record rejection.
 - Handler failure cleanup so later retries can proceed.
 - Lambda remaining-time based in-progress expiry.
-- In-memory and optional DynamoDB stores.
+- In-memory, generic external TTL cache, and optional DynamoDB stores.
 - Optional local cache wrapper for sync and async stores.
 
 ## Snippet
