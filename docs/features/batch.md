@@ -18,7 +18,7 @@ aws-lambda-powertools = { version = "0.1", features = ["batch"] }
   processed.
 - Optional parser integration for SQS message bodies, Kinesis record data, and DynamoDB stream images, where malformed
   records are reported as batch failures before the record handler runs.
-- Optional `aws_lambda_events` adapters for SQS, Kinesis, and DynamoDB stream events.
+- Optional `aws_lambda_events` adapters for SQS, Kinesis, DynamoDB stream, and Kafka events.
 
 ## Source Adapters
 
@@ -29,7 +29,8 @@ aws-lambda-powertools = { version = "0.1", features = ["batch-aws-lambda-events"
 ```
 
 The SQS adapter uses `message_id` values as failed item identifiers. Kinesis and DynamoDB adapters use sequence numbers
-and fall back to event IDs when a sequence number is unavailable.
+and fall back to event IDs when a sequence number is unavailable. The Kafka adapter returns Lambda's Kafka-specific
+topic-partition and offset failure shape through `KafkaBatchResponse`.
 
 Use `process_sqs_fifo` or `process_sqs_fifo_response` for FIFO queues so Lambda retries the first failed record and all
 later records in the same batch.
@@ -53,7 +54,7 @@ checkpoint helpers through their sequence numbers.
 
 The buildable snippet in [examples/snippets/batch/src/main.rs](../../examples/snippets/batch/src/main.rs) builds a
 partial batch response for generic records, for an SQS FIFO event, for parser-integrated SQS message bodies, and for
-parser-integrated Kinesis record data and DynamoDB stream images.
+parser-integrated Kinesis record data and DynamoDB stream images, plus a Kafka partial batch response.
 
 Run it locally with:
 

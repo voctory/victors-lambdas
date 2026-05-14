@@ -96,6 +96,12 @@ pub mod prelude {
     #[cfg(feature = "batch-parser")]
     pub use aws_lambda_powertools_batch::ParsedBatchRecord;
 
+    #[cfg(feature = "batch-aws-lambda-events")]
+    pub use aws_lambda_powertools_batch::{
+        KafkaBatchItemFailure, KafkaBatchItemIdentifier, KafkaBatchProcessingReport,
+        KafkaBatchRecordResult, KafkaBatchResponse,
+    };
+
     #[cfg(feature = "data-masking")]
     pub use aws_lambda_powertools_data_masking::{
         DATA_MASKING_STRING, DataMasking, DataMaskingConfig, DataMaskingError,

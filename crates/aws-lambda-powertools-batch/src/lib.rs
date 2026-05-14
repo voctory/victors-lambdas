@@ -4,6 +4,8 @@
 mod dynamodb;
 mod failure;
 #[cfg(feature = "aws-lambda-events")]
+mod kafka;
+#[cfg(feature = "aws-lambda-events")]
 mod kinesis;
 #[cfg(feature = "parser")]
 mod parser;
@@ -14,6 +16,11 @@ mod response;
 mod sqs;
 
 pub use failure::BatchItemFailure;
+#[cfg(feature = "aws-lambda-events")]
+pub use kafka::{
+    KafkaBatchItemFailure, KafkaBatchItemIdentifier, KafkaBatchProcessingReport,
+    KafkaBatchRecordResult, KafkaBatchResponse,
+};
 #[cfg(feature = "parser")]
 pub use parser::ParsedBatchRecord;
 pub use processor::{BatchProcessingReport, BatchProcessor, BatchRecordResult};

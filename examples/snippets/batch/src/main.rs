@@ -4,6 +4,7 @@ use std::error::Error;
 
 use aws_lambda_events::event::{
     dynamodb::Event as DynamoDbEvent,
+    kafka::{KafkaEvent, KafkaRecord},
     kinesis::{KinesisEvent, KinesisEventRecord},
     sqs::{SqsEvent, SqsMessage},
 };
@@ -28,6 +29,14 @@ fn kinesis_record(sequence_number: &str, data: &[u8]) -> KinesisEventRecord {
     let mut record = KinesisEventRecord::default();
     sequence_number.clone_into(&mut record.kinesis.sequence_number);
     record.kinesis.data.extend_from_slice(data);
+    record
+}
+
+fn kafka_record(topic: &str, partition: i64, offset: i64) -> KafkaRecord {
+    let mut record = KafkaRecord::default();
+    record.topic = Some(topic.to_owned());
+    record.partition = partition;
+    record.offset = offset;
     record
 }
 
@@ -158,6 +167,24 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
     );
     assert_eq!(dynamodb_report.stream_checkpoint(), Some("sequence-4"));
+
+    let mut kafka_event = KafkaEvent::default();
+    kafka_event.records.insert(
+        "orders-0".to_owned(),
+        vec![kafka_record("orders", 0, 10), kafka_record("orders", 0, 11)],
+    );
+
+    let kafka_response = BatchProcessor::new().process_kafka_response(&kafka_event, |record| {
+        if record.offset == 11 {
+            Err("invalid record")
+        } else {
+            Ok(())
+        }
+    });
+    let kafka_failures = kafka_response.batch_item_failures();
+    assert_eq!(kafka_failures.len(), 1);
+    assert_eq!(kafka_failures[0].item_identifier().partition(), "orders-0");
+    assert_eq!(kafka_failures[0].item_identifier().offset(), 11);
 
     println!("reported {} FIFO failures", failures.len());
 
