@@ -37,7 +37,9 @@ use base64::Engine;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
-use crate::{AppSyncEventsEvent, EventParser, ParseError, ParseErrorKind, ParsedEvent};
+use crate::{
+    AppSyncEventsEvent, EventParser, ParseError, ParseErrorKind, ParsedEvent, S3EventNotification,
+};
 
 impl EventParser {
     /// Parses JSON `ActiveMQ` message data.
@@ -843,6 +845,31 @@ impl EventParser {
             .collect()
     }
 
+    /// Parses owned Amazon S3 event notification records.
+    ///
+    /// Use this model when events may include notification variants not covered
+    /// by `aws_lambda_events`, such as S3 Intelligent-Tiering records that use
+    /// `s3.get_object` instead of `s3.object`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when any S3 notification record cannot be decoded
+    /// into `T`.
+    pub fn parse_s3_event_notification_records<T>(
+        &self,
+        event: S3EventNotification,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        event
+            .records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| parse_record_value(self, "S3 event notification", index, record))
+            .collect()
+    }
+
     /// Parses an Amazon S3 Object Lambda configuration payload.
     ///
     /// # Errors
@@ -907,6 +934,36 @@ impl EventParser {
             let body = sqs_body(index, record.body)?;
             let s3_event: S3Event = parse_sqs_nested_json("S3 event notification", index, &body)?;
             parsed.extend(self.parse_s3_records(s3_event)?);
+        }
+
+        Ok(parsed)
+    }
+
+    /// Parses owned Amazon S3 event notification records delivered through SQS
+    /// message bodies.
+    ///
+    /// Use this variant when nested S3 notifications may include records not
+    /// covered by `aws_lambda_events`, such as S3 Intelligent-Tiering records.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error when an SQS record is missing a body, a body is
+    /// not a valid S3 event notification, or an S3 record cannot be decoded
+    /// into `T`.
+    pub fn parse_s3_sqs_event_notification_records<T>(
+        &self,
+        event: SqsEvent,
+    ) -> Result<Vec<ParsedEvent<T>>, ParseError>
+    where
+        T: DeserializeOwned,
+    {
+        let mut parsed = Vec::new();
+
+        for (index, record) in event.records.into_iter().enumerate() {
+            let body = sqs_body(index, record.body)?;
+            let s3_event: S3EventNotification =
+                parse_sqs_nested_json("S3 event notification", index, &body)?;
+            parsed.extend(self.parse_s3_event_notification_records(s3_event)?);
         }
 
         Ok(parsed)
@@ -1322,6 +1379,27 @@ mod tests {
     struct S3RecordEntity {
         bucket: S3RecordBucket,
         object: S3RecordObject,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct S3NotificationRecordSummary {
+        event_name: String,
+        s3: S3NotificationRecordEntity,
+        intelligent_tiering_event_data: Option<S3NotificationIntelligentTieringData>,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    struct S3NotificationRecordEntity {
+        bucket: S3RecordBucket,
+        #[serde(rename = "get_object")]
+        get_object: Option<S3RecordObject>,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct S3NotificationIntelligentTieringData {
+        destination_access_tier: String,
     }
 
     #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -2569,6 +2647,80 @@ mod tests {
     }
 
     #[test]
+    fn parses_s3_event_notification_records() {
+        let event = serde_json::from_value(json!({
+            "Records": [
+                {
+                    "eventVersion": "2.3",
+                    "eventSource": "aws:s3",
+                    "awsRegion": "us-east-1",
+                    "eventTime": "2025-09-29T00:47:23.967Z",
+                    "eventName": "IntelligentTiering",
+                    "userIdentity": {
+                        "principalId": "s3.amazonaws.com"
+                    },
+                    "requestParameters": {
+                        "sourceIPAddress": "s3.amazonaws.com"
+                    },
+                    "responseElements": {
+                        "x-amz-request-id": "request-1",
+                        "x-amz-id-2": "host-1"
+                    },
+                    "s3": {
+                        "s3SchemaVersion": "1.0",
+                        "configurationId": "config-1",
+                        "bucket": {
+                            "name": "orders",
+                            "ownerIdentity": {
+                                "principalId": "owner-1"
+                            },
+                            "arn": "arn:aws:s3:::orders"
+                        },
+                        "get_object": {
+                            "key": "archive/order-1.json",
+                            "size": 252_294,
+                            "eTag": "etag-1",
+                            "versionId": "version-1",
+                            "sequencer": "001"
+                        }
+                    },
+                    "intelligentTieringEventData": {
+                        "destinationAccessTier": "DEEP_ARCHIVE_ACCESS"
+                    }
+                }
+            ]
+        }))
+        .expect("S3 event notification should deserialize");
+
+        let parsed = EventParser::new()
+            .parse_s3_event_notification_records::<S3NotificationRecordSummary>(event)
+            .expect("S3 event notification records should parse");
+
+        assert_eq!(parsed[0].payload().event_name, "IntelligentTiering");
+        assert_eq!(
+            parsed[0].payload().s3.bucket.name.as_deref(),
+            Some("orders")
+        );
+        assert_eq!(
+            parsed[0]
+                .payload()
+                .s3
+                .get_object
+                .as_ref()
+                .and_then(|object| object.key.as_deref()),
+            Some("archive/order-1.json")
+        );
+        assert_eq!(
+            parsed[0]
+                .payload()
+                .intelligent_tiering_event_data
+                .as_ref()
+                .map(|data| data.destination_access_tier.as_str()),
+            Some("DEEP_ARCHIVE_ACCESS")
+        );
+    }
+
+    #[test]
     fn parses_s3_object_lambda_configuration_payload() {
         let event: S3ObjectLambdaEvent<Value> = serde_json::from_value(json!({
             "xAmzRequestId": "request-1",
@@ -2701,6 +2853,69 @@ mod tests {
         assert_eq!(
             parsed[0].payload().s3.object.key.as_deref(),
             Some("order-1.json")
+        );
+    }
+
+    #[test]
+    fn parses_s3_sqs_event_notification_records() {
+        let s3_body = json!({
+            "Records": [
+                {
+                    "eventVersion": "2.3",
+                    "eventSource": "aws:s3",
+                    "awsRegion": "us-east-1",
+                    "eventTime": "2025-09-29T00:47:23.967Z",
+                    "eventName": "IntelligentTiering",
+                    "userIdentity": {
+                        "principalId": "s3.amazonaws.com"
+                    },
+                    "requestParameters": {
+                        "sourceIPAddress": "s3.amazonaws.com"
+                    },
+                    "responseElements": {
+                        "x-amz-request-id": "request-1",
+                        "x-amz-id-2": "host-1"
+                    },
+                    "s3": {
+                        "s3SchemaVersion": "1.0",
+                        "configurationId": "config-1",
+                        "bucket": {
+                            "name": "orders",
+                            "ownerIdentity": {
+                                "principalId": "owner-1"
+                            },
+                            "arn": "arn:aws:s3:::orders"
+                        },
+                        "get_object": {
+                            "key": "archive/order-1.json",
+                            "size": 252_294,
+                            "eTag": "etag-1"
+                        }
+                    },
+                    "intelligentTieringEventData": {
+                        "destinationAccessTier": "ARCHIVE_ACCESS"
+                    }
+                }
+            ]
+        });
+        let mut message = SqsMessage::default();
+        message.body = Some(s3_body.to_string());
+        let mut event = SqsEvent::default();
+        event.records = vec![message];
+
+        let parsed = EventParser::new()
+            .parse_s3_sqs_event_notification_records::<S3NotificationRecordSummary>(event)
+            .expect("S3 event notifications should parse");
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(
+            parsed[0]
+                .payload()
+                .s3
+                .get_object
+                .as_ref()
+                .and_then(|object| object.key.as_deref()),
+            Some("archive/order-1.json")
         );
     }
 

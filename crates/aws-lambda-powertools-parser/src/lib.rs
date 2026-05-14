@@ -12,6 +12,7 @@ mod error;
 mod iot_registry;
 mod parser;
 mod s3_eventbridge;
+mod s3_notification;
 mod transfer_family;
 
 #[cfg(feature = "aws-lambda-events")]
@@ -169,6 +170,14 @@ pub use parser::{EventParser, ParsedEvent};
 pub use s3_eventbridge::{
     S3EventBridgeBucket, S3EventBridgeDetail, S3EventBridgeEvent, S3EventBridgeObject,
     S3EventNotificationEventBridgeDetailModel, S3EventNotificationEventBridgeModel,
+};
+pub use s3_notification::{
+    S3EventNotification, S3EventNotificationBucket, S3EventNotificationEntity,
+    S3EventNotificationGlacierEventData, S3EventNotificationGlacierRestoreEventData,
+    S3EventNotificationIdentity, S3EventNotificationIntelligentTieringEventData,
+    S3EventNotificationModel, S3EventNotificationObject, S3EventNotificationRecord,
+    S3EventNotificationRecordModel, S3EventNotificationRequestParameters,
+    S3EventNotificationResponseElements, S3EventRecordIntelligentTieringEventData, S3RecordModel,
 };
 pub use transfer_family::{
     TransferFamilyAuthorizerEvent, TransferFamilyAuthorizerResponse,

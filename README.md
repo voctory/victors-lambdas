@@ -26,7 +26,8 @@ first implementation tranche has landed:
   SES, CloudWatch Logs, Kinesis, Kinesis-delivered DynamoDB stream image, Firehose, Firehose-delivered SQS, DynamoDB
   stream image, and Kafka envelopes, plus Transfer Family authorizer event/response, AppSync Events, Bedrock Agent
   OpenAPI and function-details event models/input text, DynamoDB stream on-failure destination, S3 EventBridge
-  notification, IoT Core registry, Cognito migrate-user, and Cognito custom sender event models
+  notification, S3 event notification with Intelligent-Tiering support, IoT Core registry, Cognito migrate-user, and
+  Cognito custom sender event models
 - sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and
   optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior and
   parser-integrated SQS message body, Kinesis record data, and DynamoDB stream image processing

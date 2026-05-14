@@ -20,8 +20,8 @@ use aws_lambda_powertools_parser::{
     CloudFormationCustomResourceUpdate, CloudWatchLogsModel, DynamoDbStreamModel, EventBridgeModel,
     EventParser, KafkaMskEventModel, KafkaSelfManagedEventModel, KinesisDataStreamModel,
     KinesisFirehoseModel, KinesisFirehoseSqsModel, LambdaFunctionUrlModel, RabbitMqModel,
-    S3BatchOperationModel, S3Model, S3ObjectLambdaEvent, S3SqsEventNotificationModel, SesModel,
-    SnsModel, SqsModel, VpcLatticeModel, VpcLatticeV2Model,
+    S3BatchOperationModel, S3EventNotificationModel, S3Model, S3ObjectLambdaEvent,
+    S3SqsEventNotificationModel, SesModel, SnsModel, SqsModel, VpcLatticeModel, VpcLatticeV2Model,
 };
 use aws_lambda_powertools_testing::load_json_fixture;
 use serde::Deserialize;
@@ -470,6 +470,44 @@ fn parses_s3_record_fixture() {
             .pointer("/s3/object/key")
             .and_then(Value::as_str),
         Some("orders/order-s3-1.json")
+    );
+}
+
+#[test]
+fn parses_s3_intelligent_tiering_fixture() {
+    let event =
+        load_json_fixture::<S3EventNotificationModel>(fixture("s3-intelligent-tiering.json"))
+            .expect("S3 Intelligent-Tiering fixture should decode");
+
+    let record = &event.records[0];
+    assert_eq!(record.event_name, "IntelligentTiering");
+    assert_eq!(
+        record.request_parameters.source_ip_address,
+        "s3.amazonaws.com"
+    );
+    assert_eq!(
+        record.s3.object().map(|object| object.key.as_str()),
+        Some("archive/order-s3-intelligent-tiering-1.json")
+    );
+    assert_eq!(
+        record
+            .intelligent_tiering_event_data
+            .as_ref()
+            .map(|data| data.destination_access_tier.as_str()),
+        Some("ARCHIVE_ACCESS")
+    );
+
+    let parsed = EventParser::new()
+        .parse_s3_event_notification_records::<Value>(event)
+        .expect("fixture S3 Intelligent-Tiering records should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(
+        parsed[0]
+            .payload()
+            .pointer("/s3/get_object/key")
+            .and_then(Value::as_str),
+        Some("archive/order-s3-intelligent-tiering-1.json")
     );
 }
 
