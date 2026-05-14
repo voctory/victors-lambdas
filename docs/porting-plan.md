@@ -9,13 +9,15 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
   a `release-lambda` profile, and CI for fmt, clippy, test, and check.
 - Crates: one umbrella crate, `aws-lambda-powertools`, plus utility crates under `crates/`.
 - Feature flags: the umbrella crate exposes `logger`, `logger-tracing`, `metrics`, `tracer`, `tracer-opentelemetry`,
-  `tracer-tracing`, `parameters`, `parameters-appconfig`, `parameters-dynamodb`, `parameters-secrets`, `parameters-ssm`,
+  `tracer-tracing`, `tracer-xray`, `tracer-xray-daemon`, `parameters`, `parameters-appconfig`,
+  `parameters-dynamodb`, `parameters-secrets`, `parameters-ssm`,
   `jmespath`, `data-masking`, `data-masking-kms`, `kafka`, `kafka-avro`, `kafka-protobuf`, `parser`, `parser-aws-lambda-events`,
   `streaming`, `streaming-async`, `streaming-csv`, `streaming-gzip`, `streaming-s3`, `streaming-zip`, `batch`,
   `batch-aws-lambda-events`, `batch-parser`,
-  `idempotency`, `idempotency-dynamodb`, `feature-flags`, `feature-flags-appconfig`, `validation`, `validation-jsonschema`,
-  `validation-jmespath`, `event-handler`, `event-handler-appsync-scalars`, `event-handler-appsync-events`,
-  `event-handler-bedrock-agent-functions`, `event-handler-compression`, `event-handler-validation`,
+  `idempotency`, `idempotency-dynamodb`, `idempotency-jmespath`, `feature-flags`, `feature-flags-appconfig`,
+  `validation`, `validation-jsonschema`, `validation-jmespath`, `event-handler`, `event-handler-appsync-scalars`,
+  `event-handler-appsync-events`, `event-handler-bedrock-agent-functions`, `event-handler-compression`,
+  `event-handler-metrics`, `event-handler-tracer`, `event-handler-validation`,
   `event-handler-aws-lambda-events`, and `all`.
 - Examples: `examples/basic-lambda` builds against the umbrella crate with all current utility features enabled, and
   feature-specific crates under `examples/snippets/` provide buildable docs snippets.
@@ -145,6 +147,8 @@ Implemented umbrella features:
 - `event-handler-appsync-events`
 - `event-handler-bedrock-agent-functions`
 - `event-handler-compression`
+- `event-handler-metrics`
+- `event-handler-tracer`
 - `event-handler-validation`
 - `event-handler-aws-lambda-events`
 - `all`
