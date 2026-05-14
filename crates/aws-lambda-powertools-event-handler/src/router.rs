@@ -2,6 +2,8 @@
 
 use std::{any::TypeId, cmp::Ordering, fmt, future::Future, pin::Pin, sync::Arc};
 
+use aws_lambda_powertools_core::env;
+
 #[cfg(feature = "validation")]
 use crate::validation::{
     ValidationConfig, request_validation_response, response_validation_response,
@@ -47,6 +49,7 @@ pub struct Router {
     not_found_handler: Option<Box<Handler>>,
     typed_error_handlers: Vec<TypedErrorHandlerEntry>,
     error_handler: Option<Box<ErrorHandler>>,
+    debug_errors: Option<bool>,
     #[cfg(feature = "validation")]
     validation: Option<ValidationConfig>,
 }
@@ -66,6 +69,7 @@ pub struct AsyncRouter {
     not_found_handler: Option<Box<AsyncHandler>>,
     typed_error_handlers: Vec<AsyncTypedErrorHandlerEntry>,
     error_handler: Option<Box<AsyncErrorHandler>>,
+    debug_errors: Option<bool>,
     #[cfg(feature = "validation")]
     validation: Option<ValidationConfig>,
 }
@@ -83,6 +87,7 @@ impl Router {
             not_found_handler: None,
             typed_error_handlers: Vec::new(),
             error_handler: None,
+            debug_errors: None,
             #[cfg(feature = "validation")]
             validation: None,
         }
@@ -105,6 +110,31 @@ impl Router {
     #[must_use]
     pub const fn cors(&self) -> Option<&CorsConfig> {
         self.cors.as_ref()
+    }
+
+    /// Returns whether default internal-error responses expose error details.
+    ///
+    /// When not explicitly configured, this follows `POWERTOOLS_DEV`.
+    #[must_use]
+    pub fn debug_errors(&self) -> bool {
+        self.debug_errors.unwrap_or_else(powertools_dev_enabled)
+    }
+
+    /// Sets whether default internal-error responses expose error details.
+    ///
+    /// This only affects unhandled fallible route errors. Built-in
+    /// [`HttpError`] responses and custom error handlers keep their existing
+    /// response bodies.
+    pub fn set_debug_errors(&mut self, enabled: bool) -> &mut Self {
+        self.debug_errors = Some(enabled);
+        self
+    }
+
+    /// Returns a copy of this router with default error detail rendering configured.
+    #[must_use]
+    pub fn with_debug_errors(mut self, enabled: bool) -> Self {
+        self.set_debug_errors(enabled);
+        self
     }
 
     /// Returns router shared extension values.
@@ -614,6 +644,7 @@ impl Router {
             not_found_handler,
             typed_error_handlers,
             error_handler,
+            debug_errors,
             #[cfg(feature = "validation")]
             validation,
         } = router;
@@ -633,6 +664,9 @@ impl Router {
         self.merge_typed_error_handlers(typed_error_handlers);
         if let Some(error_handler) = error_handler {
             self.error_handler = Some(error_handler);
+        }
+        if let Some(debug_errors) = debug_errors {
+            self.debug_errors = Some(debug_errors);
         }
         #[cfg(feature = "validation")]
         if let Some(validation) = validation {
@@ -779,7 +813,7 @@ impl Router {
                     .as_ref()
                     .map(|handler| handler(request, error))
             })
-            .unwrap_or_else(|| default_error_response(error))
+            .unwrap_or_else(|| default_error_response(error, self.debug_errors()))
     }
 
     fn upsert_typed_error_handler(&mut self, entry: TypedErrorHandlerEntry) {
@@ -826,6 +860,7 @@ impl AsyncRouter {
             not_found_handler: None,
             typed_error_handlers: Vec::new(),
             error_handler: None,
+            debug_errors: None,
             #[cfg(feature = "validation")]
             validation: None,
         }
@@ -848,6 +883,31 @@ impl AsyncRouter {
     #[must_use]
     pub const fn cors(&self) -> Option<&CorsConfig> {
         self.cors.as_ref()
+    }
+
+    /// Returns whether default internal-error responses expose error details.
+    ///
+    /// When not explicitly configured, this follows `POWERTOOLS_DEV`.
+    #[must_use]
+    pub fn debug_errors(&self) -> bool {
+        self.debug_errors.unwrap_or_else(powertools_dev_enabled)
+    }
+
+    /// Sets whether default internal-error responses expose error details.
+    ///
+    /// This only affects unhandled fallible route errors. Built-in
+    /// [`HttpError`] responses and custom error handlers keep their existing
+    /// response bodies.
+    pub fn set_debug_errors(&mut self, enabled: bool) -> &mut Self {
+        self.debug_errors = Some(enabled);
+        self
+    }
+
+    /// Returns a copy of this asynchronous router with default error detail rendering configured.
+    #[must_use]
+    pub fn with_debug_errors(mut self, enabled: bool) -> Self {
+        self.set_debug_errors(enabled);
+        self
     }
 
     /// Returns router shared extension values.
@@ -1332,6 +1392,7 @@ impl AsyncRouter {
             not_found_handler,
             typed_error_handlers,
             error_handler,
+            debug_errors,
             #[cfg(feature = "validation")]
             validation,
         } = router;
@@ -1351,6 +1412,9 @@ impl AsyncRouter {
         self.merge_typed_error_handlers(typed_error_handlers);
         if let Some(error_handler) = error_handler {
             self.error_handler = Some(error_handler);
+        }
+        if let Some(debug_errors) = debug_errors {
+            self.debug_errors = Some(debug_errors);
         }
         #[cfg(feature = "validation")]
         if let Some(validation) = validation {
@@ -1504,7 +1568,7 @@ impl AsyncRouter {
             if let Some(handler) = &self.error_handler {
                 handler(request, error).await
             } else {
-                default_error_response(error)
+                default_error_response(error, self.debug_errors())
             }
         })
     }
@@ -1551,7 +1615,8 @@ impl fmt::Debug for Router {
             .field("shared_extensions_len", &self.shared_extensions.len())
             .field("has_not_found_handler", &self.not_found_handler.is_some())
             .field("typed_error_handlers_len", &self.typed_error_handlers.len())
-            .field("has_error_handler", &self.error_handler.is_some());
+            .field("has_error_handler", &self.error_handler.is_some())
+            .field("debug_errors", &self.debug_errors());
         #[cfg(feature = "validation")]
         debug.field("validation_enabled", &self.validation.is_some());
         debug.finish()
@@ -1569,7 +1634,8 @@ impl fmt::Debug for AsyncRouter {
             .field("shared_extensions_len", &self.shared_extensions.len())
             .field("has_not_found_handler", &self.not_found_handler.is_some())
             .field("typed_error_handlers_len", &self.typed_error_handlers.len())
-            .field("has_error_handler", &self.error_handler.is_some());
+            .field("has_error_handler", &self.error_handler.is_some())
+            .field("debug_errors", &self.debug_errors());
         #[cfg(feature = "validation")]
         debug.field("validation_enabled", &self.validation.is_some());
         debug.finish()
@@ -1743,16 +1809,31 @@ fn async_route_takes_precedence(
     }
 }
 
-fn default_error_response(error: &RouteError) -> Response {
-    error
-        .downcast_ref::<HttpError>()
-        .map_or_else(Response::internal_server_error, HttpError::to_response)
+fn default_error_response(error: &RouteError, debug_errors: bool) -> Response {
+    if let Some(error) = error.downcast_ref::<HttpError>() {
+        return error.to_response();
+    }
+
+    if debug_errors {
+        Response::internal_server_error().with_body(error.to_string())
+    } else {
+        Response::internal_server_error()
+    }
+}
+
+fn powertools_dev_enabled() -> bool {
+    debug_errors_from_source(env::var)
+}
+
+fn debug_errors_from_source(mut source: impl FnMut(&str) -> Option<String>) -> bool {
+    source(env::POWERTOOLS_DEV).is_some_and(|value| env::is_truthy(&value))
 }
 
 #[cfg(test)]
 mod tests {
     use std::{fmt, future::Future};
 
+    use aws_lambda_powertools_core::env;
     #[cfg(feature = "validation")]
     use aws_lambda_powertools_validation::Validator;
     use futures_executor::block_on;
@@ -2022,13 +2103,37 @@ mod tests {
 
     #[test]
     fn fallible_route_errors_default_to_internal_server_error() {
-        let mut router = Router::new();
+        let mut router = Router::new().with_debug_errors(false);
         router.post_fallible("/orders", |_| Err(TestRouteError("hidden detail")));
 
         let response = router.handle(Request::new(Method::Post, "/orders"));
 
         assert_eq!(response.status_code(), 500);
         assert_eq!(response.body(), b"Internal Server Error");
+    }
+
+    #[test]
+    fn fallible_route_errors_can_expose_details_in_debug_mode() {
+        let mut router = Router::new().with_debug_errors(true);
+        router.post_fallible("/orders", |_| Err(TestRouteError("debug detail")));
+
+        let response = router.handle(Request::new(Method::Post, "/orders"));
+
+        assert_eq!(response.status_code(), 500);
+        assert_eq!(response.body(), b"debug detail");
+    }
+
+    #[test]
+    fn debug_error_defaults_follow_powertools_dev() {
+        assert!(super::debug_errors_from_source(|name| {
+            (name == env::POWERTOOLS_DEV).then(|| "true".to_owned())
+        }));
+        assert!(!super::debug_errors_from_source(|name| {
+            (name == env::POWERTOOLS_DEV).then(|| "false".to_owned())
+        }));
+        assert!(!super::debug_errors_from_source(|name| {
+            (name == env::POWERTOOLS_DEV).then(|| "maybe".to_owned())
+        }));
     }
 
     #[test]
@@ -2690,6 +2795,21 @@ mod tests {
 
         assert_eq!(response.status_code(), 409);
         assert_eq!(response.body(), b"/orders:duplicate order");
+    }
+
+    #[test]
+    fn async_fallible_route_errors_can_expose_details_in_debug_mode() {
+        let mut router = AsyncRouter::new().with_debug_errors(true);
+        router.get_fallible("/orders", |_| {
+            async_fallible_response(async {
+                Err(Box::new(TestRouteError("async debug detail")) as Box<RouteError>)
+            })
+        });
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/orders")));
+
+        assert_eq!(response.status_code(), 500);
+        assert_eq!(response.body(), b"async debug detail");
     }
 
     #[test]

@@ -13,7 +13,8 @@ aws-lambda-powertools = { version = "0.1", features = ["event-handler"] }
 - `Request`, `Response`, `Method`, and `PathParams` types independent of a specific Lambda event source.
 - Static and dynamic route matching with static path precedence and exact-method precedence over `ANY`.
 - Multi-method route registration, custom not-found handlers, and router composition with path prefixes.
-- Fallible route handlers with built-in HTTP errors, catch-all error handlers, and typed error handlers.
+- Fallible route handlers with built-in HTTP errors, catch-all error handlers, typed error handlers, and
+  `POWERTOOLS_DEV` default error detail rendering.
 - Router-level and route-specific request/response middleware.
 - Request-scoped typed extensions for middleware-to-handler data, and router shared typed extensions for values reused
   across requests.
@@ -60,6 +61,14 @@ Trace record middleware is available when both the event handler and tracer util
 ```toml
 aws-lambda-powertools = { version = "0.1", features = ["event-handler-tracer"] }
 ```
+
+## Debug Error Details
+
+By default, unhandled fallible route errors return `500 Internal Server Error` without exposing the underlying error
+message. When `POWERTOOLS_DEV=true`, the default internal-error response body includes the route error's display text.
+You can override this per router with `Router::set_debug_errors` or `AsyncRouter::set_debug_errors`.
+
+Custom error handlers and explicit `HttpError` responses keep their own response bodies in both modes.
 
 ## Snippet
 
