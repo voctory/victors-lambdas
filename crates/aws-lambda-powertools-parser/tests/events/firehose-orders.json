@@ -1,0 +1,12 @@
+{
+  "invocationId": "invoked-orders",
+  "deliveryStreamArn": "arn:aws:firehose:us-east-1:123456789012:deliverystream/orders",
+  "region": "us-east-1",
+  "records": [
+    {
+      "recordId": "record-1",
+      "approximateArrivalTimestamp": 1700000000000,
+      "data": "eyJvcmRlcl9pZCI6Im9yZGVyLWZpcmVob3NlLTEiLCJxdWFudGl0eSI6Nn0="
+    }
+  ]
+}

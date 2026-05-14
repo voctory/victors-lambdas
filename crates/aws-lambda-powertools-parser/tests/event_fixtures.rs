@@ -5,7 +5,9 @@
 use std::path::PathBuf;
 
 use aws_lambda_events::event::{
-    apigw::ApiGatewayV2httpRequest, eventbridge::EventBridgeEvent, sqs::SqsEvent,
+    apigw::ApiGatewayV2httpRequest, cloudwatch_logs::LogsEvent, dynamodb::Event as DynamoDbEvent,
+    eventbridge::EventBridgeEvent, firehose::KinesisFirehoseEvent, kinesis::KinesisEvent,
+    sqs::SqsEvent,
 };
 use aws_lambda_powertools_parser::EventParser;
 use aws_lambda_powertools_testing::load_json_fixture;
@@ -63,6 +65,62 @@ fn parses_sqs_message_body_fixture() {
     assert_eq!(parsed[0].payload().quantity, 1);
     assert_eq!(parsed[1].payload().order_id, "order-sqs-2");
     assert_eq!(parsed[1].payload().quantity, 4);
+}
+
+#[test]
+fn parses_kinesis_record_fixture() {
+    let event = load_json_fixture::<KinesisEvent>(fixture("kinesis-orders.json"))
+        .expect("Kinesis fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_kinesis_records::<OrderEvent>(event)
+        .expect("fixture Kinesis data should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].payload().order_id, "order-kinesis-1");
+    assert_eq!(parsed[0].payload().quantity, 5);
+}
+
+#[test]
+fn parses_firehose_record_fixture() {
+    let event = load_json_fixture::<KinesisFirehoseEvent>(fixture("firehose-orders.json"))
+        .expect("Firehose fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_firehose_records::<OrderEvent>(event)
+        .expect("fixture Firehose data should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].payload().order_id, "order-firehose-1");
+    assert_eq!(parsed[0].payload().quantity, 6);
+}
+
+#[test]
+fn parses_cloudwatch_log_message_fixture() {
+    let event = load_json_fixture::<LogsEvent>(fixture("cloudwatch-logs-orders.json"))
+        .expect("CloudWatch Logs fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_cloudwatch_log_messages::<OrderEvent>(event)
+        .expect("fixture log message should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].payload().order_id, "order-log-1");
+    assert_eq!(parsed[0].payload().quantity, 7);
+}
+
+#[test]
+fn parses_dynamodb_new_image_fixture() {
+    let event = load_json_fixture::<DynamoDbEvent>(fixture("dynamodb-orders.json"))
+        .expect("DynamoDB fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_dynamodb_new_images::<OrderEvent>(event)
+        .expect("fixture DynamoDB NewImage should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].payload().order_id, "order-dynamodb-1");
+    assert_eq!(parsed[0].payload().quantity, 8);
 }
 
 fn fixture(name: &str) -> PathBuf {
