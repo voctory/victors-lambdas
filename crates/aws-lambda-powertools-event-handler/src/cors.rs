@@ -144,6 +144,8 @@ impl CorsConfig {
     }
 
     /// Returns a copy with credential support enabled or disabled.
+    ///
+    /// Credential headers are emitted only when the matched origin is not `*`.
     #[must_use]
     pub const fn with_allow_credentials(mut self, allow_credentials: bool) -> Self {
         self.allow_credentials = allow_credentials;
@@ -205,7 +207,7 @@ impl CorsConfig {
         if let Some(max_age_seconds) = self.max_age_seconds {
             response = response.with_header(MAX_AGE, max_age_seconds.to_string());
         }
-        if self.allow_credentials {
+        if self.allow_credentials && origin != "*" {
             response = response.with_header(ALLOW_CREDENTIALS, "true");
         }
 
@@ -331,6 +333,18 @@ mod tests {
             response.header("access-control-allow-origin"),
             Some("https://app.example.com")
         );
+    }
+
+    #[test]
+    fn wildcard_origin_does_not_emit_credentials_header() {
+        let cors = CorsConfig::default().with_allow_credentials(true);
+        let request =
+            Request::new(Method::Get, "/orders").with_header("Origin", "https://app.example.com");
+
+        let response = cors.apply_for_request(&request, Response::ok("ok"));
+
+        assert_eq!(response.header("access-control-allow-origin"), Some("*"));
+        assert_eq!(response.header("access-control-allow-credentials"), None);
     }
 
     #[test]
