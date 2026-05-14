@@ -23,6 +23,7 @@ all = [
     "event-handler-bedrock-agent-functions",
     "event-handler-compression",
     "event-handler-metrics",
+    "event-handler-tracer",
     "event-handler-validation",
     "feature-flags",
     "feature-flags-appconfig",
@@ -81,6 +82,11 @@ event-handler-metrics = [
     "event-handler",
     "metrics",
     "aws-lambda-powertools-event-handler/metrics",
+]
+event-handler-tracer = [
+    "event-handler",
+    "tracer",
+    "aws-lambda-powertools-event-handler/tracer",
 ]
 event-handler-validation = [
     "event-handler",

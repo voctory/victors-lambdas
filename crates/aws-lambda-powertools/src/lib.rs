@@ -120,6 +120,12 @@ pub mod prelude {
         record_http_metrics,
     };
 
+    #[cfg(feature = "event-handler-tracer")]
+    pub use aws_lambda_powertools_event_handler::{
+        HttpTraceConfig, HttpTraceSink, http_trace_response_middleware,
+        http_trace_response_middleware_with_config, record_http_trace,
+    };
+
     #[cfg(feature = "event-handler-aws-lambda-events")]
     pub use aws_lambda_powertools_event_handler::{
         AlbAdapterError, AlbAdapterResult, ApiGatewayAdapterError, ApiGatewayAdapterResult,

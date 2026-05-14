@@ -21,6 +21,7 @@ aws-lambda-powertools = { version = "0.1", features = ["event-handler"] }
 - Optional CORS preflight handling and response headers with request `Origin` matching, wildcard/additional origins,
   AWS-friendly default request headers, and credential headers for non-wildcard origins.
 - Optional metrics middleware through `event-handler-metrics` for per-route latency, fault, and error metrics.
+- Optional trace record middleware through `event-handler-tracer` for exporter-neutral per-route `TraceSegment` records.
 - Optional AppSync GraphQL scalar helpers for `ID`, `AWSDate`, `AWSTime`, `AWSDateTime`, and `AWSTimestamp`.
 - Optional request/response validation hooks through `event-handler-validation`.
 - Optional gzip and deflate response compression through `event-handler-compression`.
@@ -52,6 +53,12 @@ Metrics middleware is available when both the event handler and metrics utility 
 
 ```toml
 aws-lambda-powertools = { version = "0.1", features = ["event-handler-metrics"] }
+```
+
+Trace record middleware is available when both the event handler and tracer utility are enabled:
+
+```toml
+aws-lambda-powertools = { version = "0.1", features = ["event-handler-tracer"] }
 ```
 
 ## Snippet

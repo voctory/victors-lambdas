@@ -28,6 +28,8 @@ mod request;
 mod response;
 mod route;
 mod router;
+#[cfg(feature = "tracer")]
+mod trace;
 #[cfg(feature = "validation")]
 mod validation;
 #[cfg(feature = "aws-lambda-events")]
@@ -103,6 +105,11 @@ pub use route::{
 pub use router::{
     AsyncErrorHandler, AsyncRouteMatch, AsyncRouter, ErrorHandler, RequestMiddleware,
     ResponseMiddleware, RouteMatch, Router,
+};
+#[cfg(feature = "tracer")]
+pub use trace::{
+    HttpTraceConfig, HttpTraceSink, http_trace_response_middleware,
+    http_trace_response_middleware_with_config, record_http_trace,
 };
 #[cfg(feature = "validation")]
 pub use validation::{RequestValidator, ResponseValidator, ValidationConfig};

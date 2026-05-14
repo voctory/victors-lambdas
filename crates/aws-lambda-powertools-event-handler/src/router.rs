@@ -176,6 +176,17 @@ impl Router {
         self
     }
 
+    /// Adds response middleware that records per-request HTTP trace segments.
+    #[cfg(feature = "tracer")]
+    pub fn add_trace_middleware(
+        &mut self,
+        tracer: aws_lambda_powertools_tracer::Tracer,
+        sink: std::sync::Arc<crate::HttpTraceSink>,
+    ) -> &mut Self {
+        self.add_response_middleware(crate::http_trace_response_middleware(tracer, sink));
+        self
+    }
+
     /// Returns the number of registered request middleware functions.
     #[must_use]
     pub fn request_middleware_len(&self) -> usize {
@@ -905,6 +916,17 @@ impl AsyncRouter {
     ) -> &mut Self {
         self.add_request_middleware(crate::http_metrics_start_middleware());
         self.add_response_middleware(crate::http_metrics_response_middleware(metrics));
+        self
+    }
+
+    /// Adds response middleware that records per-request HTTP trace segments.
+    #[cfg(feature = "tracer")]
+    pub fn add_trace_middleware(
+        &mut self,
+        tracer: aws_lambda_powertools_tracer::Tracer,
+        sink: std::sync::Arc<crate::HttpTraceSink>,
+    ) -> &mut Self {
+        self.add_response_middleware(crate::http_trace_response_middleware(tracer, sink));
         self
     }
 
