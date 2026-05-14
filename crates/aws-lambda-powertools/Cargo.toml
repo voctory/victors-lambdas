@@ -35,6 +35,7 @@ all = [
     "streaming",
     "streaming-csv",
     "streaming-gzip",
+    "streaming-zip",
     "tracer",
     "validation",
 ]
@@ -94,6 +95,7 @@ parser-aws-lambda-events = ["parser", "aws-lambda-powertools-parser/aws-lambda-e
 streaming = ["dep:aws-lambda-powertools-streaming"]
 streaming-csv = ["streaming", "aws-lambda-powertools-streaming/csv"]
 streaming-gzip = ["streaming", "aws-lambda-powertools-streaming/gzip"]
+streaming-zip = ["streaming", "aws-lambda-powertools-streaming/zip"]
 tracer = ["dep:aws-lambda-powertools-tracer"]
 tracer-opentelemetry = ["tracer", "aws-lambda-powertools-tracer/opentelemetry"]
 tracer-tracing = ["tracer", "aws-lambda-powertools-tracer/tracing"]

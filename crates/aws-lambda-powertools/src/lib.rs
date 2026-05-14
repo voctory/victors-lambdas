@@ -302,6 +302,9 @@ pub mod prelude {
     #[cfg(feature = "streaming-gzip")]
     pub use aws_lambda_powertools_streaming::gzip_decoder;
 
+    #[cfg(feature = "streaming-zip")]
+    pub use aws_lambda_powertools_streaming::zip_archive;
+
     #[cfg(feature = "tracer")]
     pub use aws_lambda_powertools_tracer::{
         TraceContext, TraceFields, TraceSegment, TraceValue, Tracer, TracerConfig,

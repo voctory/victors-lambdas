@@ -14,8 +14,9 @@ aws-lambda-powertools = { version = "0.1", features = ["streaming"] }
 - `BytesRangeSource` supports local buffers for examples and tests.
 - Optional `streaming-gzip` exposes `gzip_decoder`.
 - Optional `streaming-csv` exposes `csv_reader` and `csv_reader_with_builder`.
+- Optional `streaming-zip` exposes `zip_archive`.
 
-An AWS SDK-backed S3 range source and ZIP transform are not implemented yet.
+An AWS SDK-backed S3 range source is not implemented yet.
 
 ## Snippet
 

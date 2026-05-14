@@ -1,6 +1,6 @@
 //! Streaming transforms.
 
-use std::io::Read;
+use std::io::{Read, Seek};
 
 /// Wraps a reader in a gzip decoder.
 #[cfg(feature = "gzip")]
@@ -30,6 +30,20 @@ where
     R: Read,
 {
     builder.from_reader(reader)
+}
+
+/// Creates a ZIP archive reader from a seekable byte stream.
+///
+/// # Errors
+///
+/// Returns an error when the stream does not contain a readable ZIP archive.
+#[cfg(feature = "zip")]
+#[cfg_attr(docsrs, doc(cfg(feature = "zip")))]
+pub fn zip_archive<R>(reader: R) -> zip::result::ZipResult<zip::ZipArchive<R>>
+where
+    R: Read + Seek,
+{
+    zip::ZipArchive::new(reader)
 }
 
 #[cfg(test)]
@@ -72,5 +86,33 @@ mod tests {
             .expect("gzip should decode");
 
         assert_eq!(output, "compressed");
+    }
+
+    #[cfg(feature = "zip")]
+    #[test]
+    fn reads_zip_archives() {
+        use std::io::{Cursor, Write as _};
+
+        let mut buffer = Cursor::new(Vec::new());
+        {
+            let mut writer = zip::ZipWriter::new(&mut buffer);
+            let options = zip::write::SimpleFileOptions::default()
+                .compression_method(zip::CompressionMethod::Stored);
+            writer
+                .start_file("orders.txt", options)
+                .expect("file should start");
+            writer.write_all(b"order-1").expect("write should work");
+            writer.finish().expect("zip should finish");
+        }
+
+        let source = BytesRangeSource::new(buffer.into_inner());
+        let stream = SeekableStream::new(source);
+        let mut archive = super::zip_archive(stream).expect("zip should open");
+        let mut file = archive.by_name("orders.txt").expect("file should exist");
+        let mut output = String::new();
+
+        file.read_to_string(&mut output).expect("file should read");
+
+        assert_eq!(output, "order-1");
     }
 }

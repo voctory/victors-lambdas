@@ -14,3 +14,6 @@ pub use transform::{csv_reader, csv_reader_with_builder};
 
 #[cfg(feature = "gzip")]
 pub use transform::gzip_decoder;
+
+#[cfg(feature = "zip")]
+pub use transform::zip_archive;
