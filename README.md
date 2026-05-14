@@ -17,6 +17,8 @@ first implementation tranche has landed:
 - sync and async parameter provider/cache traits with in-memory, optional SSM Parameter Store single, by-name, path, and
   set operations, optional Secrets Manager, AppConfig, and DynamoDB providers, force-fetch support, and JSON, base64, and
   suffix-based auto transforms
+- JMESPath extraction with reusable compiled expressions, typed extraction, common Lambda event envelope constants, and
+  Powertools decode functions for JSON, base64, and base64-gzip payloads
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway
   REST/HTTP/WebSocket API bodies, API Gateway WebSocket lifecycle aliases, API Gateway Lambda authorizer aliases,
   common Powertools parser event model aliases, AppSync direct resolver/batch aliases and arguments/source, AppSync
@@ -76,6 +78,7 @@ Initial feature docs:
 - [Metrics](docs/features/metrics.md)
 - [Tracer](docs/features/tracer.md)
 - [Parameters](docs/features/parameters.md)
+- [JMESPath](docs/features/jmespath.md)
 - [Parser](docs/features/parser.md)
 - [Batch](docs/features/batch.md)
 - [Idempotency](docs/features/idempotency.md)

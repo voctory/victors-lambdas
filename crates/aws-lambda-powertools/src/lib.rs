@@ -29,6 +29,12 @@ pub mod idempotency {
     pub use aws_lambda_powertools_idempotency::*;
 }
 
+/// `JMESPath` extraction utility.
+#[cfg(feature = "jmespath")]
+pub mod jmespath {
+    pub use aws_lambda_powertools_jmespath::*;
+}
+
 /// Structured logging utility.
 #[cfg(feature = "logger")]
 pub mod logger {
@@ -137,6 +143,14 @@ pub mod prelude {
 
     #[cfg(feature = "idempotency-dynamodb")]
     pub use aws_lambda_powertools_idempotency::DynamoDbIdempotencyStore;
+
+    #[cfg(feature = "jmespath")]
+    pub use aws_lambda_powertools_jmespath::{
+        API_GATEWAY_HTTP, API_GATEWAY_REST, CLOUDWATCH_EVENTS_SCHEDULED, CLOUDWATCH_LOGS,
+        EVENTBRIDGE, JmespathError, JmespathErrorKind, JmespathExpression, JmespathResult,
+        KINESIS_DATA_STREAM, S3_EVENTBRIDGE_SQS, S3_KINESIS_FIREHOSE, S3_SNS_KINESIS_FIREHOSE,
+        S3_SNS_SQS, S3_SQS, SNS, SQS, extract_data_from_envelope, query, search, search_as,
+    };
 
     #[cfg(feature = "logger")]
     pub use aws_lambda_powertools_logger::{
