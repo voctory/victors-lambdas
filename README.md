@@ -61,7 +61,7 @@ first implementation tranche has landed:
   API Gateway REST/HTTP/WebSocket API, ALB, Lambda Function URL, VPC Lattice, sync/async AppSync direct and batch resolver
   composition, AppSync Events routing and composition, Bedrock Agent OpenAPI adapter, and sync/async Bedrock Agent
   function-details resolver
-- testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
+- testing helper surfaces for Lambda context stubs, handler harnesses, parameter provider stubs, and fixture loading
 
 Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, vendor-specific OpenTelemetry exporter
 examples, additional event-handler adapters, and crates.io publishing. See
@@ -96,6 +96,7 @@ Initial feature docs:
 - [Validation](docs/features/validation.md)
 - [Feature Flags](docs/features/feature-flags.md)
 - [Event Handler](docs/features/event-handler.md)
+- [Testing](docs/features/testing.md)
 
 ## Validation
 

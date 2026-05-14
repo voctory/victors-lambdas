@@ -61,7 +61,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Idempotency | `IdempotencyConfig`, `IdempotencyKey`, `Idempotency`, `AsyncIdempotency`, `IdempotencyOutcome`, typed workflow errors, SHA-256 JSON payload hashing, JSON Pointer key extraction, sync and async handler wrappers, payload hash validation, Lambda remaining-time in-progress expiry, result replay, sync and async store traits/errors/results, in-memory store, local cache wrapper, optional DynamoDB store, initial docs/snippet, and buildable DynamoDB-backed snippet | Additional deployment examples |
 | Feature flags | `FeatureFlagConfig`, `FeatureFlag`, `FeatureRule`, `FeatureCondition`, `RuleAction`, `FeatureFlagCachePolicy`, `FeatureFlags`, `AsyncFeatureFlags`, sync/async store traits, `InMemoryFeatureFlagStore`, optional `AppConfigFeatureFlagStore`, boolean and JSON-valued evaluation, enabled-feature listing, configuration cache policies, common context comparators, modulo range matching, time-window rules, and initial docs/snippet | Richer examples |
 | Event handler | `Method`, method parsing/matching, `Request`, `Response`, `HttpError`, `PathParams`, `Route`, `AsyncRoute`, `Router`, `AsyncRouter`, static/dynamic path precedence, `ANY` and multi-method route registration, 404 dispatch, unsupported-method `405` adapter responses, custom not-found handlers, fallible sync/async route handlers with router-level and typed error handlers, router composition with path prefixes, router-level and route-specific request/response middleware, request-scoped and shared typed extensions, `CorsConfig`, preflight responses, routed/404/error CORS headers, optional router-level and route-specific validation hooks, optional gzip/deflate compression middleware, optional sync/async AppSync direct and batch resolver routing and composition, optional AppSync Events routing and composition, optional Bedrock Agent OpenAPI adapter, optional sync/async Bedrock Agent function-details resolver, optional ALB, Lambda Function URL, and VPC Lattice adapters, optional API Gateway REST API v1 / HTTP API v2 / WebSocket API adapters, and initial docs/snippet | Additional resolver families |
-| Testing | `LambdaContextStub`, parameter provider stub re-export, text/bytes fixture readers, and JSON fixture decoder | Fake AWS providers, handler harnesses |
+| Testing | `LambdaContextStub`, `HandlerHarness`, parameter provider stub re-export, text/bytes fixture readers, and JSON fixture decoder | Fake AWS provider stubs |
 
 ## Next Durable Work
 
@@ -92,7 +92,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | `aws-lambda-powertools-validation` | Payload validation | Basic validators, inbound/outbound wrappers, optional JSON Schema validation, schema caching, event-handler validation hooks, and initial docs/snippet exist; next work is richer handler examples |
 | `aws-lambda-powertools-feature-flags` | Feature flag evaluation | Typed configuration, sync/async rule evaluation, in-memory and optional AppConfig stores, boolean/JSON-valued flags, enabled-feature listing, cache policies, common comparators, modulo matching, time-window rule actions, and initial docs/snippet exist; next work is richer examples |
 | `aws-lambda-powertools-event-handler` | Routing | Dependency-free sync/async routing, multi-method route registration, built-in HTTP errors, unsupported-method `405` adapter responses, custom not-found handlers, fallible sync/async route error handling with typed handlers, router composition with path prefixes, router-level and route-specific middleware, request-scoped and shared typed extensions, CORS, optional router-level and route-specific validation hooks, optional compression middleware, optional sync/async AppSync direct and batch resolver routing and composition, optional AppSync Events routing and composition, optional Bedrock Agent OpenAPI adapter, optional sync/async Bedrock Agent function-details resolver, optional ALB, Lambda Function URL, VPC Lattice, API Gateway REST API, HTTP API, and WebSocket API adapters, and initial docs/snippet exist; next work is additional event adapters |
-| `aws-lambda-powertools-testing` | Test helpers | Context stubs, parameter provider stubs, and fixture loaders exist; expand fake providers and handler harnesses only as real utilities need them |
+| `aws-lambda-powertools-testing` | Test helpers | Context stubs, handler harnesses, parameter provider stubs, and fixture loaders exist; expand fake provider stubs only as real utilities need them |
 
 Provider features should live on the owning utility crate first and be re-exposed by the umbrella crate only when that is
 ergonomic for users.
@@ -330,6 +330,7 @@ Powertools conventions.
 - [x] Add event-handler API Gateway WebSocket adapter.
 - [x] Add event-handler feature doc and buildable snippet.
 - [x] Add testing fixture loaders.
+- [x] Add testing handler harnesses.
 - [ ] Add release notes, crates.io publishing checks, docs.rs coverage, and provenance/SBOM work after API boundaries
   settle.
 
