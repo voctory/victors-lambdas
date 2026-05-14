@@ -33,7 +33,7 @@ first implementation tranche has landed:
   and optional local JSON Schema validation with a compiled schema cache
 - idempotency keys, payload hashing, JSON Pointer key extraction, sync and async handler workflows, replay behavior,
   Lambda remaining-time in-progress expiry, sync and async store traits, an in-memory store, an optional local cache
-  wrapper, and an optional DynamoDB store
+  wrapper, an optional DynamoDB store, and buildable local/AWS snippets
 - feature flag schema parsing, sync/async store traits, in-memory and optional AppConfig stores, boolean and JSON-valued
   evaluation, enabled-feature listing, configuration cache policies, common context comparators, modulo range matching,
   and time-window rules
@@ -51,8 +51,8 @@ first implementation tranche has landed:
   function-details resolver
 - testing helper surfaces for Lambda context stubs, parameter provider stubs, and fixture loading
 
-Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, richer idempotency examples, vendor-specific
-OpenTelemetry exporter examples, additional event-handler adapters, and crates.io publishing. See
+Not yet implemented: broader `aws_lambda_events` envelopes and fixtures, vendor-specific OpenTelemetry exporter
+examples, additional event-handler adapters, and crates.io publishing. See
 [docs/porting-plan.md](docs/porting-plan.md) for the current backlog.
 
 ## Workspace

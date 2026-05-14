@@ -1513,6 +1513,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "idempotency-aws-snippet"
+version = "0.1.0"
+dependencies = [
+ "aws-config",
+ "aws-lambda-powertools",
+ "aws-sdk-dynamodb",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "idempotency-snippet"
 version = "0.1.0"
 dependencies = [

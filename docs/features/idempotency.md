@@ -70,3 +70,20 @@ cargo run -p idempotency-snippet
 
 Use `execute_json_with_key` when a stable field such as a request ID should identify the operation while the full
 payload hash is still validated. Use `execute_json` when hashing the whole payload is the intended key strategy.
+
+## AWS Store Snippet
+
+The buildable AWS-backed snippet in
+[examples/snippets/idempotency-aws/src/main.rs](../../examples/snippets/idempotency-aws/src/main.rs) shows an async
+workflow backed by `DynamoDbIdempotencyStore`, wrapped in `CachedIdempotencyStore`, with a per-invocation Lambda
+remaining-time setting.
+
+The snippet is guarded so local validation does not call AWS by default:
+
+```sh
+cargo run -p idempotency-aws-snippet
+RUN_AWS_IDEMPOTENCY_SNIPPET=1 IDEMPOTENCY_TABLE=powertools-idempotency cargo run -p idempotency-aws-snippet
+```
+
+Set `RUN_AWS_IDEMPOTENCY_SNIPPET=1` only in an environment with AWS credentials, region configuration, and a DynamoDB
+table that matches the configured idempotency attributes.
