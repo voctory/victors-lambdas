@@ -144,6 +144,39 @@ fn parses_s3_record_fixture() {
 }
 
 #[test]
+fn parses_s3_over_sqs_record_fixture() {
+    let event = load_json_fixture::<SqsEvent>(fixture("s3-over-sqs-order-object.json"))
+        .expect("S3-over-SQS fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_s3_sqs_event_records::<Value>(event)
+        .expect("fixture S3-over-SQS records should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(
+        parsed[0]
+            .payload()
+            .pointer("/s3/object/key")
+            .and_then(Value::as_str),
+        Some("orders/order-s3-sqs-1.json")
+    );
+}
+
+#[test]
+fn parses_sns_over_sqs_message_fixture() {
+    let event = load_json_fixture::<SqsEvent>(fixture("sns-over-sqs-orders.json"))
+        .expect("SNS-over-SQS fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_sns_sqs_messages::<OrderEvent>(event)
+        .expect("fixture SNS-over-SQS messages should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].payload().order_id, "order-sns-sqs-1");
+    assert_eq!(parsed[0].payload().quantity, 12);
+}
+
+#[test]
 fn parses_ses_record_fixture() {
     let event = load_json_fixture::<SimpleEmailEvent>(fixture("ses-order-email.json"))
         .expect("SES fixture should decode");

@@ -1,0 +1,20 @@
+{
+  "Records": [
+    {
+      "messageId": "message-s3-sqs-1",
+      "receiptHandle": "receipt-s3-sqs-1",
+      "body": "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\",\"eventTime\":\"2024-01-01T00:00:00.000Z\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"A1YQ72UWCM96UF\"},\"requestParameters\":{\"sourceIPAddress\":\"127.0.0.1\"},\"responseElements\":{\"x-amz-request-id\":\"request-s3-sqs-1\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"orders-config\",\"bucket\":{\"name\":\"orders\",\"ownerIdentity\":{\"principalId\":\"A1YQ72UWCM96UF\"},\"arn\":\"arn:aws:s3:::orders\"},\"object\":{\"key\":\"orders/order-s3-sqs-1.json\",\"size\":1024,\"eTag\":\"etag-s3-sqs-1\",\"sequencer\":\"002\"}}}]}",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1767225600010",
+        "SenderId": "sender-id",
+        "ApproximateFirstReceiveTimestamp": "1767225600011"
+      },
+      "messageAttributes": {},
+      "md5OfBody": "md5-s3-sqs-1",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:orders",
+      "awsRegion": "us-east-1"
+    }
+  ]
+}
