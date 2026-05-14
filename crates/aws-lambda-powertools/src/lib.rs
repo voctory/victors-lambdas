@@ -35,6 +35,12 @@ pub mod jmespath {
     pub use aws_lambda_powertools_jmespath::*;
 }
 
+/// Kafka consumer record utility.
+#[cfg(feature = "kafka")]
+pub mod kafka {
+    pub use aws_lambda_powertools_kafka::*;
+}
+
 /// Structured logging utility.
 #[cfg(feature = "logger")]
 pub mod logger {
@@ -150,6 +156,13 @@ pub mod prelude {
         EVENTBRIDGE, JmespathError, JmespathErrorKind, JmespathExpression, JmespathResult,
         KINESIS_DATA_STREAM, S3_EVENTBRIDGE_SQS, S3_KINESIS_FIREHOSE, S3_SNS_KINESIS_FIREHOSE,
         S3_SNS_SQS, S3_SQS, SNS, SQS, extract_data_from_envelope, query, search, search_as,
+    };
+
+    #[cfg(feature = "kafka")]
+    pub use aws_lambda_powertools_kafka::{
+        ConsumerRecord, ConsumerRecords, KafkaConsumer, KafkaConsumerConfig, KafkaConsumerError,
+        KafkaConsumerErrorKind, KafkaConsumerResult, KafkaFieldDeserializer, consumer_records,
+        decode_base64_json, decode_base64_string,
     };
 
     #[cfg(feature = "logger")]

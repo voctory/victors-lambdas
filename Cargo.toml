@@ -30,6 +30,7 @@ aws-lambda-powertools-validation = { path = "crates/aws-lambda-powertools-valida
 aws-lambda-powertools-event-handler = { path = "crates/aws-lambda-powertools-event-handler", version = "0.1.0" }
 aws-lambda-powertools-feature-flags = { path = "crates/aws-lambda-powertools-feature-flags", version = "0.1.0" }
 aws-lambda-powertools-jmespath = { path = "crates/aws-lambda-powertools-jmespath", version = "0.1.0" }
+aws-lambda-powertools-kafka = { path = "crates/aws-lambda-powertools-kafka", version = "0.1.0" }
 aws-lambda-powertools-testing = { path = "crates/aws-lambda-powertools-testing", version = "0.1.0" }
 
 [workspace.lints.rust]

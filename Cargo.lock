@@ -122,6 +122,7 @@ dependencies = [
  "aws-lambda-powertools-feature-flags",
  "aws-lambda-powertools-idempotency",
  "aws-lambda-powertools-jmespath",
+ "aws-lambda-powertools-kafka",
  "aws-lambda-powertools-logger",
  "aws-lambda-powertools-metrics",
  "aws-lambda-powertools-parameters",
@@ -192,6 +193,17 @@ dependencies = [
  "base64 0.22.1",
  "flate2",
  "jmespatch",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "aws-lambda-powertools-kafka"
+version = "0.1.0"
+dependencies = [
+ "aws_lambda_events",
+ "base64 0.22.1",
+ "chrono",
  "serde",
  "serde_json",
 ]
@@ -1690,6 +1702,17 @@ dependencies = [
  "serde_json",
  "unicode-general-category",
  "uuid-simd",
+]
+
+[[package]]
+name = "kafka-snippet"
+version = "0.1.0"
+dependencies = [
+ "aws-lambda-powertools",
+ "aws_lambda_events",
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

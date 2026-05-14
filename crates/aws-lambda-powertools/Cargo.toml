@@ -24,6 +24,7 @@ all = [
     "feature-flags-appconfig",
     "idempotency",
     "jmespath",
+    "kafka",
     "logger",
     "metrics",
     "parameters",
@@ -70,6 +71,7 @@ feature-flags-appconfig = [
 idempotency = ["dep:aws-lambda-powertools-idempotency"]
 idempotency-dynamodb = ["idempotency", "aws-lambda-powertools-idempotency/dynamodb"]
 jmespath = ["dep:aws-lambda-powertools-jmespath"]
+kafka = ["dep:aws-lambda-powertools-kafka"]
 logger = ["dep:aws-lambda-powertools-logger"]
 logger-tracing = ["logger", "aws-lambda-powertools-logger/tracing"]
 metrics = ["dep:aws-lambda-powertools-metrics"]
@@ -95,6 +97,7 @@ aws-lambda-powertools-event-handler = { workspace = true, optional = true }
 aws-lambda-powertools-feature-flags = { workspace = true, optional = true }
 aws-lambda-powertools-idempotency = { workspace = true, optional = true }
 aws-lambda-powertools-jmespath = { workspace = true, optional = true }
+aws-lambda-powertools-kafka = { workspace = true, optional = true }
 aws-lambda-powertools-logger = { workspace = true, optional = true }
 aws-lambda-powertools-metrics = { workspace = true, optional = true }
 aws-lambda-powertools-parameters = { workspace = true, optional = true }
