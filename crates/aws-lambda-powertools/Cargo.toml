@@ -15,6 +15,7 @@ categories.workspace = true
 default = []
 all = [
     "batch",
+    "data-masking",
     "event-handler",
     "event-handler-appsync-events",
     "event-handler-bedrock-agent-functions",
@@ -39,6 +40,7 @@ batch-parser = [
     "parser",
     "aws-lambda-powertools-batch/parser",
 ]
+data-masking = ["dep:aws-lambda-powertools-data-masking"]
 event-handler = ["dep:aws-lambda-powertools-event-handler"]
 event-handler-appsync-events = [
     "event-handler",
@@ -93,6 +95,7 @@ validation-jsonschema = ["validation", "aws-lambda-powertools-validation/jsonsch
 [dependencies]
 aws-lambda-powertools-core.workspace = true
 aws-lambda-powertools-batch = { workspace = true, optional = true }
+aws-lambda-powertools-data-masking = { workspace = true, optional = true }
 aws-lambda-powertools-event-handler = { workspace = true, optional = true }
 aws-lambda-powertools-feature-flags = { workspace = true, optional = true }
 aws-lambda-powertools-idempotency = { workspace = true, optional = true }

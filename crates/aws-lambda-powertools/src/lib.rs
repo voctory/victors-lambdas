@@ -11,6 +11,12 @@ pub mod core {
     pub use aws_lambda_powertools_core::*;
 }
 
+/// Data masking utility.
+#[cfg(feature = "data-masking")]
+pub mod data_masking {
+    pub use aws_lambda_powertools_data_masking::*;
+}
+
 /// Event handler utility.
 #[cfg(feature = "event-handler")]
 pub mod event_handler {
@@ -77,6 +83,13 @@ pub mod prelude {
 
     #[cfg(feature = "batch-parser")]
     pub use aws_lambda_powertools_batch::ParsedBatchRecord;
+
+    #[cfg(feature = "data-masking")]
+    pub use aws_lambda_powertools_data_masking::{
+        DATA_MASKING_STRING, DataMasking, DataMaskingConfig, DataMaskingError,
+        DataMaskingErrorKind, DataMaskingResult, MaskingOptions, MaskingStrategy, erase,
+        erase_fields,
+    };
 
     #[cfg(feature = "event-handler")]
     pub use aws_lambda_powertools_event_handler::{

@@ -1,0 +1,18 @@
+[package]
+name = "aws-lambda-powertools-data-masking"
+description = "Data masking utility for Powertools Lambda Rust."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+regex = "1.11"
+serde_json = "1.0"
+
+[lints]
+workspace = true

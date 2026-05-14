@@ -19,6 +19,8 @@ first implementation tranche has landed:
   suffix-based auto transforms
 - JMESPath extraction with reusable compiled expressions, typed extraction, common Lambda event envelope constants, and
   Powertools decode functions for JSON, base64, and base64-gzip payloads
+- data masking for JSON payloads with whole-value erasure, field masking by JSON Pointer or dot path, fixed/dynamic,
+  custom, and regex masking strategies, and configurable missing-field behavior
 - Kafka consumer record materialization that flattens Lambda Kafka event records, decodes primitive or JSON base64 keys
   and values, decodes headers, and preserves original encoded fields
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway
@@ -81,6 +83,7 @@ Initial feature docs:
 - [Tracer](docs/features/tracer.md)
 - [Parameters](docs/features/parameters.md)
 - [JMESPath](docs/features/jmespath.md)
+- [Data Masking](docs/features/data-masking.md)
 - [Kafka](docs/features/kafka.md)
 - [Parser](docs/features/parser.md)
 - [Batch](docs/features/batch.md)

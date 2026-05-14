@@ -19,6 +19,7 @@ categories = ["development-tools", "web-programming"]
 
 [workspace.dependencies]
 aws-lambda-powertools-core = { path = "crates/aws-lambda-powertools-core", version = "0.1.0" }
+aws-lambda-powertools-data-masking = { path = "crates/aws-lambda-powertools-data-masking", version = "0.1.0" }
 aws-lambda-powertools-logger = { path = "crates/aws-lambda-powertools-logger", version = "0.1.0" }
 aws-lambda-powertools-metrics = { path = "crates/aws-lambda-powertools-metrics", version = "0.1.0" }
 aws-lambda-powertools-tracer = { path = "crates/aws-lambda-powertools-tracer", version = "0.1.0" }
