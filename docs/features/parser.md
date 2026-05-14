@@ -23,7 +23,7 @@ aws-lambda-powertools = { version = "0.1", features = ["parser"] }
 - Optional `aws_lambda_events` aliases for CloudFormation custom resource create, update, delete, aggregate request,
   response, and response status models.
 - Optional `aws_lambda_events` aliases for standard Cognito User Pool trigger models.
-- Optional `aws_lambda_events` aliases for common Powertools parser event models, including ALB, API Gateway,
+- Optional `aws_lambda_events` aliases for common Powertools parser event and record models, including ALB, API Gateway,
   Auto Scaling, AWS Config, CloudWatch Alarms, CloudWatch Logs, CodeCommit, CodeDeploy lifecycle hooks, CodePipeline
   jobs, Connect contact flows, DynamoDB streams, EventBridge, Firehose, Kafka, Kinesis, Lambda Function URLs, MQ, S3,
   Secrets Manager rotation, SES, SNS, SQS, and VPC Lattice.

@@ -29,14 +29,15 @@ first implementation tranche has landed:
   convenience reader, and optional gzip, CSV, and ZIP transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway
   REST/HTTP/WebSocket API bodies, API Gateway WebSocket lifecycle aliases, API Gateway Lambda authorizer aliases,
-  common Powertools parser event model aliases, AppSync Lambda authorizer aliases, AppSync direct resolver/batch aliases
-  and arguments/source, AppSync Events publish payload, Bedrock Agent OpenAPI input text, ActiveMQ message data, ALB,
-  Lambda Function URL, and VPC Lattice body, SQS, SNS, SNS-over-SQS, RabbitMQ message data, S3, S3-over-SQS, S3 Object
-  Lambda configuration payload, S3 Batch job task, EventBridge, CloudFormation custom resource aliases/properties,
-  Cognito User Pool user attributes, Cognito User Pool trigger aliases, Auto Scaling, AWS Config, CloudWatch Alarms,
-  CodeCommit, CodeDeploy lifecycle hooks, CodePipeline jobs, Connect contact flows, SES, CloudWatch Logs, Kinesis,
-  Kinesis-delivered DynamoDB stream image, Firehose, Firehose-delivered SQS, Kinesis-delivered CloudWatch Logs,
-  DynamoDB stream image pairs, Kafka envelopes, and Secrets Manager rotation, plus Transfer Family authorizer
+  common Powertools parser event and record model aliases, AppSync Lambda authorizer aliases, AppSync direct
+  resolver/batch aliases and arguments/source, AppSync Events publish payload, Bedrock Agent OpenAPI input text,
+  ActiveMQ message data, ALB, Lambda Function URL, and VPC Lattice body, SQS, SNS, SNS-over-SQS, RabbitMQ message data,
+  S3, S3-over-SQS, S3 Object Lambda configuration payload, S3 Batch job task, EventBridge, CloudFormation custom
+  resource aliases/properties, Cognito User Pool user attributes, Cognito User Pool trigger aliases, Auto Scaling,
+  AWS Config, CloudWatch Alarms, CodeCommit, CodeDeploy lifecycle hooks, CodePipeline jobs, Connect contact flows, SES,
+  CloudWatch Logs, Kinesis, Kinesis-delivered DynamoDB stream image, Firehose, Firehose-delivered SQS,
+  Kinesis-delivered CloudWatch Logs, DynamoDB stream image pairs, Kafka envelopes, and Secrets Manager rotation, plus
+  Transfer Family authorizer
   event/response, AppSync Events, Bedrock Agent OpenAPI and function-details event models/input text, CloudWatch
   dashboard custom widget event model, DynamoDB stream on-failure destination, S3 EventBridge notification, S3 event
   notification with Intelligent-Tiering support, IoT Core registry, Cognito migrate-user, and Cognito custom sender event
