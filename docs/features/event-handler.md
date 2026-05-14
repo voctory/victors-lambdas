@@ -15,6 +15,8 @@ aws-lambda-powertools = { version = "0.1", features = ["event-handler"] }
 - Multi-method route registration, custom not-found handlers, and router composition with path prefixes.
 - Fallible route handlers with built-in HTTP errors, catch-all error handlers, and typed error handlers.
 - Router-level and route-specific request/response middleware.
+- Request-scoped typed extensions for middleware-to-handler data, and router shared typed extensions for values reused
+  across requests.
 - Optional CORS preflight handling and response headers.
 - Optional request/response validation hooks through `event-handler-validation`.
 - Optional gzip and deflate response compression through `event-handler-compression`.
@@ -44,8 +46,8 @@ aws-lambda-powertools = { version = "0.1", features = [
 ## Snippet
 
 The buildable snippet in [examples/snippets/event-handler/src/main.rs](../../examples/snippets/event-handler/src/main.rs)
-registers dynamic and multi-method routes, adds response middleware, and maps a fallible route error to an HTTP
-response.
+registers dynamic and multi-method routes, shares typed extension data between middleware and handlers, adds response
+middleware, and maps a fallible route error to an HTTP response.
 
 Run it locally with:
 

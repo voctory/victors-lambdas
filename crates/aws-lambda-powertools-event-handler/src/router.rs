@@ -7,7 +7,7 @@ use crate::validation::{
     ValidationConfig, request_validation_response, response_validation_response,
 };
 use crate::{
-    AsyncFallibleHandler, AsyncHandler, AsyncRoute, CorsConfig, FallibleHandler,
+    AsyncFallibleHandler, AsyncHandler, AsyncRoute, CorsConfig, Extensions, FallibleHandler,
     FallibleResponseFuture, Handler, HttpError, Method, Request, Response, ResponseFuture, Route,
     RouteError,
 };
@@ -43,6 +43,7 @@ pub struct Router {
     cors: Option<CorsConfig>,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
+    shared_extensions: Extensions,
     not_found_handler: Option<Box<Handler>>,
     typed_error_handlers: Vec<TypedErrorHandlerEntry>,
     error_handler: Option<Box<ErrorHandler>>,
@@ -61,6 +62,7 @@ pub struct AsyncRouter {
     cors: Option<CorsConfig>,
     request_middleware: Vec<Box<RequestMiddleware>>,
     response_middleware: Vec<Box<ResponseMiddleware>>,
+    shared_extensions: Extensions,
     not_found_handler: Option<Box<AsyncHandler>>,
     typed_error_handlers: Vec<AsyncTypedErrorHandlerEntry>,
     error_handler: Option<Box<AsyncErrorHandler>>,
@@ -77,6 +79,7 @@ impl Router {
             cors: None,
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
+            shared_extensions: Extensions::new(),
             not_found_handler: None,
             typed_error_handlers: Vec::new(),
             error_handler: None,
@@ -102,6 +105,46 @@ impl Router {
     #[must_use]
     pub const fn cors(&self) -> Option<&CorsConfig> {
         self.cors.as_ref()
+    }
+
+    /// Returns router shared extension values.
+    #[must_use]
+    pub const fn shared_extensions(&self) -> &Extensions {
+        &self.shared_extensions
+    }
+
+    /// Returns a router shared extension value by type.
+    #[must_use]
+    pub fn shared_extension<T>(&self) -> Option<&T>
+    where
+        T: Send + Sync + 'static,
+    {
+        self.shared_extensions.get::<T>()
+    }
+
+    /// Adds or replaces a router shared extension value.
+    pub fn insert_shared_extension<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Send + Sync + 'static,
+    {
+        self.shared_extensions.insert(value);
+        self
+    }
+
+    /// Returns a copy of this router with a router shared extension value.
+    #[must_use]
+    pub fn with_shared_extension<T>(mut self, value: T) -> Self
+    where
+        T: Send + Sync + 'static,
+    {
+        self.insert_shared_extension(value);
+        self
+    }
+
+    /// Removes all router shared extension values.
+    pub fn clear_shared_extensions(&mut self) -> &mut Self {
+        self.shared_extensions.clear();
+        self
     }
 
     /// Adds request middleware that runs before CORS preflight handling and route matching.
@@ -545,6 +588,7 @@ impl Router {
             cors: _,
             request_middleware,
             response_middleware,
+            shared_extensions,
             not_found_handler,
             typed_error_handlers,
             error_handler,
@@ -560,6 +604,7 @@ impl Router {
         );
         self.request_middleware.extend(request_middleware);
         self.response_middleware.extend(response_middleware);
+        self.shared_extensions.extend_missing(shared_extensions);
         if let Some(not_found_handler) = not_found_handler {
             self.not_found_handler = Some(not_found_handler);
         }
@@ -607,6 +652,7 @@ impl Router {
     /// Handles a request with the matching route or returns `404 Not Found`.
     #[must_use]
     pub fn handle(&self, mut request: Request) -> Response {
+        request.set_shared_extensions(self.shared_extensions.clone());
         request = self.apply_request_middleware(request);
 
         if let Some(cors) = &self.cors {
@@ -753,6 +799,7 @@ impl AsyncRouter {
             cors: None,
             request_middleware: Vec::new(),
             response_middleware: Vec::new(),
+            shared_extensions: Extensions::new(),
             not_found_handler: None,
             typed_error_handlers: Vec::new(),
             error_handler: None,
@@ -778,6 +825,46 @@ impl AsyncRouter {
     #[must_use]
     pub const fn cors(&self) -> Option<&CorsConfig> {
         self.cors.as_ref()
+    }
+
+    /// Returns router shared extension values.
+    #[must_use]
+    pub const fn shared_extensions(&self) -> &Extensions {
+        &self.shared_extensions
+    }
+
+    /// Returns a router shared extension value by type.
+    #[must_use]
+    pub fn shared_extension<T>(&self) -> Option<&T>
+    where
+        T: Send + Sync + 'static,
+    {
+        self.shared_extensions.get::<T>()
+    }
+
+    /// Adds or replaces a router shared extension value.
+    pub fn insert_shared_extension<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Send + Sync + 'static,
+    {
+        self.shared_extensions.insert(value);
+        self
+    }
+
+    /// Returns a copy of this router with a router shared extension value.
+    #[must_use]
+    pub fn with_shared_extension<T>(mut self, value: T) -> Self
+    where
+        T: Send + Sync + 'static,
+    {
+        self.insert_shared_extension(value);
+        self
+    }
+
+    /// Removes all router shared extension values.
+    pub fn clear_shared_extensions(&mut self) -> &mut Self {
+        self.shared_extensions.clear();
+        self
     }
 
     /// Adds request middleware that runs before CORS preflight handling and route matching.
@@ -1196,6 +1283,7 @@ impl AsyncRouter {
             cors: _,
             request_middleware,
             response_middleware,
+            shared_extensions,
             not_found_handler,
             typed_error_handlers,
             error_handler,
@@ -1211,6 +1299,7 @@ impl AsyncRouter {
         );
         self.request_middleware.extend(request_middleware);
         self.response_middleware.extend(response_middleware);
+        self.shared_extensions.extend_missing(shared_extensions);
         if let Some(not_found_handler) = not_found_handler {
             self.not_found_handler = Some(not_found_handler);
         }
@@ -1257,6 +1346,7 @@ impl AsyncRouter {
 
     /// Handles a request asynchronously with the matching route or returns `404 Not Found`.
     pub async fn handle(&self, mut request: Request) -> Response {
+        request.set_shared_extensions(self.shared_extensions.clone());
         request = self.apply_request_middleware(request);
 
         if let Some(cors) = &self.cors {
@@ -1412,6 +1502,7 @@ impl fmt::Debug for Router {
             .field("cors", &self.cors)
             .field("request_middleware_len", &self.request_middleware.len())
             .field("response_middleware_len", &self.response_middleware.len())
+            .field("shared_extensions_len", &self.shared_extensions.len())
             .field("has_not_found_handler", &self.not_found_handler.is_some())
             .field("typed_error_handlers_len", &self.typed_error_handlers.len())
             .field("has_error_handler", &self.error_handler.is_some());
@@ -1429,6 +1520,7 @@ impl fmt::Debug for AsyncRouter {
             .field("cors", &self.cors)
             .field("request_middleware_len", &self.request_middleware.len())
             .field("response_middleware_len", &self.response_middleware.len())
+            .field("shared_extensions_len", &self.shared_extensions.len())
             .field("has_not_found_handler", &self.not_found_handler.is_some())
             .field("typed_error_handlers_len", &self.typed_error_handlers.len())
             .field("has_error_handler", &self.error_handler.is_some());
@@ -1647,6 +1739,12 @@ mod tests {
     }
 
     impl std::error::Error for OtherRouteError {}
+
+    #[derive(Debug, Eq, PartialEq)]
+    struct CorrelationId(String);
+
+    #[derive(Debug, Eq, PartialEq)]
+    struct ServiceName(&'static str);
 
     fn async_response<'a>(
         future: impl Future<Output = Response> + Send + 'a,
@@ -1941,6 +2039,72 @@ mod tests {
     }
 
     #[test]
+    fn request_extensions_flow_from_middleware_to_handlers() {
+        let mut router = Router::new();
+        router.add_request_middleware(|request| {
+            request.with_extension(CorrelationId("request-1".to_owned()))
+        });
+        router.add_response_middleware(|request, response| {
+            let request_id = request
+                .extension::<CorrelationId>()
+                .map_or("missing", |correlation_id| correlation_id.0.as_str());
+            response.with_header("x-request-id", request_id)
+        });
+        router.get("/orders", |request| {
+            let request_id = request
+                .extension::<CorrelationId>()
+                .map_or("missing", |correlation_id| correlation_id.0.as_str());
+            Response::ok(request_id)
+        });
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(response.body(), b"request-1");
+        assert_eq!(response.header("x-request-id"), Some("request-1"));
+    }
+
+    #[test]
+    fn router_shared_extensions_are_attached_before_middleware() {
+        let mut router = Router::new().with_shared_extension(ServiceName("checkout"));
+        router.add_request_middleware(|request| {
+            let service_name = request
+                .shared_extension::<ServiceName>()
+                .map_or("missing", |service_name| service_name.0);
+            request.with_header("x-service", service_name)
+        });
+        router.get("/orders", |request| {
+            Response::ok(request.header("x-service").unwrap_or("missing"))
+        });
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(
+            router.shared_extension::<ServiceName>(),
+            Some(&ServiceName("checkout"))
+        );
+        assert_eq!(response.body(), b"checkout");
+    }
+
+    #[test]
+    fn include_router_merges_child_shared_extensions() {
+        let mut child = Router::new().with_shared_extension(ServiceName("orders"));
+        child.get("/orders", |request| {
+            let service_name = request
+                .shared_extension::<ServiceName>()
+                .map_or("missing", |service_name| service_name.0);
+            Response::ok(service_name)
+        });
+
+        let mut router = Router::new();
+        router.include_router(child);
+
+        let response = router.handle(Request::new(Method::Get, "/orders"));
+
+        assert_eq!(router.shared_extensions().len(), 1);
+        assert_eq!(response.body(), b"orders");
+    }
+
+    #[test]
     fn route_specific_middleware_runs_around_handler() {
         let route = Route::new(Method::Get, "/orders/{id}", |request| {
             Response::ok(request.header("x-order-id").unwrap_or_default())
@@ -2229,6 +2393,28 @@ mod tests {
                 .map(ValidationConfig::request_validators_len),
             Some(1)
         );
+    }
+
+    #[test]
+    fn async_router_reads_request_extensions() {
+        let mut router = AsyncRouter::new().with_shared_extension(ServiceName("checkout"));
+        router.add_request_middleware(|request| {
+            let service_name = request
+                .shared_extension::<ServiceName>()
+                .map_or("missing", |service_name| service_name.0);
+            request.with_extension(CorrelationId(format!("{service_name}-request")))
+        });
+        router.get("/orders", |request| {
+            let request_id = request.extension::<CorrelationId>().map_or_else(
+                || "missing".to_owned(),
+                |correlation_id| correlation_id.0.clone(),
+            );
+            async_response(async move { Response::ok(request_id) })
+        });
+
+        let response = block_on(router.handle(Request::new(Method::Get, "/orders")));
+
+        assert_eq!(response.body(), b"checkout-request");
     }
 
     #[cfg(feature = "validation")]

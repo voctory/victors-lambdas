@@ -15,6 +15,7 @@ mod bedrock_function;
 #[cfg(feature = "compression")]
 mod compression;
 mod cors;
+mod extension;
 mod http_error;
 #[cfg(feature = "aws-lambda-events")]
 mod lambda_function_url;
@@ -71,6 +72,7 @@ pub use compression::{
     compression_middleware,
 };
 pub use cors::CorsConfig;
+pub use extension::Extensions;
 pub use http_error::HttpError;
 #[cfg(feature = "aws-lambda-events")]
 pub use lambda_function_url::{
