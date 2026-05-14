@@ -1,0 +1,24 @@
+{
+  "messageVersion": "1.0",
+  "agent": {
+    "name": "OrdersAgent",
+    "id": "agent-orders",
+    "alias": "prod",
+    "version": "1"
+  },
+  "inputText": "{\"order_id\":\"order-bedrock-agent-1\",\"quantity\":25}",
+  "sessionId": "session-bedrock-agent-1",
+  "actionGroup": "Orders",
+  "apiPath": "/orders",
+  "httpMethod": "POST",
+  "parameters": [],
+  "requestBody": {
+    "content": {
+      "application/json": {
+        "properties": []
+      }
+    }
+  },
+  "sessionAttributes": {},
+  "promptSessionAttributes": {}
+}

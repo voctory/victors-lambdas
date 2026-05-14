@@ -1,0 +1,26 @@
+{
+  "arguments": {
+    "order_id": "order-appsync-args-1",
+    "quantity": 21
+  },
+  "identity": null,
+  "info": {
+    "fieldName": "createOrder",
+    "parentTypeName": "Mutation",
+    "selectionSetGraphQL": "",
+    "selectionSetList": [],
+    "variables": {}
+  },
+  "prev": null,
+  "request": {
+    "domainName": "orders.appsync-api.us-east-1.amazonaws.com",
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "source": {
+    "order_id": "order-appsync-source-1",
+    "quantity": 22
+  },
+  "stash": {}
+}

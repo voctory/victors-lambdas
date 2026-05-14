@@ -1,0 +1,39 @@
+{
+  "identity": null,
+  "request": {
+    "headers": {
+      "content-type": "application/json"
+    },
+    "domainName": "events.example.com"
+  },
+  "info": {
+    "channel": {
+      "path": "/default/orders",
+      "segments": [
+        "default",
+        "orders"
+      ]
+    },
+    "channelNamespace": {
+      "name": "default"
+    },
+    "operation": "PUBLISH"
+  },
+  "stash": {},
+  "events": [
+    {
+      "id": "event-appsync-events-1",
+      "payload": {
+        "order_id": "order-appsync-events-1",
+        "quantity": 23
+      }
+    },
+    {
+      "id": "event-appsync-events-2",
+      "payload": {
+        "order_id": "order-appsync-events-2",
+        "quantity": 24
+      }
+    }
+  ]
+}

@@ -7,6 +7,8 @@ use std::path::PathBuf;
 use aws_lambda_events::event::{
     alb::AlbTargetGroupRequest,
     apigw::{ApiGatewayProxyRequest, ApiGatewayV2httpRequest, ApiGatewayWebsocketProxyRequest},
+    appsync::AppSyncDirectResolverEvent,
+    bedrock_agent_runtime::AgentEvent,
     cloudformation::CloudFormationCustomResourceRequest,
     cloudwatch_logs::LogsEvent,
     dynamodb::Event as DynamoDbEvent,
@@ -21,7 +23,7 @@ use aws_lambda_events::event::{
     sqs::SqsEvent,
     vpc_lattice::{VpcLatticeRequestV1, VpcLatticeRequestV2},
 };
-use aws_lambda_powertools_parser::EventParser;
+use aws_lambda_powertools_parser::{AppSyncEventsEvent, EventParser};
 use aws_lambda_powertools_testing::load_json_fixture;
 use serde::Deserialize;
 use serde_json::Value;
@@ -130,6 +132,65 @@ fn parses_eventbridge_detail_fixture() {
 
     assert_eq!(parsed.payload().order_id, "order-eventbridge-1");
     assert_eq!(parsed.payload().quantity, 3);
+}
+
+#[test]
+fn parses_appsync_arguments_fixture() {
+    let event = load_json_fixture::<AppSyncDirectResolverEvent<Value, Value, Value>>(fixture(
+        "appsync-direct-order.json",
+    ))
+    .expect("AppSync direct resolver fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_appsync_arguments::<OrderEvent>(event)
+        .expect("fixture AppSync arguments should parse");
+
+    assert_eq!(parsed.payload().order_id, "order-appsync-args-1");
+    assert_eq!(parsed.payload().quantity, 21);
+}
+
+#[test]
+fn parses_appsync_source_fixture() {
+    let event = load_json_fixture::<AppSyncDirectResolverEvent<Value, Value, Value>>(fixture(
+        "appsync-direct-order.json",
+    ))
+    .expect("AppSync direct resolver fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_appsync_source::<OrderEvent>(event)
+        .expect("fixture AppSync source should parse");
+
+    assert_eq!(parsed.payload().order_id, "order-appsync-source-1");
+    assert_eq!(parsed.payload().quantity, 22);
+}
+
+#[test]
+fn parses_appsync_events_payload_fixture() {
+    let event = load_json_fixture::<AppSyncEventsEvent>(fixture("appsync-events-orders.json"))
+        .expect("AppSync Events fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_appsync_events_payloads::<OrderEvent>(event)
+        .expect("fixture AppSync Events payloads should parse");
+
+    assert_eq!(parsed.len(), 2);
+    assert_eq!(parsed[0].payload().order_id, "order-appsync-events-1");
+    assert_eq!(parsed[0].payload().quantity, 23);
+    assert_eq!(parsed[1].payload().order_id, "order-appsync-events-2");
+    assert_eq!(parsed[1].payload().quantity, 24);
+}
+
+#[test]
+fn parses_bedrock_agent_input_fixture() {
+    let event = load_json_fixture::<AgentEvent>(fixture("bedrock-agent-order.json"))
+        .expect("Bedrock Agent fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_bedrock_agent_input::<OrderEvent>(event)
+        .expect("fixture Bedrock Agent input should parse");
+
+    assert_eq!(parsed.payload().order_id, "order-bedrock-agent-1");
+    assert_eq!(parsed.payload().quantity, 25);
 }
 
 #[test]
