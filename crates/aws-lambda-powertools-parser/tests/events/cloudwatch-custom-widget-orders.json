@@ -1,0 +1,40 @@
+{
+  "describe": false,
+  "widgetContext": {
+    "dashboardName": "Operations",
+    "widgetId": "orders-custom-widget",
+    "domain": "amazonaws.com",
+    "accountId": "123456789012",
+    "locale": "en-US",
+    "timezone": {
+      "label": "Local",
+      "offsetISO": "-08:00",
+      "offsetInMinutes": -480
+    },
+    "period": 300,
+    "isAutoPeriod": true,
+    "timeRange": {
+      "mode": "relative",
+      "start": 1767225300000,
+      "end": 1767225600000,
+      "relativeStart": -300000,
+      "zoom": {
+        "start": 1767225420000,
+        "end": 1767225540000
+      }
+    },
+    "theme": "dark",
+    "linkCharts": false,
+    "title": "Orders",
+    "params": {
+      "service": "orders"
+    },
+    "forms": {
+      "all": {
+        "region": "us-west-2"
+      }
+    },
+    "height": 6,
+    "width": 12
+  }
+}

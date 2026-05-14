@@ -13,8 +13,9 @@ aws-lambda-powertools = { version = "0.1", features = ["parser"] }
 - `ParsedEvent<T>` wrapper for carrying typed payloads through handler code.
 - Structured `ParseError` values with error kind, line, column, and message accessors where JSON supplies that context.
 - Rust-native event models for Transfer Family authorizers, AppSync Events, Bedrock Agent OpenAPI and function-details
-  action groups, DynamoDB stream on-failure destinations, S3 EventBridge notifications, S3 event notifications with
-  Intelligent-Tiering `get_object` support, IoT Core registry events, and selected Cognito triggers.
+  action groups, CloudWatch dashboard custom widgets, DynamoDB stream on-failure destinations, S3 EventBridge
+  notifications, S3 event notifications with Intelligent-Tiering `get_object` support, IoT Core registry events, and
+  selected Cognito triggers.
 - Optional `aws_lambda_events` aliases for API Gateway WebSocket message, connect, and disconnect models plus Lambda
   authorizer TOKEN, REST API REQUEST, HTTP API payload format 1.0, HTTP API payload format 2.0, IAM policy response,
   and simple response models.

@@ -4,6 +4,7 @@
 mod appsync;
 mod appsync_events;
 mod bedrock_agent;
+mod cloudwatch_custom_widget;
 mod cognito;
 mod dynamodb;
 #[cfg(feature = "aws-lambda-events")]
@@ -211,6 +212,11 @@ pub use bedrock_agent::{
     BedrockAgentFunctionEvent, BedrockAgentFunctionEventModel, BedrockAgentFunctionParameter,
     BedrockAgentModel, BedrockAgentPropertyModel, BedrockAgentRequestBody,
     BedrockAgentRequestBodyModel, BedrockAgentRequestMedia, BedrockAgentRequestMediaModel,
+};
+pub use cloudwatch_custom_widget::{
+    CloudWatchDashboardCustomWidgetEvent, CloudWatchDashboardCustomWidgetModel,
+    CloudWatchWidgetContext, CloudWatchWidgetForms, CloudWatchWidgetTimeRange,
+    CloudWatchWidgetTimeZone, CloudWatchWidgetZoom,
 };
 pub use cognito::{
     CognitoCustomEmailSenderTriggerEvent, CognitoCustomEmailSenderTriggerModel,

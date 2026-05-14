@@ -16,17 +16,18 @@ use aws_lambda_powertools_parser::{
     AutoScalingModel, AwsConfigModel, CloudFormationCustomResourceCreate,
     CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
     CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
-    CloudFormationCustomResourceUpdate, CloudWatchLogsModel, CloudWatchMetricAlarmModel,
-    CodeCommitModel, CodeDeployLifecycleHookEventModel, CodePipelineJobEventModel,
-    CognitoCustomEmailSenderTriggerModel, CognitoCustomEmailSenderTriggerSource,
-    CognitoCustomSMSSenderTriggerModel, CognitoCustomSenderRequestType,
-    CognitoCustomSmsSenderTriggerSource, CognitoMigrateUserTriggerModel,
-    CognitoMigrateUserTriggerSource, CognitoPreSignupTriggerModel, ConnectContactFlowEventModel,
-    DynamoDbStreamModel, DynamoDbStreamOnFailureDestination, EventBridgeModel, EventParser,
-    IoTCoreRegistryCrudOperation, IoTCoreRegistryEventType, IoTCoreRegistryMembershipOperation,
-    IoTCoreThingEvent, IoTCoreThingGroupEvent, IoTCoreThingGroupHierarchyEvent,
-    IoTCoreThingGroupMembershipEvent, IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent,
-    KafkaMskEventModel, KafkaSelfManagedEventModel, KinesisDataStreamModel, KinesisFirehoseModel,
+    CloudFormationCustomResourceUpdate, CloudWatchDashboardCustomWidgetModel, CloudWatchLogsModel,
+    CloudWatchMetricAlarmModel, CodeCommitModel, CodeDeployLifecycleHookEventModel,
+    CodePipelineJobEventModel, CognitoCustomEmailSenderTriggerModel,
+    CognitoCustomEmailSenderTriggerSource, CognitoCustomSMSSenderTriggerModel,
+    CognitoCustomSenderRequestType, CognitoCustomSmsSenderTriggerSource,
+    CognitoMigrateUserTriggerModel, CognitoMigrateUserTriggerSource, CognitoPreSignupTriggerModel,
+    ConnectContactFlowEventModel, DynamoDbStreamModel, DynamoDbStreamOnFailureDestination,
+    EventBridgeModel, EventParser, IoTCoreRegistryCrudOperation, IoTCoreRegistryEventType,
+    IoTCoreRegistryMembershipOperation, IoTCoreThingEvent, IoTCoreThingGroupEvent,
+    IoTCoreThingGroupHierarchyEvent, IoTCoreThingGroupMembershipEvent,
+    IoTCoreThingTypeAssociationEvent, IoTCoreThingTypeEvent, KafkaMskEventModel,
+    KafkaSelfManagedEventModel, KinesisDataStreamModel, KinesisFirehoseModel,
     KinesisFirehoseSqsModel, LambdaFunctionUrlModel, RabbitMqModel, S3BatchOperationModel,
     S3EventNotificationEventBridgeModel, S3EventNotificationModel, S3Model, S3ObjectLambdaEvent,
     S3SqsEventNotificationModel, SecretsManagerRotationEventModel, SesModel, SnsModel, SqsModel,
@@ -1010,6 +1011,31 @@ fn parses_cloudwatch_alarm_fixture() {
             .state
             .as_ref()
             .is_some_and(|state| state.reason.contains("latency"))
+    );
+}
+
+#[test]
+fn parses_cloudwatch_custom_widget_fixture() {
+    let event = load_json_fixture::<CloudWatchDashboardCustomWidgetModel>(fixture(
+        "cloudwatch-custom-widget-orders.json",
+    ))
+    .expect("CloudWatch custom widget fixture should decode");
+
+    let context = event
+        .widget_context
+        .expect("custom widget context should be present");
+
+    assert!(!event.describe);
+    assert_eq!(context.dashboard_name, "Operations");
+    assert_eq!(context.widget_id, "orders-custom-widget");
+    assert_eq!(context.timezone.offset_iso, "-08:00");
+    assert_eq!(
+        context.params.get("service").and_then(Value::as_str),
+        Some("orders")
+    );
+    assert_eq!(
+        context.forms.all.get("region").and_then(Value::as_str),
+        Some("us-west-2")
     );
 }
 
