@@ -10,8 +10,13 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = []
+streaming = ["dep:aws-lambda-powertools-streaming"]
+
 [dependencies]
 aws-lambda-powertools-parameters.workspace = true
+aws-lambda-powertools-streaming = { workspace = true, optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

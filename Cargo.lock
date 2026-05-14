@@ -318,6 +318,7 @@ name = "aws-lambda-powertools-testing"
 version = "0.1.0"
 dependencies = [
  "aws-lambda-powertools-parameters",
+ "aws-lambda-powertools-streaming",
  "futures-executor",
  "serde",
  "serde_json",

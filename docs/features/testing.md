@@ -11,7 +11,14 @@ aws-lambda-powertools-testing = { version = "0.1" }
 - `LambdaContextStub` for stable request ID and function name assertions.
 - `HandlerHarness` for invoking sync or async handler-shaped functions with a reusable context.
 - `ParameterProviderStub`, re-exported from the parameters crate for in-memory parameter tests.
+- Optional `S3ObjectClientStub` for testing streaming code against in-memory S3 objects.
 - Text, bytes, and JSON fixture loaders.
+
+Enable `streaming` to use the S3 object client stub:
+
+```toml
+aws-lambda-powertools-testing = { version = "0.1", features = ["streaming"] }
+```
 
 ## Handler Harness
 
@@ -51,4 +58,30 @@ let output = harness.invoke_json(Path::new("tests/events/order.json"), |event: O
 })?;
 
 # Ok::<(), aws_lambda_powertools_testing::FixtureError>(())
+```
+
+## S3 Stub
+
+`S3ObjectClientStub` implements the streaming crate's `S3ObjectClient` trait and records range requests:
+
+```rust,no_run
+use std::io::{Read as _, Seek as _, SeekFrom};
+
+use aws_lambda_powertools_streaming::S3Object;
+use aws_lambda_powertools_testing::S3ObjectClientStub;
+
+let client = S3ObjectClientStub::new().with_object("orders", "order.json", b"{\"id\":1}");
+let mut object = S3Object::for_bucket_key("orders", "order.json", client);
+
+object.seek(SeekFrom::Start(2))?;
+
+let mut body = String::new();
+object.read_to_string(&mut body)?;
+
+assert_eq!(
+    object.source_ref().client().range_requests()[0].range_header(),
+    "bytes=2-"
+);
+
+# Ok::<(), std::io::Error>(())
 ```
