@@ -3,7 +3,13 @@
 use std::fmt::Display;
 
 use aws_lambda_events::event::sqs::{SqsEvent, SqsMessage};
+#[cfg(feature = "parser")]
+use aws_lambda_powertools_parser::EventParser;
+#[cfg(feature = "parser")]
+use serde::de::DeserializeOwned;
 
+#[cfg(feature = "parser")]
+use crate::ParsedBatchRecord;
 use crate::{BatchProcessingReport, BatchProcessor, BatchRecordResult, BatchResponse};
 
 impl BatchProcessor {
@@ -40,6 +46,60 @@ impl BatchProcessor {
         E: Display,
     {
         self.process_sqs(event, handler).response()
+    }
+
+    /// Parses SQS message bodies and processes only records that decode successfully.
+    ///
+    /// Records with missing or invalid JSON bodies are reported as failures and
+    /// are not passed to the handler.
+    #[cfg(feature = "parser")]
+    pub fn process_sqs_message_bodies<T, E>(
+        &self,
+        event: &SqsEvent,
+        parser: &EventParser,
+        mut handler: impl FnMut(&ParsedBatchRecord<'_, T, SqsMessage>) -> Result<(), E>,
+    ) -> BatchProcessingReport
+    where
+        T: DeserializeOwned,
+        E: Display,
+    {
+        let results = event.records.iter().enumerate().map(|(index, record)| {
+            let item_identifier = sqs_item_identifier(index, record);
+            let Some(body) = record.body.as_deref() else {
+                return BatchRecordResult::failure(item_identifier, "SQS record is missing body");
+            };
+
+            let parsed = match parser.parse_json_str::<T>(body) {
+                Ok(parsed) => parsed.into_payload(),
+                Err(error) => {
+                    return BatchRecordResult::failure(item_identifier, error.to_string());
+                }
+            };
+            let parsed_record = ParsedBatchRecord::new(item_identifier.clone(), parsed, record);
+
+            match handler(&parsed_record) {
+                Ok(()) => BatchRecordResult::success(item_identifier),
+                Err(error) => BatchRecordResult::failure(item_identifier, error.to_string()),
+            }
+        });
+
+        BatchProcessingReport::from_results(results)
+    }
+
+    /// Parses SQS message bodies and returns an AWS Lambda partial batch response.
+    #[cfg(feature = "parser")]
+    pub fn process_sqs_message_bodies_response<T, E>(
+        &self,
+        event: &SqsEvent,
+        parser: &EventParser,
+        handler: impl FnMut(&ParsedBatchRecord<'_, T, SqsMessage>) -> Result<(), E>,
+    ) -> BatchResponse
+    where
+        T: DeserializeOwned,
+        E: Display,
+    {
+        self.process_sqs_message_bodies(event, parser, handler)
+            .response()
     }
 
     /// Processes FIFO SQS records with early-stop failure semantics.
@@ -100,6 +160,10 @@ fn sqs_item_identifier(index: usize, record: &SqsMessage) -> String {
 #[cfg(test)]
 mod tests {
     use aws_lambda_events::event::sqs::{SqsEvent, SqsMessage};
+    #[cfg(feature = "parser")]
+    use aws_lambda_powertools_parser::EventParser;
+    #[cfg(feature = "parser")]
+    use serde::Deserialize;
     use serde_json::json;
 
     use crate::{BatchItemFailure, BatchProcessor, BatchRecordResult};
@@ -109,6 +173,13 @@ mod tests {
         message.message_id = Some(id.to_owned());
         message.body = Some(body.to_owned());
         message
+    }
+
+    #[cfg(feature = "parser")]
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    struct OrderEvent {
+        order_id: String,
+        quantity: u32,
     }
 
     #[test]
@@ -140,6 +211,40 @@ mod tests {
                     },
                 ],
             })
+        );
+    }
+
+    #[cfg(feature = "parser")]
+    #[test]
+    fn process_sqs_message_bodies_marks_parse_failures_before_handler() {
+        let mut event = SqsEvent::default();
+        event.records = vec![
+            message("message-1", r#"{"order_id":"order-1","quantity":2}"#),
+            message("message-2", r#"{"order_id":"order-2","quantity":"many"}"#),
+            message("message-3", r#"{"order_id":"order-3","quantity":4}"#),
+        ];
+        let mut handled = Vec::new();
+
+        let report = BatchProcessor::new().process_sqs_message_bodies::<OrderEvent, _>(
+            &event,
+            &EventParser::new(),
+            |record| {
+                handled.push(record.payload().order_id.clone());
+                Ok::<(), &str>(())
+            },
+        );
+
+        assert_eq!(handled, ["order-1", "order-3"]);
+        assert_eq!(
+            report.results(),
+            &[
+                BatchRecordResult::success("message-1"),
+                BatchRecordResult::failure(
+                    "message-2",
+                    "invalid type: string \"many\", expected u32 at line 1 column 39",
+                ),
+                BatchRecordResult::success("message-3"),
+            ]
         );
     }
 

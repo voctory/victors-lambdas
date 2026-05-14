@@ -32,6 +32,11 @@ all = [
 ]
 batch = ["dep:aws-lambda-powertools-batch"]
 batch-aws-lambda-events = ["batch", "aws-lambda-powertools-batch/aws-lambda-events"]
+batch-parser = [
+    "batch-aws-lambda-events",
+    "parser",
+    "aws-lambda-powertools-batch/parser",
+]
 event-handler = ["dep:aws-lambda-powertools-event-handler"]
 event-handler-appsync-events = [
     "event-handler",

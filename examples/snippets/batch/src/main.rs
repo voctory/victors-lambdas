@@ -3,7 +3,14 @@
 use std::error::Error;
 
 use aws_lambda_events::event::sqs::{SqsEvent, SqsMessage};
-use aws_lambda_powertools::prelude::{BatchProcessor, BatchRecord};
+use aws_lambda_powertools::prelude::{BatchProcessor, BatchRecord, EventParser};
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize, Eq, PartialEq)]
+struct OrderEvent {
+    order_id: String,
+    quantity: u32,
+}
 
 fn sqs_message(id: &str, body: &str) -> SqsMessage {
     let mut message = SqsMessage::default();
@@ -53,6 +60,25 @@ fn main() -> Result<(), Box<dyn Error>> {
     assert_eq!(failures.len(), 2);
     assert_eq!(failures[0].item_identifier(), "message-2");
     assert_eq!(failures[1].item_identifier(), "message-3");
+
+    let mut parsed_event = SqsEvent::default();
+    parsed_event.records = vec![
+        sqs_message("message-4", r#"{"order_id":"order-4","quantity":2}"#),
+        sqs_message("message-5", r#"{"order_id":"order-5","quantity":"many"}"#),
+    ];
+
+    let parsed_response = BatchProcessor::new()
+        .process_sqs_message_bodies_response::<OrderEvent, _>(
+            &parsed_event,
+            &EventParser::new(),
+            |record| {
+                assert_eq!(record.payload().order_id, "order-4");
+                Ok::<(), &str>(())
+            },
+        );
+    let parsed_failures = parsed_response.batch_item_failures();
+    assert_eq!(parsed_failures.len(), 1);
+    assert_eq!(parsed_failures[0].item_identifier(), "message-5");
 
     println!("reported {} FIFO failures", failures.len());
 

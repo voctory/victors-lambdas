@@ -63,6 +63,9 @@ pub mod prelude {
         BatchResponse,
     };
 
+    #[cfg(feature = "batch-parser")]
+    pub use aws_lambda_powertools_batch::ParsedBatchRecord;
+
     #[cfg(feature = "event-handler")]
     pub use aws_lambda_powertools_event_handler::{
         AsyncErrorHandler, AsyncFallibleHandler, AsyncHandler, AsyncRoute, AsyncRouteMatch,
