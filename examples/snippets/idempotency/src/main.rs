@@ -21,7 +21,9 @@ struct CheckoutResponse {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let config = IdempotencyConfig::from_env().with_key_prefix("checkout");
+    let config = IdempotencyConfig::from_env()
+        .with_key_prefix("checkout")
+        .with_payload_validation_jmespath("powertools_json(body)");
     let store = CachedIdempotencyStore::new(InMemoryIdempotencyStore::new());
     let mut idempotency = Idempotency::with_config(store, config);
 
@@ -32,8 +34,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
     let payload = serde_json::json!({
         "body": serde_json::to_string(&request)?,
+        "requestContext": {
+            "requestTimeEpoch": 1_779_886_400_i64,
+        },
+    });
+    let retry_payload = serde_json::json!({
+        "body": serde_json::to_string(&request)?,
+        "requestContext": {
+            "requestTimeEpoch": 1_779_886_401_i64,
+        },
     });
     let key = key_from_jmespath(&payload, "powertools_json(body).request_id")?;
+    let retry_key = key_from_jmespath(&retry_payload, "powertools_json(body).request_id")?;
+    assert_eq!(key, retry_key);
 
     let first = idempotency.execute_json_with_key(key.clone(), &payload, || {
         Ok::<CheckoutResponse, Infallible>(CheckoutResponse {
@@ -42,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     })?;
     assert!(first.is_executed());
 
-    let second = idempotency.execute_json_with_key(key, &payload, || {
+    let second = idempotency.execute_json_with_key(retry_key, &retry_payload, || {
         Ok::<CheckoutResponse, Infallible>(CheckoutResponse {
             confirmation_id: "should-not-run".to_owned(),
         })

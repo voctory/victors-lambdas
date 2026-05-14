@@ -42,6 +42,11 @@ pub enum IdempotencyError {
         /// Key extraction error message.
         message: String,
     },
+    /// Payload validation data extraction failed.
+    PayloadExtraction {
+        /// Payload extraction error message.
+        message: String,
+    },
 }
 
 impl IdempotencyError {
@@ -68,6 +73,14 @@ impl IdempotencyError {
             message: message.into(),
         }
     }
+
+    /// Creates an idempotency payload extraction error.
+    #[must_use]
+    pub fn payload_extraction(message: impl Into<String>) -> Self {
+        Self::PayloadExtraction {
+            message: message.into(),
+        }
+    }
 }
 
 impl fmt::Display for IdempotencyError {
@@ -91,7 +104,8 @@ impl fmt::Display for IdempotencyError {
             }
             Self::Store { message }
             | Self::Serialization { message }
-            | Self::KeyExtraction { message } => formatter.write_str(message),
+            | Self::KeyExtraction { message }
+            | Self::PayloadExtraction { message } => formatter.write_str(message),
         }
     }
 }

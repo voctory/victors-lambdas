@@ -43,9 +43,10 @@ first implementation tranche has landed:
   parser-integrated SQS message body, Kinesis record data, and DynamoDB stream image processing
 - validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,
   and optional local JSON Schema validation with a compiled schema cache
-- idempotency keys, payload hashing, JSON Pointer and optional JMESPath key extraction, sync and async handler
-  workflows, replay behavior, Lambda remaining-time in-progress expiry, sync and async store traits, an in-memory
-  store, an optional local cache wrapper, an optional DynamoDB store, and buildable local/AWS snippets
+- idempotency keys, payload hashing, JSON Pointer and optional JMESPath key extraction, configurable full/subset/no
+  payload validation, sync and async handler workflows, replay behavior, Lambda remaining-time in-progress expiry, sync
+  and async store traits, an in-memory store, an optional local cache wrapper, an optional DynamoDB store, and buildable
+  local/AWS snippets
 - feature flag schema parsing, sync/async store traits, in-memory and optional AppConfig stores, boolean and JSON-valued
   evaluation, enabled-feature listing, configuration cache policies, common context comparators, modulo range matching,
   and time-window rules

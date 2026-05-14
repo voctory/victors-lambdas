@@ -166,14 +166,15 @@ pub mod prelude {
         IdempotencyConfig, IdempotencyError, IdempotencyExecutionError, IdempotencyKey,
         IdempotencyOutcome, IdempotencyRecord, IdempotencyResult, IdempotencyStatus,
         IdempotencyStore, IdempotencyStoreError, IdempotencyStoreFuture, IdempotencyStoreResult,
-        InMemoryIdempotencyStore, hash_payload, key_from_json_pointer, key_from_payload,
+        InMemoryIdempotencyStore, PayloadValidation, hash_payload, key_from_json_pointer,
+        key_from_payload,
     };
 
     #[cfg(feature = "idempotency-dynamodb")]
     pub use aws_lambda_powertools_idempotency::DynamoDbIdempotencyStore;
 
     #[cfg(feature = "idempotency-jmespath")]
-    pub use aws_lambda_powertools_idempotency::key_from_jmespath;
+    pub use aws_lambda_powertools_idempotency::{hash_payload_from_jmespath, key_from_jmespath};
 
     #[cfg(feature = "jmespath")]
     pub use aws_lambda_powertools_jmespath::{

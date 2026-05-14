@@ -11,6 +11,18 @@ pub const DEFAULT_RECORD_TTL: Duration = Duration::from_secs(3_600);
 /// Default duration before in-progress records expire.
 pub const DEFAULT_IN_PROGRESS_TTL: Duration = Duration::from_secs(60);
 
+/// Payload data used to validate stored idempotency records.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PayloadValidation {
+    /// Hash and compare the complete JSON payload.
+    Full,
+    /// Do not store or compare a payload validation hash.
+    Disabled,
+    /// Hash and compare the value selected by a `JMESPath` expression.
+    #[cfg(feature = "jmespath")]
+    Jmespath(String),
+}
+
 /// Configuration for idempotent handlers.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IdempotencyConfig {
@@ -19,6 +31,7 @@ pub struct IdempotencyConfig {
     record_ttl: Duration,
     in_progress_ttl: Duration,
     lambda_deadline: Option<SystemTime>,
+    payload_validation: PayloadValidation,
 }
 
 impl IdempotencyConfig {
@@ -31,6 +44,7 @@ impl IdempotencyConfig {
             record_ttl: DEFAULT_RECORD_TTL,
             in_progress_ttl: DEFAULT_IN_PROGRESS_TTL,
             lambda_deadline: None,
+            payload_validation: PayloadValidation::Full,
         }
     }
 
@@ -71,6 +85,12 @@ impl IdempotencyConfig {
     #[must_use]
     pub const fn lambda_deadline(&self) -> Option<SystemTime> {
         self.lambda_deadline
+    }
+
+    /// Returns the payload validation strategy.
+    #[must_use]
+    pub const fn payload_validation(&self) -> &PayloadValidation {
+        &self.payload_validation
     }
 
     /// Returns a copy of this configuration with a completed record time-to-live duration.
@@ -130,6 +150,35 @@ impl IdempotencyConfig {
         self
     }
 
+    /// Returns a copy of this configuration without payload validation.
+    ///
+    /// This stores idempotency records without a validation hash. Replayed
+    /// records will not compare the current payload against the stored record.
+    #[must_use]
+    pub fn without_payload_validation(mut self) -> Self {
+        self.payload_validation = PayloadValidation::Disabled;
+        self
+    }
+
+    /// Returns a copy of this configuration with full-payload validation.
+    #[must_use]
+    pub fn with_full_payload_validation(mut self) -> Self {
+        self.payload_validation = PayloadValidation::Full;
+        self
+    }
+
+    /// Returns a copy of this configuration with `JMESPath` payload validation.
+    ///
+    /// The selected value is hashed and compared with stored records. This is
+    /// useful when the idempotency key comes from a stable request identifier
+    /// while envelope fields such as timestamps can change across retries.
+    #[cfg(feature = "jmespath")]
+    #[must_use]
+    pub fn with_payload_validation_jmespath(mut self, expression: impl Into<String>) -> Self {
+        self.payload_validation = PayloadValidation::Jmespath(expression.into());
+        self
+    }
+
     /// Returns a copy of this configuration with an idempotency key prefix.
     #[must_use]
     pub fn with_key_prefix(mut self, key_prefix: impl Into<String>) -> Self {
@@ -161,7 +210,9 @@ fn is_truthy(value: &str) -> bool {
 mod tests {
     use std::time::{Duration, UNIX_EPOCH};
 
-    use super::{DEFAULT_IN_PROGRESS_TTL, DEFAULT_RECORD_TTL, IdempotencyConfig};
+    use super::{
+        DEFAULT_IN_PROGRESS_TTL, DEFAULT_RECORD_TTL, IdempotencyConfig, PayloadValidation,
+    };
 
     #[test]
     fn new_uses_default_ttls() {
@@ -171,6 +222,7 @@ mod tests {
         assert_eq!(config.record_ttl(), DEFAULT_RECORD_TTL);
         assert_eq!(config.in_progress_ttl(), DEFAULT_IN_PROGRESS_TTL);
         assert_eq!(config.lambda_deadline(), None);
+        assert_eq!(config.payload_validation(), &PayloadValidation::Full);
     }
 
     #[test]
@@ -184,6 +236,27 @@ mod tests {
         assert_eq!(config.key_prefix(), Some("orders"));
         assert_eq!(config.record_ttl(), Duration::from_secs(10));
         assert_eq!(config.in_progress_ttl(), Duration::from_secs(2));
+    }
+
+    #[test]
+    fn payload_validation_can_be_disabled_and_restored() {
+        let config = IdempotencyConfig::new(false)
+            .without_payload_validation()
+            .with_full_payload_validation();
+
+        assert_eq!(config.payload_validation(), &PayloadValidation::Full);
+    }
+
+    #[cfg(feature = "jmespath")]
+    #[test]
+    fn payload_validation_can_use_jmespath() {
+        let config =
+            IdempotencyConfig::new(false).with_payload_validation_jmespath("powertools_json(body)");
+
+        assert_eq!(
+            config.payload_validation(),
+            &PayloadValidation::Jmespath("powertools_json(body)".to_owned())
+        );
     }
 
     #[test]

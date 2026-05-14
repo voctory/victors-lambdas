@@ -17,7 +17,7 @@ aws-lambda-powertools = { version = "0.1", features = ["jmespath"] }
 - Built-in envelope constants for common Lambda event extraction paths such as API Gateway body JSON, SQS message body
   JSON, SNS message JSON, EventBridge detail, Kinesis base64 JSON records, CloudWatch Logs base64-gzip payloads, and S3
   notifications delivered through SQS or Kinesis Firehose.
-- Optional idempotency key extraction via `idempotency-jmespath`.
+- Optional idempotency key extraction and payload validation selection via `idempotency-jmespath`.
 
 ## Snippet
 

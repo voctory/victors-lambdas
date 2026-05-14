@@ -6,9 +6,12 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
     AsyncIdempotencyStore, IdempotencyConfig, IdempotencyError, IdempotencyExecutionError,
-    IdempotencyKey, IdempotencyRecord, IdempotencyStatus, IdempotencyStore, hash_payload,
-    key_from_payload,
+    IdempotencyKey, IdempotencyRecord, IdempotencyStatus, IdempotencyStore, PayloadValidation,
+    hash_payload, key_from_payload,
 };
+
+#[cfg(feature = "jmespath")]
+use crate::hash_payload_from_jmespath;
 
 /// Result of an idempotent handler invocation.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -181,10 +184,11 @@ where
         self.execute_json_with_key(key, payload, handler)
     }
 
-    /// Executes a handler using an explicit idempotency key and payload hash.
+    /// Executes a handler using an explicit idempotency key.
     ///
     /// Use this when the idempotency key is extracted from a stable subset of
-    /// the payload while the full payload hash should still be validated.
+    /// the payload. Payload validation uses the configured
+    /// [`PayloadValidation`] strategy.
     ///
     /// # Errors
     ///
@@ -208,11 +212,11 @@ where
         }
 
         let key = scoped_key(&self.config, key.into())?;
-        let payload_hash = hash_payload(payload)?;
+        let payload_hash = payload_hash_for(&self.config, payload)?;
         let now = SystemTime::now();
 
         if let Some(record) = self.store.get(&key).map_err(IdempotencyError::from)? {
-            match evaluate_existing_record(&key, &payload_hash, &record, now)? {
+            match evaluate_existing_record(&key, payload_hash.as_deref(), &record, now)? {
                 ExistingRecord::Replay(response) => {
                     return Ok(IdempotencyOutcome::Replayed(response));
                 }
@@ -223,8 +227,10 @@ where
         }
 
         let in_progress_expires_at = in_progress_expires_at(&self.config, now);
-        let in_progress = IdempotencyRecord::in_progress_until(key.clone(), in_progress_expires_at)
-            .with_payload_hash(payload_hash.clone());
+        let in_progress = with_optional_payload_hash(
+            IdempotencyRecord::in_progress_until(key.clone(), in_progress_expires_at),
+            payload_hash.as_deref(),
+        );
         self.store
             .put(in_progress)
             .map_err(IdempotencyError::from)?;
@@ -234,9 +240,11 @@ where
                 let response_data = serde_json::to_vec(&response)
                     .map_err(|error| IdempotencyError::serialization(error.to_string()))?;
                 let completed_expires_at = now + self.config.record_ttl();
-                let completed = IdempotencyRecord::completed_until(key, completed_expires_at)
-                    .with_payload_hash(payload_hash)
-                    .with_response_data(response_data);
+                let completed = with_optional_payload_hash(
+                    IdempotencyRecord::completed_until(key, completed_expires_at),
+                    payload_hash.as_deref(),
+                )
+                .with_response_data(response_data);
                 self.store.put(completed).map_err(IdempotencyError::from)?;
                 Ok(IdempotencyOutcome::Executed(response))
             }
@@ -283,10 +291,11 @@ where
         self.execute_json_with_key(key, payload, handler).await
     }
 
-    /// Executes an async handler using an explicit idempotency key and payload hash.
+    /// Executes an async handler using an explicit idempotency key.
     ///
     /// Use this when the idempotency key is extracted from a stable subset of
-    /// the payload while the full payload hash should still be validated.
+    /// the payload. Payload validation uses the configured
+    /// [`PayloadValidation`] strategy.
     ///
     /// # Errors
     ///
@@ -312,11 +321,11 @@ where
         }
 
         let key = scoped_key(&self.config, key.into())?;
-        let payload_hash = hash_payload(payload)?;
+        let payload_hash = payload_hash_for(&self.config, payload)?;
         let now = SystemTime::now();
 
         if let Some(record) = self.store.get(&key).await.map_err(IdempotencyError::from)? {
-            match evaluate_existing_record(&key, &payload_hash, &record, now)? {
+            match evaluate_existing_record(&key, payload_hash.as_deref(), &record, now)? {
                 ExistingRecord::Replay(response) => {
                     return Ok(IdempotencyOutcome::Replayed(response));
                 }
@@ -330,8 +339,10 @@ where
         }
 
         let in_progress_expires_at = in_progress_expires_at(&self.config, now);
-        let in_progress = IdempotencyRecord::in_progress_until(key.clone(), in_progress_expires_at)
-            .with_payload_hash(payload_hash.clone());
+        let in_progress = with_optional_payload_hash(
+            IdempotencyRecord::in_progress_until(key.clone(), in_progress_expires_at),
+            payload_hash.as_deref(),
+        );
         self.store
             .put(in_progress)
             .await
@@ -342,9 +353,11 @@ where
                 let response_data = serde_json::to_vec(&response)
                     .map_err(|error| IdempotencyError::serialization(error.to_string()))?;
                 let completed_expires_at = now + self.config.record_ttl();
-                let completed = IdempotencyRecord::completed_until(key, completed_expires_at)
-                    .with_payload_hash(payload_hash)
-                    .with_response_data(response_data);
+                let completed = with_optional_payload_hash(
+                    IdempotencyRecord::completed_until(key, completed_expires_at),
+                    payload_hash.as_deref(),
+                )
+                .with_response_data(response_data);
                 self.store
                     .put(completed)
                     .await
@@ -359,6 +372,33 @@ where
                 Err(IdempotencyExecutionError::Handler(error))
             }
         }
+    }
+}
+
+fn payload_hash_for<T>(
+    config: &IdempotencyConfig,
+    payload: &T,
+) -> Result<Option<String>, IdempotencyError>
+where
+    T: Serialize + ?Sized,
+{
+    match config.payload_validation() {
+        PayloadValidation::Full => hash_payload(payload).map(Some),
+        PayloadValidation::Disabled => Ok(None),
+        #[cfg(feature = "jmespath")]
+        PayloadValidation::Jmespath(expression) => {
+            hash_payload_from_jmespath(payload, expression).map(Some)
+        }
+    }
+}
+
+fn with_optional_payload_hash(
+    record: IdempotencyRecord,
+    payload_hash: Option<&str>,
+) -> IdempotencyRecord {
+    match payload_hash {
+        Some(payload_hash) => record.with_payload_hash(payload_hash),
+        None => record,
     }
 }
 
@@ -380,14 +420,14 @@ fn scoped_key(
 
 fn evaluate_existing_record<R>(
     key: &IdempotencyKey,
-    payload_hash: &str,
+    payload_hash: Option<&str>,
     record: &IdempotencyRecord,
     now: SystemTime,
 ) -> Result<ExistingRecord<R>, IdempotencyError>
 where
     R: DeserializeOwned,
 {
-    if let Some(stored_hash) = record.payload_hash() {
+    if let (Some(stored_hash), Some(payload_hash)) = (record.payload_hash(), payload_hash) {
         if stored_hash != payload_hash {
             return Err(IdempotencyError::PayloadMismatch { key: key.clone() });
         }
@@ -718,6 +758,105 @@ mod tests {
             idempotency.execute_json_with_key(key.clone(), &json!({"order_id": "abc"}), || {
                 Ok::<_, &'static str>(json!({"status": "ignored"}))
             });
+
+        assert_eq!(
+            result,
+            Err(IdempotencyExecutionError::Idempotency(
+                IdempotencyError::PayloadMismatch { key }
+            ))
+        );
+    }
+
+    #[test]
+    fn execute_json_can_disable_payload_validation() {
+        let config = IdempotencyConfig::new(false).without_payload_validation();
+        let mut idempotency = Idempotency::with_config(RecordingStore::new(), config);
+        let key = IdempotencyKey::new("order-1");
+
+        let first = idempotency
+            .execute_json_with_key(key.clone(), &json!({"amount": 4299}), || {
+                Ok::<_, &'static str>(json!({"status": "created"}))
+            })
+            .expect("first call succeeds");
+        let second = idempotency
+            .execute_json_with_key(key, &json!({"amount": 4300}), || {
+                Ok::<_, &'static str>(json!({"status": "duplicate"}))
+            })
+            .expect("second call replays");
+
+        assert!(first.is_executed());
+        assert!(second.is_replayed());
+        assert!(
+            idempotency
+                .store()
+                .puts()
+                .iter()
+                .all(|record| record.payload_hash().is_none())
+        );
+    }
+
+    #[cfg(feature = "jmespath")]
+    #[test]
+    fn execute_json_validates_selected_payload_subset() {
+        let config =
+            IdempotencyConfig::new(false).with_payload_validation_jmespath("details.amount");
+        let mut idempotency = Idempotency::with_config(InMemoryIdempotencyStore::new(), config);
+        let key = IdempotencyKey::new("order-1");
+
+        let first = idempotency
+            .execute_json_with_key(
+                key.clone(),
+                &json!({
+                    "details": {"amount": 4299},
+                    "received_at": "2026-05-13T12:00:00Z",
+                }),
+                || Ok::<_, &'static str>(json!({"status": "created"})),
+            )
+            .expect("first call succeeds");
+        let second = idempotency
+            .execute_json_with_key(
+                key,
+                &json!({
+                    "details": {"amount": 4299},
+                    "received_at": "2026-05-13T12:01:00Z",
+                }),
+                || Ok::<_, &'static str>(json!({"status": "duplicate"})),
+            )
+            .expect("second call replays");
+
+        assert!(first.is_executed());
+        assert_eq!(
+            second,
+            IdempotencyOutcome::Replayed(json!({"status": "created"}))
+        );
+    }
+
+    #[cfg(feature = "jmespath")]
+    #[test]
+    fn execute_json_rejects_selected_payload_hash_mismatch() {
+        let config =
+            IdempotencyConfig::new(false).with_payload_validation_jmespath("details.amount");
+        let key = IdempotencyKey::new("order-1");
+        let record = IdempotencyRecord::completed_until(
+            key.clone(),
+            std::time::SystemTime::now() + std::time::Duration::from_secs(60),
+        )
+        .with_payload_hash(
+            crate::hash_payload_from_jmespath(
+                &json!({"details": {"amount": 4299}}),
+                "details.amount",
+            )
+            .expect("selected payload hashes"),
+        )
+        .with_response_data(br#"{"status":"created"}"#.to_vec());
+        let mut idempotency =
+            Idempotency::with_config(InMemoryIdempotencyStore::new().with_record(record), config);
+
+        let result = idempotency.execute_json_with_key(
+            key.clone(),
+            &json!({"details": {"amount": 4300}}),
+            || Ok::<_, &'static str>(json!({"status": "ignored"})),
+        );
 
         assert_eq!(
             result,

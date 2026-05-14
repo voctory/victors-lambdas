@@ -85,6 +85,29 @@ where
     Ok(IdempotencyKey::new(hash_json_value(&selected)?))
 }
 
+/// Hashes a payload value selected with a `JMESPath` expression.
+///
+/// Powertools `JMESPath` helper functions such as `powertools_json`,
+/// `powertools_base64`, and `powertools_base64_gzip` are available in the
+/// expression. Missing or empty selections are hashed as JSON values; unlike
+/// idempotency key extraction, payload validation does not require the selected
+/// value to be present.
+///
+/// # Errors
+///
+/// Returns an error when the expression cannot be compiled or evaluated, or
+/// when the selected value cannot be represented as JSON.
+#[cfg(feature = "jmespath")]
+pub fn hash_payload_from_jmespath<T>(payload: &T, expression: &str) -> IdempotencyResult<String>
+where
+    T: Serialize + ?Sized,
+{
+    let selected = aws_lambda_powertools_jmespath::search(expression, payload)
+        .map_err(|error| IdempotencyError::payload_extraction(error.to_string()))?;
+
+    hash_json_value(&selected)
+}
+
 fn hash_json_value(value: &Value) -> IdempotencyResult<String> {
     let bytes = serde_json::to_vec(value)
         .map_err(|error| IdempotencyError::serialization(error.to_string()))?;
@@ -116,9 +139,9 @@ fn is_empty_value(value: &Value) -> bool {
 mod tests {
     use serde_json::json;
 
-    #[cfg(feature = "jmespath")]
-    use super::key_from_jmespath;
     use super::{hash_payload, key_from_json_pointer, key_from_payload};
+    #[cfg(feature = "jmespath")]
+    use super::{hash_payload_from_jmespath, key_from_jmespath};
     use crate::{IdempotencyError, IdempotencyKey};
 
     #[test]
@@ -198,6 +221,31 @@ mod tests {
         let error = key_from_jmespath(&payload, "body[").expect_err("invalid expression fails");
 
         assert!(matches!(error, IdempotencyError::KeyExtraction { .. }));
+        assert!(error.to_string().contains("failed to compile JMESPath"));
+    }
+
+    #[cfg(feature = "jmespath")]
+    #[test]
+    fn hash_payload_from_jmespath_hashes_selected_payload_subset() {
+        let payload = json!({
+            "body": "{\"amount\":4299,\"timestamp\":\"ignored\"}",
+        });
+
+        let hash = hash_payload_from_jmespath(&payload, "powertools_json(body).amount")
+            .expect("JMESPath payload hashes");
+        let expected = hash_payload(&4299).expect("payload hashes");
+
+        assert_eq!(hash, expected);
+    }
+
+    #[cfg(feature = "jmespath")]
+    #[test]
+    fn hash_payload_from_jmespath_reports_expression_errors() {
+        let payload = json!({"body": {}});
+        let error =
+            hash_payload_from_jmespath(&payload, "body[").expect_err("invalid expression fails");
+
+        assert!(matches!(error, IdempotencyError::PayloadExtraction { .. }));
         assert!(error.to_string().contains("failed to compile JMESPath"));
     }
 }
