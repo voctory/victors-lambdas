@@ -1,0 +1,27 @@
+{
+  "Records": [
+    {
+      "eventId": "event-codecommit-1",
+      "eventVersion": "1.0",
+      "eventTime": "2026-05-13T12:00:00Z",
+      "eventTriggerName": "orders-main-update",
+      "eventPartNumber": 1,
+      "eventTotalParts": 1,
+      "eventName": "ReferenceChanges",
+      "eventSourceARN": "arn:aws:codecommit:us-west-2:123456789012:orders",
+      "userIdentityARN": "arn:aws:iam::123456789012:user/deployer",
+      "eventSource": "aws:codecommit",
+      "awsRegion": "us-west-2",
+      "customData": "orders",
+      "codecommit": {
+        "references": [
+          {
+            "commit": "0123456789abcdef0123456789abcdef01234567",
+            "ref": "refs/heads/main",
+            "created": false
+          }
+        ]
+      }
+    }
+  ]
+}

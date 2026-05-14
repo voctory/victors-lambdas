@@ -1,0 +1,18 @@
+{
+  "version": "0",
+  "id": "event-autoscaling-1",
+  "detail-type": "EC2 Instance Launch Successful",
+  "source": "aws.autoscaling",
+  "account": "123456789012",
+  "time": "2026-05-13T12:00:00Z",
+  "region": "us-west-2",
+  "resources": [
+    "arn:aws:autoscaling:us-west-2:123456789012:autoScalingGroup:uuid:autoScalingGroupName/orders"
+  ],
+  "detail": {
+    "StatusCode": "InProgress",
+    "AutoScalingGroupName": "orders",
+    "ActivityId": "activity-123",
+    "EC2InstanceId": "i-1234567890abcdef0"
+  }
+}

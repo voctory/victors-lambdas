@@ -1,0 +1,12 @@
+{
+  "accountId": "123456789012",
+  "configRuleArn": "arn:aws:config:us-west-2:123456789012:config-rule/config-rule-abc",
+  "configRuleId": "config-rule-abc",
+  "configRuleName": "orders-encrypted",
+  "eventLeftScope": false,
+  "executionRoleArn": "arn:aws:iam::123456789012:role/config-role",
+  "invokingEvent": "{\"configurationItem\":{\"resourceType\":\"AWS::S3::Bucket\",\"resourceId\":\"orders\"}}",
+  "resultToken": "result-token-123",
+  "ruleParameters": "{\"requiredTag\":\"service\"}",
+  "version": "1.0"
+}

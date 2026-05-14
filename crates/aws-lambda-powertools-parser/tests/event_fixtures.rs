@@ -12,10 +12,11 @@ use aws_lambda_powertools_parser::{
     ApiGatewayAuthorizerSimpleResponse, ApiGatewayAuthorizerToken, ApiGatewayProxyEventModel,
     ApiGatewayProxyEventV2Model, ApiGatewayWebsocketConnectEvent,
     ApiGatewayWebsocketDisconnectEvent, ApiGatewayWebsocketMessageEvent, AppSyncBatchResolverEvent,
-    AppSyncEventsEvent, AppSyncResolverEvent, CloudFormationCustomResourceCreate,
-    CloudFormationCustomResourceDelete, CloudFormationCustomResourceRequest,
-    CloudFormationCustomResourceResponse, CloudFormationCustomResourceResponseStatus,
-    CloudFormationCustomResourceUpdate, CloudWatchLogsModel, CloudWatchMetricAlarmModel,
+    AppSyncEventsEvent, AppSyncResolverEvent, AutoScalingModel, AwsConfigModel,
+    CloudFormationCustomResourceCreate, CloudFormationCustomResourceDelete,
+    CloudFormationCustomResourceRequest, CloudFormationCustomResourceResponse,
+    CloudFormationCustomResourceResponseStatus, CloudFormationCustomResourceUpdate,
+    CloudWatchLogsModel, CloudWatchMetricAlarmModel, CodeCommitModel,
     CognitoCustomEmailSenderTriggerModel, CognitoCustomEmailSenderTriggerSource,
     CognitoCustomSMSSenderTriggerModel, CognitoCustomSenderRequestType,
     CognitoCustomSmsSenderTriggerSource, CognitoMigrateUserTriggerModel,
@@ -264,6 +265,54 @@ fn parses_eventbridge_scheduler_empty_detail_fixture() {
         .expect("fixture Scheduler detail should parse");
 
     assert_eq!(parsed.into_payload(), serde_json::json!({}));
+}
+
+#[test]
+fn parses_autoscaling_fixture() {
+    let event = load_json_fixture::<AutoScalingModel>(fixture("autoscaling-launch-success.json"))
+        .expect("Auto Scaling fixture should decode");
+
+    assert_eq!(
+        event.detail_type.as_deref(),
+        Some("EC2 Instance Launch Successful")
+    );
+    assert_eq!(event.region.as_deref(), Some("us-west-2"));
+    assert_eq!(
+        event
+            .detail
+            .get("AutoScalingGroupName")
+            .and_then(Value::as_str),
+        Some("orders")
+    );
+}
+
+#[test]
+fn parses_codecommit_fixture() {
+    let event = load_json_fixture::<CodeCommitModel>(fixture("codecommit-main-update.json"))
+        .expect("CodeCommit fixture should decode");
+
+    assert_eq!(event.records.len(), 1);
+    let record = &event.records[0];
+    assert_eq!(record.event_name.as_deref(), Some("ReferenceChanges"));
+    assert_eq!(
+        record.code_commit.references[0].ref_.as_deref(),
+        Some("refs/heads/main")
+    );
+}
+
+#[test]
+fn parses_config_rule_fixture() {
+    let event = load_json_fixture::<AwsConfigModel>(fixture("config-rule-evaluation.json"))
+        .expect("AWS Config fixture should decode");
+
+    assert_eq!(event.config_rule_name.as_deref(), Some("orders-encrypted"));
+    assert!(!event.event_left_scope);
+    assert!(
+        event
+            .invoking_event
+            .as_deref()
+            .is_some_and(|value| value.contains("AWS::S3::Bucket"))
+    );
 }
 
 #[test]

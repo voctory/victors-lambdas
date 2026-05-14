@@ -67,6 +67,9 @@ pub use aws_lambda_events::event::apigw::ApiGatewayWebsocketProxyRequest as ApiG
 pub use aws_lambda_events::event::apigw::ApiGatewayWebsocketProxyRequest as ApiGatewayWebsocketMessageEvent;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::autoscaling::AutoScalingEvent as AutoScalingModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::cloudformation::CloudFormationCustomResourceRequest;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
@@ -97,6 +100,9 @@ pub use aws_lambda_events::event::cloudwatch_alarms::CloudWatchMetricAlarm as Cl
 pub use aws_lambda_events::event::cloudwatch_logs::LogsEvent as CloudWatchLogsModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
+pub use aws_lambda_events::event::code_commit::CodeCommitEvent as CodeCommitModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
 pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsCreateAuthChallenge as CognitoCreateAuthChallengeTriggerModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
@@ -125,6 +131,9 @@ pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsPreTokenGenV2 as
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::cognito::CognitoEventUserPoolsVerifyAuthChallenge as CognitoVerifyAuthChallengeTriggerModel;
+#[cfg(feature = "aws-lambda-events")]
+#[doc(inline)]
+pub use aws_lambda_events::event::config::ConfigEvent as AwsConfigModel;
 #[cfg(feature = "aws-lambda-events")]
 #[doc(inline)]
 pub use aws_lambda_events::event::dynamodb::Event as DynamoDbStreamModel;
