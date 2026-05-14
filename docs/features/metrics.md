@@ -17,6 +17,7 @@ Powertools-compatible environment variables.
 | `POWERTOOLS_SERVICE_NAME` | Sets the default `service` dimension. |
 | `POWERTOOLS_METRICS_NAMESPACE` | Sets the CloudWatch namespace. |
 | `POWERTOOLS_METRICS_DISABLED` | Disables EMF output when truthy. |
+| `POWERTOOLS_DEV` | Disables EMF output when `POWERTOOLS_METRICS_DISABLED` is not set. |
 
 ## Supported Behavior
 
