@@ -8,10 +8,11 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 - Workspace: virtual Cargo workspace with resolver `3`, Rust 2024, Rust `1.85.0`, committed `Cargo.lock`, shared lints,
   a `release-lambda` profile, and CI for fmt, clippy, test, and check.
 - Crates: one umbrella crate, `aws-lambda-powertools`, plus utility crates under `crates/`.
-- Feature flags: the umbrella crate exposes `logger`, `logger-tracing`, `metrics`, `tracer`, `tracer-opentelemetry`,
-  `tracer-tracing`, `tracer-xray`, `tracer-xray-daemon`, `parameters`, `parameters-appconfig`,
-  `parameters-dynamodb`, `parameters-secrets`, `parameters-ssm`,
-  `jmespath`, `data-masking`, `data-masking-kms`, `kafka`, `kafka-avro`, `kafka-protobuf`, `parser`, `parser-aws-lambda-events`,
+- Feature flags: the umbrella crate exposes `logger`, `logger-tracing`, `metadata`, `metrics`, `tracer`,
+  `tracer-opentelemetry`, `tracer-tracing`, `tracer-xray`, `tracer-xray-daemon`, `parameters`,
+  `parameters-appconfig`, `parameters-dynamodb`, `parameters-secrets`, `parameters-ssm`,
+  `jmespath`, `data-masking`, `data-masking-kms`, `kafka`, `kafka-avro`, `kafka-protobuf`, `parser`,
+  `parser-aws-lambda-events`,
   `streaming`, `streaming-async`, `streaming-csv`, `streaming-gzip`, `streaming-s3`, `streaming-zip`, `batch`,
   `batch-aws-lambda-events`, `batch-parser`,
   `idempotency`, `idempotency-dynamodb`, `idempotency-jmespath`, `feature-flags`, `feature-flags-appconfig`,
@@ -25,8 +26,9 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 
 ## Goals
 
-- Provide Rust-native utilities for common Lambda operational practices: structured logging, CloudWatch EMF metrics,
-  tracing, parameter retrieval, JMESPath extraction, data masking, Kafka record materialization, seekable streaming,
+- Provide Rust-native utilities for common Lambda operational practices: structured logging, Lambda execution metadata,
+  CloudWatch EMF metrics, tracing, parameter retrieval, JMESPath extraction, data masking, Kafka record materialization,
+  seekable streaming,
   event parsing, batch responses, validation, idempotency, feature flags, and event handling.
 - Keep provider integrations and heavier dependencies behind Cargo features so users do not pay for unused integrations.
 - Preserve useful cross-language Powertools conventions where they fit Rust, especially environment variable names and
@@ -50,6 +52,7 @@ functions. Keep public wording precise: describe it as unofficial and pre-releas
 | Workspace | Workspace layout, shared package metadata, lints, lockfile, Rust toolchain, CI, `release-lambda` profile | Release automation, changelog, publishing workflow |
 | Umbrella crate | Feature-gated re-exports and a prelude across current utility crates | Published crate metadata review and docs.rs examples |
 | Core | `ServiceConfig`, env constants and parsers, cold-start tracking, user-agent metadata | Cross-crate error conventions beyond concrete utility errors |
+| Metadata | `LambdaMetadata`, `LambdaMetadataClient`, endpoint timeout configuration, process-level cache, dev/local empty-metadata behavior, status-aware errors, direct endpoint test hook, initial docs/snippet, and umbrella exports | Additional deployment examples |
 | Logger | `LoggerConfig`, `LogLevel`, `Logger`, `LogEntry`, `LogValue`, `LogBufferConfig`, `LogBuffer`, `LogBufferError`, `LogFormatter`, `LogRedactor`, `JsonLogFormatter`, `LambdaContextFields`, `LoggerLayer`, JSON rendering, persistent fields, temporary fields, event rendering toggle, level filtering, debug sampling, correlation ID helpers, Lambda context fields, key redaction, custom formatter/redaction hook APIs, bounded request-keyed log buffering, optional `tracing` subscriber integration, stdout emission, and initial docs/snippet | Broader handler examples |
 | Metrics | `MetricsConfig`, `Metric`, `MetricUnit`, `MetricResolution`, `MetadataValue`, EMF JSON renderer, request dimensions, default dimensions, metadata, name/value validation, service dimension, cold-start metric, high-resolution metric definitions, stdout flush API, explicit timestamp rendering/writing, opt-in overflow flush helpers, async capture helpers, CloudWatch limits, and initial docs/snippet | Broader handler examples |
 | Tracer | `TracerConfig`, `Tracer`, `TraceContext`, capture flags, injectable env sources, X-Ray header parsing/rendering, `TraceSegment`, `TraceValue`, optional X-Ray-compatible subsegment document rendering, optional X-Ray daemon UDP transport, optional `tracing` span integration, optional OpenTelemetry span builder/attribute export, buildable OpenTelemetry SDK/stdout and OTLP exporter snippet, and initial docs/snippet | Vendor-specific OpenTelemetry deployment examples |
@@ -81,6 +84,7 @@ The next durable work should turn the landed primitives into Lambda-facing utili
 | --- | --- | --- |
 | `aws-lambda-powertools` | Primary user-facing crate | Depends on support crates through optional dependencies and re-exports enabled utilities |
 | `aws-lambda-powertools-core` | Shared foundations | Keep small: config, env, cold start, metadata, and other genuine cross-crate foundations |
+| `aws-lambda-powertools-metadata` | Lambda execution metadata | Execution-environment endpoint client, local/dev empty result behavior, process-level cache, status-aware errors, initial docs/snippet, and umbrella exports exist; next work is deployment examples |
 | `aws-lambda-powertools-logger` | Structured logs | JSON renderer, sampling, correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, bounded request-keyed log buffering, optional `tracing` subscriber layer, and initial docs/snippet exist; next work is broader handler examples |
 | `aws-lambda-powertools-metrics` | CloudWatch EMF metrics | Renderer, flush API, high-resolution metrics, default dimensions, explicit timestamps, overflow flush helpers, async capture helpers, and initial docs/snippet exist; next work is broader handler examples |
 | `aws-lambda-powertools-tracer` | Tracing facade | Segment records, X-Ray header propagation helpers, optional X-Ray-compatible subsegment document rendering, optional X-Ray daemon UDP transport, optional `tracing` span conversion, optional OpenTelemetry span builder/attribute export, and a buildable OpenTelemetry SDK/stdout plus OTLP exporter snippet exist; next work is vendor-specific OpenTelemetry deployment examples |
@@ -106,6 +110,7 @@ Implemented umbrella features:
 
 - `logger`
 - `logger-tracing`
+- `metadata`
 - `metrics`
 - `tracer`
 - `tracer-opentelemetry`
@@ -180,6 +185,9 @@ for future integrations.
 - `POWERTOOLS_IDEMPOTENCY_DISABLED`
 - `POWERTOOLS_DEV`
 - `POWERTOOLS_DEBUG`
+- `AWS_LAMBDA_INITIALIZATION_TYPE`
+- `AWS_LAMBDA_METADATA_API`
+- `AWS_LAMBDA_METADATA_TOKEN`
 
 Rust APIs should prefer typed configuration builders, but keeping these names stable helps deployments that already use
 Powertools conventions.
@@ -198,6 +206,7 @@ Powertools conventions.
 
 - [x] Establish the virtual workspace, crate layout, MSRV, lockfile, lints, and CI.
 - [x] Add first-pass core config, environment parsing, cold-start, and metadata helpers.
+- [x] Add Lambda execution-environment metadata utility.
 - [x] Add first-pass structured JSON logger.
 - [x] Add first-pass CloudWatch EMF metrics renderer.
 - [x] Add first-pass parser, batch, validation, parameters, idempotency, tracer, event-handler, and testing surfaces.

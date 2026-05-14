@@ -53,6 +53,12 @@ pub mod logger {
     pub use aws_lambda_powertools_logger::*;
 }
 
+/// Lambda execution environment metadata utility.
+#[cfg(feature = "metadata")]
+pub mod metadata {
+    pub use aws_lambda_powertools_metadata::*;
+}
+
 /// Metrics utility.
 #[cfg(feature = "metrics")]
 pub mod metrics {
@@ -230,6 +236,14 @@ pub mod prelude {
 
     #[cfg(feature = "logger-tracing")]
     pub use aws_lambda_powertools_logger::LoggerLayer;
+
+    #[cfg(feature = "metadata")]
+    pub use aws_lambda_powertools_metadata::{
+        DEFAULT_LAMBDA_METADATA_TIMEOUT, LAMBDA_METADATA_API_VERSION, LAMBDA_METADATA_PATH,
+        LambdaMetadata, LambdaMetadataClient, LambdaMetadataError, LambdaMetadataErrorKind,
+        LambdaMetadataResult, clear_lambda_metadata_cache, get_lambda_metadata,
+        get_lambda_metadata_with_timeout,
+    };
 
     #[cfg(feature = "metrics")]
     pub use aws_lambda_powertools_metrics::{

@@ -50,6 +50,15 @@ pub const POWERTOOLS_DEV: &str = "POWERTOOLS_DEV";
 /// Whether Powertools debug behavior is enabled.
 pub const POWERTOOLS_DEBUG: &str = "POWERTOOLS_DEBUG";
 
+/// Lambda initialization type marker set inside the Lambda execution environment.
+pub const AWS_LAMBDA_INITIALIZATION_TYPE: &str = "AWS_LAMBDA_INITIALIZATION_TYPE";
+
+/// Lambda execution-environment metadata endpoint authority.
+pub const AWS_LAMBDA_METADATA_API: &str = "AWS_LAMBDA_METADATA_API";
+
+/// Lambda execution-environment metadata endpoint bearer token.
+pub const AWS_LAMBDA_METADATA_TOKEN: &str = "AWS_LAMBDA_METADATA_TOKEN";
+
 /// Error returned when a typed environment value cannot be parsed.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EnvParseError {

@@ -34,6 +34,7 @@ all = [
     "kafka-avro",
     "kafka-protobuf",
     "logger",
+    "metadata",
     "metrics",
     "parameters",
     "parser",
@@ -112,6 +113,7 @@ kafka-avro = ["kafka", "aws-lambda-powertools-kafka/avro"]
 kafka-protobuf = ["kafka", "aws-lambda-powertools-kafka/protobuf"]
 logger = ["dep:aws-lambda-powertools-logger"]
 logger-tracing = ["logger", "aws-lambda-powertools-logger/tracing"]
+metadata = ["dep:aws-lambda-powertools-metadata"]
 metrics = ["dep:aws-lambda-powertools-metrics"]
 parameters = ["dep:aws-lambda-powertools-parameters"]
 parameters-appconfig = ["parameters", "aws-lambda-powertools-parameters/appconfig"]
@@ -149,6 +151,7 @@ aws-lambda-powertools-idempotency = { workspace = true, optional = true }
 aws-lambda-powertools-jmespath = { workspace = true, optional = true }
 aws-lambda-powertools-kafka = { workspace = true, optional = true }
 aws-lambda-powertools-logger = { workspace = true, optional = true }
+aws-lambda-powertools-metadata = { workspace = true, optional = true }
 aws-lambda-powertools-metrics = { workspace = true, optional = true }
 aws-lambda-powertools-parameters = { workspace = true, optional = true }
 aws-lambda-powertools-parser = { workspace = true, optional = true }

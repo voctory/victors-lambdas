@@ -1,0 +1,8 @@
+[package]
+name = "metadata-snippet"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+aws-lambda-powertools = { path = "../../../crates/aws-lambda-powertools", features = ["metadata"] }

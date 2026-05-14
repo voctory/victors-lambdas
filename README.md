@@ -7,7 +7,8 @@ The workspace currently contains the umbrella crate `aws-lambda-powertools`, fea
 `basic-lambda` workspace example, buildable snippets, and CI for formatting, linting, tests, and workspace checks. The
 first implementation tranche has landed:
 
-- shared service config, environment parsing helpers, cold-start tracking, and runtime metadata
+- shared service config, environment parsing helpers, cold-start tracking, runtime metadata, and Lambda
+  execution-environment metadata retrieval with process-level caching
 - structured JSON logging with levels, persistent and per-entry fields, optional event rendering, debug sampling,
   correlation IDs, Lambda context fields, key redaction, custom formatter/redaction hooks, optional `tracing`
   subscriber integration, bounded log buffering, and stdout emission
@@ -91,6 +92,7 @@ Local examples use path dependencies until crates are published.
 Initial feature docs:
 
 - [Logger](docs/features/logger.md)
+- [Lambda Metadata](docs/features/metadata.md)
 - [Metrics](docs/features/metrics.md)
 - [Tracer](docs/features/tracer.md)
 - [Parameters](docs/features/parameters.md)
