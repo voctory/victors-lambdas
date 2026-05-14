@@ -3,11 +3,13 @@
 use std::error::Error;
 
 use aws_lambda_events::event::{
+    dynamodb::Event as DynamoDbEvent,
     kinesis::{KinesisEvent, KinesisEventRecord},
     sqs::{SqsEvent, SqsMessage},
 };
 use aws_lambda_powertools::prelude::{BatchProcessor, BatchRecord, EventParser};
 use serde::Deserialize;
+use serde_json::json;
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
 struct OrderEvent {
@@ -27,6 +29,45 @@ fn kinesis_record(sequence_number: &str, data: &[u8]) -> KinesisEventRecord {
     sequence_number.clone_into(&mut record.kinesis.sequence_number);
     record.kinesis.data.extend_from_slice(data);
     record
+}
+
+fn dynamodb_event() -> serde_json::Result<DynamoDbEvent> {
+    serde_json::from_value(json!({
+        "Records": [
+            {
+                "eventID": "event-1",
+                "eventName": "INSERT",
+                "eventSource": "aws:dynamodb",
+                "awsRegion": "us-east-1",
+                "dynamodb": {
+                    "Keys": { "pk": { "S": "order-8" } },
+                    "NewImage": {
+                        "order_id": { "S": "order-8" },
+                        "quantity": { "N": "3" }
+                    },
+                    "SequenceNumber": "sequence-3",
+                    "SizeBytes": 26,
+                    "StreamViewType": "NEW_IMAGE"
+                }
+            },
+            {
+                "eventID": "event-2",
+                "eventName": "INSERT",
+                "eventSource": "aws:dynamodb",
+                "awsRegion": "us-east-1",
+                "dynamodb": {
+                    "Keys": { "pk": { "S": "order-9" } },
+                    "NewImage": {
+                        "order_id": { "S": "order-9" },
+                        "quantity": { "S": "many" }
+                    },
+                    "SequenceNumber": "sequence-4",
+                    "SizeBytes": 31,
+                    "StreamViewType": "NEW_IMAGE"
+                }
+            }
+        ]
+    }))
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -106,6 +147,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
     );
     assert_eq!(kinesis_report.stream_checkpoint(), Some("sequence-2"));
+
+    let dynamodb_event = dynamodb_event()?;
+
+    let dynamodb_report = BatchProcessor::new().process_dynamodb_new_images::<OrderEvent, _>(
+        &dynamodb_event,
+        |record| {
+            assert_eq!(record.payload().order_id, "order-8");
+            Ok::<(), &str>(())
+        },
+    );
+    assert_eq!(dynamodb_report.stream_checkpoint(), Some("sequence-4"));
 
     println!("reported {} FIFO failures", failures.len());
 

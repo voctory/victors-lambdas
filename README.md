@@ -28,7 +28,7 @@ first implementation tranche has landed:
   models
 - sequential and concurrent batch record processing, partial batch response builders, stream checkpoint helpers, and
   optional `aws_lambda_events` SQS, Kinesis, and DynamoDB stream adapters with FIFO SQS early-stop behavior and
-  parser-integrated SQS message body and Kinesis record data processing
+  parser-integrated SQS message body, Kinesis record data, and DynamoDB stream image processing
 - validation helpers for required text, text length, numeric ranges, custom predicates, inbound/outbound value wrappers,
   and optional local JSON Schema validation with a compiled schema cache
 - idempotency keys, payload hashing, JSON Pointer key extraction, sync and async handler workflows, replay behavior,

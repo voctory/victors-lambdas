@@ -95,6 +95,7 @@ dependencies = [
  "aws-lambda-powertools-parser",
  "aws_lambda_events",
  "serde",
+ "serde_dynamo",
  "serde_json",
 ]
 
