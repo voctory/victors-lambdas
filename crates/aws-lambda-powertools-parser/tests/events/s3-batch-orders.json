@@ -1,0 +1,15 @@
+{
+  "invocationSchemaVersion": "1.0",
+  "invocationId": "invocation-s3-batch-1",
+  "job": {
+    "id": "job-s3-batch-1"
+  },
+  "tasks": [
+    {
+      "taskId": "task-s3-batch-1",
+      "s3Key": "orders/order-s3-batch-1.json",
+      "s3VersionId": "version-s3-batch-1",
+      "s3BucketArn": "arn:aws:s3:::orders"
+    }
+  ]
+}

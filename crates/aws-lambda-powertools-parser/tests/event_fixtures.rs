@@ -5,12 +5,19 @@
 use std::path::PathBuf;
 
 use aws_lambda_events::event::{
-    alb::AlbTargetGroupRequest, apigw::ApiGatewayV2httpRequest,
-    cloudformation::CloudFormationCustomResourceRequest, cloudwatch_logs::LogsEvent,
-    dynamodb::Event as DynamoDbEvent, eventbridge::EventBridgeEvent,
-    firehose::KinesisFirehoseEvent, kinesis::KinesisEvent,
-    lambda_function_urls::LambdaFunctionUrlRequest, s3::S3Event, ses::SimpleEmailEvent,
-    sns::SnsEvent, sqs::SqsEvent,
+    alb::AlbTargetGroupRequest,
+    apigw::ApiGatewayV2httpRequest,
+    cloudformation::CloudFormationCustomResourceRequest,
+    cloudwatch_logs::LogsEvent,
+    dynamodb::Event as DynamoDbEvent,
+    eventbridge::EventBridgeEvent,
+    firehose::KinesisFirehoseEvent,
+    kinesis::KinesisEvent,
+    lambda_function_urls::LambdaFunctionUrlRequest,
+    s3::{S3Event, batch_job::S3BatchJobEvent, object_lambda::S3ObjectLambdaEvent},
+    ses::SimpleEmailEvent,
+    sns::SnsEvent,
+    sqs::SqsEvent,
 };
 use aws_lambda_powertools_parser::EventParser;
 use aws_lambda_powertools_testing::load_json_fixture;
@@ -28,6 +35,15 @@ struct OrderEvent {
 struct CustomResourceProperties {
     bucket_name: String,
     retention_days: u32,
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct S3BatchTask {
+    task_id: Option<String>,
+    s3_key: Option<String>,
+    s3_version_id: Option<String>,
+    s3_bucket_arn: Option<String>,
 }
 
 #[test]
@@ -140,6 +156,46 @@ fn parses_s3_record_fixture() {
             .pointer("/s3/object/key")
             .and_then(Value::as_str),
         Some("orders/order-s3-1.json")
+    );
+}
+
+#[test]
+fn parses_s3_object_lambda_payload_fixture() {
+    let event =
+        load_json_fixture::<S3ObjectLambdaEvent<Value>>(fixture("s3-object-lambda-order.json"))
+            .expect("S3 Object Lambda fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_s3_object_lambda_configuration_payload::<OrderEvent>(event)
+        .expect("fixture S3 Object Lambda payload should parse");
+
+    assert_eq!(
+        parsed.payload(),
+        &OrderEvent {
+            order_id: "order-s3-object-lambda-1".to_owned(),
+            quantity: 13,
+        }
+    );
+}
+
+#[test]
+fn parses_s3_batch_job_task_fixture() {
+    let event = load_json_fixture::<S3BatchJobEvent>(fixture("s3-batch-orders.json"))
+        .expect("S3 Batch fixture should decode");
+
+    let parsed = EventParser::new()
+        .parse_s3_batch_job_tasks::<S3BatchTask>(event)
+        .expect("fixture S3 Batch tasks should parse");
+
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(
+        parsed[0].payload(),
+        &S3BatchTask {
+            task_id: Some("task-s3-batch-1".to_owned()),
+            s3_key: Some("orders/order-s3-batch-1.json".to_owned()),
+            s3_version_id: Some("version-s3-batch-1".to_owned()),
+            s3_bucket_arn: Some("arn:aws:s3:::orders".to_owned()),
+        }
     );
 }
 
