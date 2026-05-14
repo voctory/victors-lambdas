@@ -16,7 +16,7 @@ pub use s3::AsyncS3ObjectClient;
 #[cfg(feature = "s3")]
 pub use s3::{AwsSdkS3AsyncRangeReader, AwsSdkS3ObjectClient, AwsSdkS3RangeReader};
 pub use s3::{
-    S3GetObjectRangeRequest, S3HeadObjectOutput, S3HeadObjectRequest, S3ObjectClient,
+    S3GetObjectRangeRequest, S3HeadObjectOutput, S3HeadObjectRequest, S3Object, S3ObjectClient,
     S3ObjectIdentifier, S3RangeSource,
 };
 #[cfg(feature = "async")]

@@ -25,8 +25,8 @@ first implementation tranche has landed:
 - Kafka consumer record materialization that flattens Lambda Kafka event records, decodes primitive or JSON base64 keys
   and values, supports schema-aware key/value decoder configuration with Event Source Mapping metadata, provides
   optional Avro and Protobuf decode helpers, decodes headers, and preserves original encoded fields
-- sync and async seekable streaming over byte-range and AWS SDK-backed S3 object range sources with optional gzip, CSV,
-  and ZIP transforms
+- sync and async seekable streaming over byte-range and AWS SDK-backed S3 object range sources, an `S3Object`
+  convenience reader, and optional gzip, CSV, and ZIP transforms
 - serde JSON parsing facade with structured parse errors and optional `aws_lambda_events` API Gateway
   REST/HTTP/WebSocket API bodies, API Gateway WebSocket lifecycle aliases, API Gateway Lambda authorizer aliases,
   common Powertools parser event model aliases, AppSync direct resolver/batch aliases and arguments/source, AppSync

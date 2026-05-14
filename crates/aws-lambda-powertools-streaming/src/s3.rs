@@ -1,11 +1,11 @@
 //! S3 range source abstraction.
 
-use std::io::Read;
+use std::io::{self, Read, Seek, SeekFrom};
 
 #[cfg(feature = "s3")]
 use std::{
     future::Future,
-    io::{self, Cursor},
+    io::Cursor,
     pin::Pin,
     sync::mpsc::{self, Receiver, SyncSender},
 };
@@ -19,7 +19,7 @@ use tokio::io::{AsyncBufRead, AsyncReadExt as _};
 
 #[cfg(feature = "async")]
 use crate::{AsyncRangeFuture, AsyncRangeSource};
-use crate::{RangeSource, StreamingResult};
+use crate::{RangeSource, SeekableStream, StreamingResult};
 #[cfg(feature = "s3")]
 use crate::{StreamingError, StreamingErrorKind};
 
@@ -531,6 +531,101 @@ impl<C> S3RangeSource<C> {
     }
 }
 
+/// Seekable reader for an S3 object.
+///
+/// This is a convenience wrapper around [`SeekableStream`] and [`S3RangeSource`] for callers who
+/// want a higher-level S3 object entry point while still supplying an explicit S3 client
+/// abstraction.
+pub struct S3Object<C>
+where
+    C: S3ObjectClient,
+{
+    stream: SeekableStream<S3RangeSource<C>>,
+}
+
+impl<C> S3Object<C>
+where
+    C: S3ObjectClient,
+{
+    /// Creates a seekable S3 object reader.
+    #[must_use]
+    pub fn new(object: S3ObjectIdentifier, client: C) -> Self {
+        Self {
+            stream: SeekableStream::new(S3RangeSource::new(object, client)),
+        }
+    }
+
+    /// Creates a seekable S3 object reader for a bucket and object key.
+    #[must_use]
+    pub fn for_bucket_key(bucket: impl Into<String>, key: impl Into<String>, client: C) -> Self {
+        Self::new(S3ObjectIdentifier::new(bucket, key), client)
+    }
+
+    /// Creates a seekable S3 object reader for a versioned object.
+    #[must_use]
+    pub fn for_bucket_key_version(
+        bucket: impl Into<String>,
+        key: impl Into<String>,
+        version_id: impl Into<String>,
+        client: C,
+    ) -> Self {
+        Self::new(
+            S3ObjectIdentifier::new(bucket, key).with_version_id(version_id),
+            client,
+        )
+    }
+
+    /// Returns the target S3 object.
+    #[must_use]
+    pub fn object(&self) -> &S3ObjectIdentifier {
+        self.stream.source_ref().object()
+    }
+
+    /// Returns a reference to the underlying range source.
+    #[must_use]
+    pub const fn source_ref(&self) -> &S3RangeSource<C> {
+        self.stream.source_ref()
+    }
+
+    /// Returns a mutable reference to the underlying range source.
+    pub fn source_mut(&mut self) -> &mut S3RangeSource<C> {
+        self.stream.source_mut()
+    }
+
+    /// Consumes this object and returns the underlying seekable stream.
+    #[must_use]
+    pub fn into_inner(self) -> SeekableStream<S3RangeSource<C>> {
+        self.stream
+    }
+
+    /// Returns the S3 object size in bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the underlying client cannot retrieve object metadata.
+    pub fn size(&mut self) -> StreamingResult<u64> {
+        self.stream.len()
+    }
+}
+
+impl<C> Read for S3Object<C>
+where
+    C: S3ObjectClient,
+{
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        self.stream.read(buffer)
+    }
+}
+
+impl<C> Seek for S3Object<C>
+where
+    C: S3ObjectClient,
+{
+    fn seek(&mut self, position: SeekFrom) -> io::Result<u64> {
+        self.stream.seek(position)
+    }
+}
+
 #[cfg(feature = "async")]
 impl<C> AsyncRangeSource for S3RangeSource<C>
 where
@@ -718,6 +813,34 @@ mod tests {
         assert_eq!(source.object().bucket(), "bucket");
         assert_eq!(source.object().key(), "key");
         assert_eq!(source.object().version_id(), None);
+    }
+
+    #[test]
+    fn s3_object_reads_ranges_and_reports_size() {
+        let client = FakeS3Client::new(b"abcdef".to_vec());
+        let mut object = S3Object::for_bucket_key_version("bucket", "key", "version-1", client);
+        let mut buffer = [0; 2];
+
+        assert_eq!(object.object().bucket(), "bucket");
+        assert_eq!(object.object().key(), "key");
+        assert_eq!(object.object().version_id(), Some("version-1"));
+        assert_eq!(object.size().expect("size should load"), 6);
+
+        object.read_exact(&mut buffer).expect("read should succeed");
+        object
+            .seek(SeekFrom::Start(3))
+            .expect("seek should succeed");
+        object.read_exact(&mut buffer).expect("read should succeed");
+
+        let client = object.source_ref().client();
+        let ranges: Vec<_> = client
+            .range_requests
+            .iter()
+            .map(S3GetObjectRangeRequest::range_header)
+            .collect();
+        assert_eq!(&buffer, b"de");
+        assert_eq!(ranges, vec!["bytes=0-", "bytes=3-"]);
+        assert_eq!(client.head_requests.len(), 1);
     }
 
     #[test]

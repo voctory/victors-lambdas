@@ -24,6 +24,8 @@ aws-lambda-powertools = { version = "0.1", features = ["streaming-async"] }
 - `SeekableStream` implements `Read` and `Seek` over a caller-provided `RangeSource`.
 - `AsyncSeekableStream` implements Tokio `AsyncRead` and `AsyncSeek` over an `AsyncRangeSource`.
 - `S3RangeSource` models S3 object range reads through the `S3ObjectClient` and `AsyncS3ObjectClient` traits.
+- `S3Object` provides a seekable `Read`/`Seek` convenience wrapper for an S3 bucket, key, optional version ID, and
+  caller-provided S3 client abstraction.
 - Optional `streaming-s3` exposes `AwsSdkS3ObjectClient` for a configured `aws_sdk_s3::Client` and enables async
   streaming support.
 - Seeking invalidates the active range only when the stream position changes.
